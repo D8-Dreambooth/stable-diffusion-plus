@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -9,8 +10,14 @@ from dreambooth.dreambooth import shared
 os.environ["SAFETENSORS_FAST_GPU"] = "1"
 
 # Set base path
-path = os.path.join(os.path.dirname(__file__))
+path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 shared.script_path = path
+
+launch_settings_path = os.path.join(shared.script_path, "launch_settings.json")
+
+if not os.path.exists(launch_settings_path):
+    conf_src = os.path.join(shared.script_path, "conf_src")
+    shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
 
 # Check that we're on Python 3.10
 if sys.version_info < (3, 10):
