@@ -25,12 +25,16 @@ active_extensions = {}
 def get_files():
     css_files = []
     js_files = []
+    js_files_ext = []
     custom_files = []
     html = []
 
+    dict_idx = 0
     for active_dict in (active_modules, active_extensions):
         for module_name, module in active_dict.items():
             for dest, attr in [(css_files, "css_files"), (js_files, "js_files"), (custom_files, "custom_files")]:
+                if attr == "js_files" and dict_idx == 1:
+                    dest = js_files_ext
                 dest_dir = attr.split("_")[0]
                 for file_path in getattr(module, attr, []):
                     file = os.path.basename(file_path)
@@ -42,8 +46,9 @@ def get_files():
             if os.path.exists(module.source):
                 with open(module.source, "r") as file:
                     html.append(file.read())
+            dict_idx +=1
 
-    return css_files, js_files, custom_files, html
+    return css_files, js_files, js_files_ext, custom_files, html
 
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -78,6 +83,7 @@ for name, c_dir in dirs.items():
     if not os.path.exists(c_dir):
         os.mkdir(c_dir)
 
+shared.models_path = dirs["models"]
 cache_handler = CacheHandler(dirs["cache"])
 config_handler = ConfigHandler(dirs["config"])
 models_handler = ModelHandler(dirs["models"])
@@ -122,13 +128,14 @@ for ext_name, extension in active_extensions.items():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    css_files, js_files, custom_files, html = get_files()
+    css_files, js_files, js_files_ext, custom_files, html = get_files()
     return templates.TemplateResponse(
         "base.html",
         {
             "request": request,
             "css_files": css_files,
             "js_files": js_files,
+            "js_files_ext": js_files_ext,
             "custom_files": custom_files,
             "module_html": html
         }

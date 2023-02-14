@@ -1,7 +1,7 @@
 import json
 import traceback
 
-from starlette.websockets import WebSocket
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
 class SocketHandler:
@@ -19,19 +19,24 @@ class SocketHandler:
                 print(f"Socket added: {websocket}")
                 await websocket.accept()
                 while True:
-                    data = await websocket.receive_text()
-                    if data is not None:
-                        try:
-                            print(f"Raw message: {data}")
-                            message = json.loads(data)
-                            print(f"Socket message: {message}")
-                            if "type" in message and message["type"] in cls._instance.socket_callbacks:
-                                await cls._instance.socket_callbacks[message["type"]](websocket, message)
-                            else:
-                                print(f"Undefined message: {message}")
-                        except Exception as e:
-                            print(f"Exception parsing socket message: {e}")
-                            traceback.print_exc()
+                    try:
+                        data = await websocket.receive_text()
+                        if data is not None:
+                            try:
+                                print(f"Raw message: {data}")
+                                message = json.loads(data)
+                                print(f"Socket message: {message}")
+                                if "type" in message and message["type"] in cls._instance.socket_callbacks:
+                                    await cls._instance.socket_callbacks[message["type"]](websocket, message)
+                                else:
+                                    print(f"Undefined message: {message}")
+                            except Exception as e:
+                                print(f"Exception parsing socket message: {e}")
+                                traceback.print_exc()
+                    except WebSocketDisconnect:
+                        print("Client disconnected.")
+                        cls._instance.clients.remove(websocket)
+                        pass
 
         return cls._instance
 

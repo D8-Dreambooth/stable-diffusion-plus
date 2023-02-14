@@ -48,10 +48,10 @@
 <div class="l-navbar" id="nav-bar">
     <nav class="nav">
         <div>
-            <a href="#" class="nav_logo">
+            <div class="nav_logo">
                 <i class='bx bx-layer nav_logo-icon'></i>
                 <span class="nav_logo-name">Stable-Diffusion+</span>
-            </a>
+            </div>
             <div class="nav_list" id="navList">
                 <div class="extensions" id="extensionList"></div>
             </div>
@@ -60,13 +60,31 @@
     </nav>
 </div>
 <!--Container Main start-->
-<div class="height-100 bg-light" id="mainBody">
+<div class="bg-light" id="mainBody">
     {% for module in module_html %}
     {{ module|safe }}
     {% endfor %}
 </div>
 <!--Container Main end-->
 <div id="footer"></div>
+
+<!--Modals-->
+<div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorModalLabel">Error Encountered</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="errorModalMessage">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--End Modals -->
 
 {% block scripts %}
 <script src="https://kit.fontawesome.com/543c4560e5.js" crossorigin="anonymous"></script>
@@ -80,12 +98,24 @@
         integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
         crossorigin="anonymous"></script>
 <!-- jQuery Custom Scroller CDN -->
-<script
-        src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
-<script type="text/javascript" src="/static/js/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
+
+<!-- Load core JS file, which has methods all other scripts should be able to access. -->
+<script type="text/javascript" src="/static/js/core_methods.js"></script>
+
+<!-- Now append all extension code -->
+{% for js in js_files_ext %}
+<script src="{{ js }}"></script>
+{% endfor %}
+
+<!-- Load restricted JS file, which has methods only module code should be able to access. -->
+<script type="text/javascript" src="/static/js/restricted_methods.js"></script>
+
+<!-- Now load script for modules. -->
 {% for js in js_files %}
 <script src="{{ js }}"></script>
 {% endfor %}
+
 
 {% endblock %}
 </body>
