@@ -67,11 +67,14 @@ for key in keys_to_check:
     if launch_settings.get(f"{key}_dir"):
         val = launch_settings[key]
         if val != "" and os.path.exists(val):
+            print(f"Appending path from settings: {val}")
             dirs[key] = val
     else:
-        dirs[key] = os.path.join(data_path, key)
+        val = os.path.join(data_path, key)
+        print(f"Appending path from datapath: {val}")
+        dirs[key] = val
 
-for c_dir in dirs:
+for name, c_dir in dirs.items():
     if not os.path.exists(c_dir):
         os.mkdir(c_dir)
 
