@@ -41,3 +41,22 @@ li.fileLi * {
 .fileIcon {
 
 }
+
+.tree-container {
+    display: none;
+}
+
+.tree-container.full {
+    display: block;
+}
+
+.tree {
+    display: block;
+    max-height: 200px;
+    overflow-y: scroll;
+}
+
+.file-buttons {
+    padding: 0 25% !important;
+    width: 100%;
+}

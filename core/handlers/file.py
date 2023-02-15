@@ -25,12 +25,16 @@ class FileHandler:
     async def pass_dir_content(self, websocket: WebSocket, data):
         print(f"Passed: {data}")
         res = self.get_dir_content(data["start_dir"], data["include_files"], data["recursive"], data["filter"])
+        current_path = self.current_dir.replace(self.user_dir, "")
+        if current_path == "":
+            current_path = os.path.sep
         result = {
             "items": res,
-            "current": self.current_dir.replace(self.user_dir, "")
+            "current": current_path,
+            "separator": os.path.sep
         }
         print(f"No, really, got: {result}")
-        return await websocket.send_json(result)
+        return result
 
     def get_dir_content(self, start_dir: str = None, include_files: bool = False, recursive: bool = False,
                         filter: Union[str, List[str]] = None) -> Dict[str, Tuple[str, int, str, Union[None, Dict]]]:

@@ -86,6 +86,7 @@ function sendMessage(name, data) {
     return new Promise((resolve, reject) => {
         console.log("Message request: ", name, data);
         let message = {
+            id: generateMessageId(),
             name: name,
             data: data
         }
@@ -99,14 +100,6 @@ function sendMessage(name, data) {
                 console.log("Sending: ", message);
                 globalSocket.send(JSON.stringify(message));
                 clearError();
-
-                globalSocket.onmessage = function (event) {
-                    console.log("Evt: ", event);
-                    let data = JSON.parse(event.data);
-                    console.log("Returning:", data);
-                    resolve(data);
-
-                };
             } else {
                 retryCount++;
                 if (retryCount <= maxRetries) {
@@ -126,14 +119,32 @@ function sendMessage(name, data) {
             connectSocket();
             globalSocket.onopen = function () {
                 console.log("WebSocket connected");
-                return send();
+                send();
             };
         } else {
-            return send();
+            send();
         }
+
+        // Register a callback to handle the response message
+        function handleResponse(event) {
+            console.log("Received response: ", event);
+            let response = JSON.parse(event.data);
+            if (response.id === message.id) {
+                // This is the response we're waiting for
+                globalSocket.removeEventListener("message", handleResponse);
+                console.log("Returning response:", response);
+                resolve(response);
+            }
+        }
+
+        globalSocket.addEventListener("message", handleResponse);
     });
 }
 
+// Generate a random message ID
+function generateMessageId() {
+    return Math.floor(Math.random() * 1000000);
+}
 
 // Set up socket and it's event listeners
 function connectSocket() {

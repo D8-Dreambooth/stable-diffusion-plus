@@ -1,5 +1,7 @@
 let gallery;
 let fileTest;
+let moduleSelect;
+
 document.addEventListener("DOMContentLoaded", function (event) {
     console.log("Inferload...");
     registerModule("Inference", "moduleInfer", "images")
@@ -30,7 +32,13 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     fileTest = new FileBrowser(document.getElementById("fileTest"), true, true);
 
+    moduleSelect = new ModelSelect(document.getElementById("inferModel"), {
+        label: "Model Selection:"
+    });
 
+    moduleSelect.setOnChangeHandler(function(data) {
+       console.log("Model changed: ", data);
+    });
     gallery = new InlineGallery('inferGallery', {}, dynamicElements);
     gallery.openGallery();
     console.log("Gallery:", gallery);
@@ -55,6 +63,6 @@ document.addEventListener("DOMContentLoaded", function (event) {
     });
 
     console.log("Scale Test: ", scaleTest);
-    let modelSelection = document.getElementById("inferModelSelection");
-    let modelList = sendMessage("list_models", {});
+
+
 });

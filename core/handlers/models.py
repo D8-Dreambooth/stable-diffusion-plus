@@ -21,7 +21,7 @@ class ModelHandler:
             cls._instance.models = {}
             cls._instance.models_path = models_path
             cls._instance.socket_handler = SocketHandler()
-            cls._instance.socket_handler.register("list_models", cls._instance.socket_models)
+            cls._instance.socket_handler.register("models", cls._instance.socket_models)
         if models_path:
             if not os.path.exists(models_path):
                 os.makedirs(models_path)
@@ -30,7 +30,16 @@ class ModelHandler:
 
     async def socket_models(self, websocket: WebSocket, data):
         print(f"Socket model request received: {data}")
-        return await websocket.send_json({"message": "Gotcha, homie."})
+        if "model_type" not in data:
+            print(f"Invalid request: {data}")
+            return {"message":"Invalid data."}
+        else:
+            ext_include = None if "ext_include" not in data else data["ext_include"]
+            ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
+            model_list = self.load_models(data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
+            print(f"Got model_list: {model_list}")
+            model_json = [model.serialize() for model in model_list]
+            return {"models": model_json}
 
     def load_models(self,
                     model_type: str,
@@ -57,6 +66,7 @@ class ModelHandler:
 
         try:
             model_path = os.path.join(self.models_path, model_type)
+            print(f"Checking: {model_path}")
             if not os.path.exists(model_path):
                 os.makedirs(model_path)
 
@@ -72,6 +82,7 @@ class ModelHandler:
                 if len(ext_include) != 0:
                     model_type, extension = os.path.splitext(file)
                     if extension not in ext_include:
+                        print(f"NO EXT: {extension}")
                         continue
                 model_data = ModelData(full_path)
                 if model_data not in output:

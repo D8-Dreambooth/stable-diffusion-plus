@@ -1,14 +1,60 @@
 class FileBrowser {
-    constructor(parentElement, showSelectButton = false, listFiles = false) {
+    constructor(parentElement,
+                showSelectButton = false,
+                listFiles = false,
+                placeholder="Select something...",
+                expand = false) {
         this.parentElement = parentElement;
+        this.placeholder = placeholder;
         this.endpoint = "files"
         this.showSelectButton = showSelectButton;
         this.currentPath = "";
+        this.currentParent = "";
+        this.selectedLink = undefined;
         this.listFiles = listFiles;
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
-        this.parentElement.appendChild(this.treeContainer);
-        this.buildTree().then();
+        this.treeParent = document.createElement("div");
+        this.treeParent.classList.add("tree-container");
+        this.expanded = expand;
+        if (expand) {
+            this.treeParent.classList.add("full");
+        }
+        this.buildInput();
+
+
+        this.buildTree().then(() => {
+            this.treeParent.appendChild(this.treeContainer);
+
+            if (this.showSelectButton) {
+                const selectButton = document.createElement("button");
+                selectButton.classList.add("btn", "btn-primary");
+                selectButton.textContent = "Select";
+                selectButton.addEventListener("click", () => {
+                    if (this.selectedLink !== undefined) {
+                        this.currentPath = this.selectedLink.dataset.path;
+                        let base = this.currentParent === this.separator ? this.currentParent : this.currentParent + this.separator;
+                        this.input.value = base + this.currentPath;
+                        this.toggleTree();
+                    }
+                });
+                const cancelButton = document.createElement("button");
+                cancelButton.classList.add("btn", "btn-secondary");
+                cancelButton.textContent = "Cancel  ";
+                cancelButton.addEventListener("click", () => {
+                    this.toggleTree();
+                });
+                const btnGroup = document.createElement("div");
+                btnGroup.classList.add("btn-group", "file-buttons");
+                btnGroup.appendChild(selectButton);
+                btnGroup.appendChild(cancelButton);
+                this.treeParent.appendChild(btnGroup);
+
+            }
+            this.parentElement.appendChild(this.treeParent);
+
+        });
+
         this.onDoubleClickCallbacks = [];
         this.onClickCallbacks = [];
         this.onSelectCallbacks = [];
@@ -16,18 +62,47 @@ class FileBrowser {
         this.selected = "";
     }
 
+    buildInput() {
+        const inputGroup = document.createElement("div");
+        inputGroup.classList.add("input-group");
+        const input = document.createElement("input");
+        input.classList.add("form-control");
+        input.type = "text";
+        input.placeholder = this.placeholder;
+        this.input = input;
+        inputGroup.appendChild(input);
+
+        const toggleButton = document.createElement("button");
+        toggleButton.classList.add("btn", "btn-secondary");
+
+        toggleButton.innerHTML = this.expanded ? `<i class="fas fa-chevron-up"></i>` : `<i class="fas fa-chevron-down"></i>`;
+        inputGroup.appendChild(toggleButton);
+        toggleButton.addEventListener("click", () => {
+            this.toggleTree();
+        });
+        this.toggleButton = toggleButton;
+        this.parentElement.appendChild(inputGroup);
+    }
+
+    toggleTree() {
+        this.treeParent.classList.toggle("full");
+        this.expanded = this.treeParent.classList.contains("full");
+        this.toggleButton.innerHTML = this.expanded ? `<i class="fas fa-chevron-up"></i>` : `<i class="fas fa-chevron-down"></i>`;
+    }
+
     async buildTree() {
         const response = await this.fetchFileTreeData(this.currentPath);
         console.log("Build tree res: ", response);
         let items = response["items"] || [];
-        let current = response["current"] || "";
+        this.currentParent = response["current"] || "";
+        this.separator = response["separator"] || "\\";
         const tree = this.generateTree(items);
         this.treeContainer.innerHTML = "";
         let title = document.createElement("span");
         title.innerHTML = "File Browser";
         title.classList.add("fileTitle");
         let currentPath = document.createElement("span");
-        currentPath.innerHTML = current;
+        currentPath.innerHTML = this.currentParent;
         currentPath.classList.add("fileCurrent");
         this.treeContainer.appendChild(title);
         this.treeContainer.appendChild(currentPath);
@@ -139,7 +214,7 @@ class FileBrowser {
 
         link.classList.add("selected");
         console.log("Link selected: ", link.dataset);
-        this.selected = link;
+        this.selectedLink = link;
     }
 
     getClass(type) {

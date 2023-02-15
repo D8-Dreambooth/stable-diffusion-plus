@@ -39,8 +39,9 @@ class CacheHandler:
                 self.cache[cache_name] = {}
         return default
 
-    def set(self, cache_name, cache_data=None, key=None, value=None):
+    def set(self, cache_name, key=None, value=None, cache_data=None):
         cache_file = os.path.join(self.cache_dir, cache_name + ".json")
+        print(f"Cache file: {cache_file}")
         if cache_data:
             with open(cache_file, "w") as f:
                 json.dump(cache_data, f)

@@ -30,8 +30,11 @@ class SocketHandler:
                                 print(f"Message is valid: {message}")
                                 name = message["name"]
                                 data = message["data"]
+                                message_id = message["id"]
                                 if name in self.socket_callbacks:
-                                    await self.socket_callbacks[name](websocket, data)
+                                    response = await self.socket_callbacks[name](websocket, data)
+                                    response["id"] = message_id
+                                    await websocket.send_json(response)
                                 else:
                                     print(f"Undefined message: {message}")
                             else:
