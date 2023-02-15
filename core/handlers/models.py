@@ -4,24 +4,33 @@ from typing import List
 from urllib.parse import urlparse
 
 from basicsr.utils.download_util import load_file_from_url
+from starlette.websockets import WebSocket
 
 from core.dataclasses.model_data import ModelData
+from core.handlers.websockets import SocketHandler
 
 
 class ModelHandler:
     _instance = None
     models_path = None
+    socket_handler = None
 
     def __new__(cls, models_path=None):
         if cls._instance is None:
             cls._instance = super(ModelHandler, cls).__new__(cls)
             cls._instance.models = {}
             cls._instance.models_path = models_path
+            cls._instance.socket_handler = SocketHandler()
+            cls._instance.socket_handler.register("list_models", cls._instance.socket_models)
         if models_path:
             if not os.path.exists(models_path):
                 os.makedirs(models_path)
                 cls._instance.models_path = models_path
         return cls._instance
+
+    async def socket_models(self, websocket: WebSocket, data):
+        print(f"Socket model request received: {data}")
+        return await websocket.send_json({"message": "Gotcha, homie."})
 
     def load_models(self,
                     model_type: str,

@@ -23,6 +23,10 @@
     <link href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <!-- Base CSS -->
+    <link href="{{ url_for('static', path='/css/lightgallery-bundle.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/inlineGallery.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/bootstrapSlider.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/fileBrowser.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', path='/css/base.css') }}" rel="stylesheet">
 
     <!-- Module and theme CSS -->
@@ -100,6 +104,16 @@
 <!-- jQuery Custom Scroller CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
 
+<!-- LightGallery + Plugins. -->
+<script type="text/javascript" src="/static/js/lightgallery.min.js"></script>
+<script type="text/javascript" src="/static/js/lg-plugins/fullscreen/lg-fullscreen.min.js"></script>
+<script type="text/javascript" src="/static/js/lg-plugins/relativeCaption/lg-relative-caption.min.js"></script>
+<script type="text/javascript" src="/static/js/lg-plugins/thumbnail/lg-thumbnail.min.js"></script>
+<script type="text/javascript" src="/static/js/lg-plugins/zoom/lg-zoom.min.js"></script>
+
+<script type="text/javascript" src="/static/js/inlineGallery.js"></script>
+<script type="text/javascript" src="/static/js/bootstrapSlider.js"></script>
+<script type="text/javascript" src="/static/js/fileBrowser.js"></script>
 <!-- Load core JS file, which has methods all other scripts should be able to access. -->
 <script type="text/javascript" src="/static/js/core_methods.js"></script>
 

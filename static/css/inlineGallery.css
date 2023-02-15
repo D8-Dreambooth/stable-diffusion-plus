@@ -1,0 +1,73 @@
+.header .lead {
+    max-width: 620px;
+}
+
+
+.lg-sub-html {
+    bottom: 100px !important;
+}
+
+.lg-thumb-outer {
+    background-color: #ffffff44 !important;
+}
+
+.lg-next, .lg-prev {
+    background-color: transparent;
+    color: #0d0a0a;
+}
+
+.inline-gallery-container {
+    min-height: 400px;
+    position: relative;
+}
+
+.lightGallery-captions h4 {
+    transform: translate3d(60px, 0, 0px);
+}
+
+.lightGallery-captions p {
+    transform: translate3d(-60px, 0, 0px);
+}
+
+.lightGallery-captions h4,
+.lightGallery-captions p {
+    opacity: 0;
+}
+
+.lg-current .lightGallery-captions h4,
+.lg-current .lightGallery-captions p {
+    transform: translate3d(0, 0, 0px);
+}
+
+.lg-current .lightGallery-captions h4,
+.lg-current .lightGallery-captions p {
+    opacity: 1;
+}
+
+.lg-slide-progress .lightGallery-captions h4 {
+    transform: translate3d(-60px, 0, 0px);
+}
+
+.lg-slide-progress .lightGallery-captions p {
+    transform: translate3d(60px, 0, 0px);
+}
+
+.lg-slide-progress .lightGallery-captions h4,
+.lg-slide-progress .lightGallery-captions p {
+    opacity: 0;
+}
+
+.lightGallery-captions h4,
+.lightGallery-captions p {
+    transition: transform 0.4s ease-in-out, opacity 0.4s ease-in;
+}
+
+.lg-current .lightGallery-captions h4,
+.lg-current .lightGallery-captions p {
+    transition-delay: 500ms;
+}
+
+.lg-current.lg-slide-progress .lightGallery-captions h4,
+.lg-current.lg-slide-progress .lightGallery-captions p {
+    transition-delay: 0ms;
+}

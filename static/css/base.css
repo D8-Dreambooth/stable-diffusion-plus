@@ -11,6 +11,7 @@ body {
 
 .module {
     display: none !important;
+    padding-bottom: 25px;
 }
 
 .module.activePane {
@@ -200,4 +201,16 @@ a {
     .body-pd {
         padding-left: calc(var(--nav-width) + 188px)
     }
+}
+
+
+.modal-backdrop.show {
+    opacity: .5;
+    width: 100%;
+}
+
+.modal.show {
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
 }

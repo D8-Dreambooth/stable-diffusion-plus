@@ -1,55 +1,83 @@
 <div class="module" id="moduleInfer">
     <div class="container-fluid">
-  <div class="row">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          Image Gallery
+        <div class="row">
+            <div class="col-lg-12 col-md-6">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Output
+                    </div>
+                    <div class="card-body">
+                        <div class="image-container inline-gallery-container" id="inferGallery">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Generation Parameters
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="prompt">Prompt:</label>
+                            <input type="text" class="form-control" id="prompt">
+                        </div>
+                        <div class="form-group">
+                            <label for="negative-prompt">Negative Prompt:</label>
+                            <input type="text" class="form-control" id="negative-prompt">
+                        </div>
+                        <div class="form-group" id="stepSlider">
+
+                        </div>
+                        <div class="form-group" id="scaleSlider">
+
+                        </div>
+                        <div class="form-group">
+                            <label for="seed">Seed:</label>
+                            <input type="number" class="form-control" id="seed" value="-1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="form-group fileBrowser" id="fileTest"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Execute
+                    </div>
+                    <div class="card-body">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label for="inferModelSelection">Model:</label>
+                                        <select class="form-input" id="inferModelSelection">
+                                            <option value="none"></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="btn-group">
+                                    <button class="btn btn-primary" id="startInfer">Generate</button>
+                                    <button class="btn btn-secondary btn-disabled" id="stopInfer">Cancel</button>
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        <div class="card-body">
-          <div class="image-container">
-            <img src="example.jpg" alt="Example Image">
-          </div>
-          <div class="image-info">
-            <p>Description of the image</p>
-          </div>
-          <div class="button-list">
-            <button class="btn btn-primary">Previous</button>
-            <button class="btn btn-primary">Next</button>
-          </div>
-        </div>
-      </div>
     </div>
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          Input Fields
-        </div>
-        <div class="card-body">
-          <div class="form-group">
-            <label for="prompt">Prompt:</label>
-            <input type="text" class="form-control" id="prompt">
-          </div>
-          <div class="form-group">
-            <label for="negative-prompt">Negative Prompt:</label>
-            <input type="text" class="form-control" id="negative-prompt">
-          </div>
-          <div class="form-group">
-            <label for="steps-slider">Steps:</label>
-            <input type="range" class="form-control-range" id="steps-slider" min="10" max="100">
-          </div>
-          <div class="form-group">
-            <label for="scale-slider">Scale:</label>
-            <input type="range" class="form-control-range" id="scale-slider" min="1" max="40" step="0.1">
-          </div>
-          <div class="form-group">
-            <label for="seed">Seed:</label>
-            <input type="number" class="form-control" id="seed" value="-1">
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 </div>

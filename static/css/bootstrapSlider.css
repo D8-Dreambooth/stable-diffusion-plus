@@ -1,0 +1,115 @@
+.wrap.svelte-5usjvi {
+    pointer-events: none;
+    position: absolute;
+    z-index: 50;
+    display: flex;
+    max-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition-property: opacity;
+    transition-timing-function: cubic-bezier(.4,0,.2,1);
+    transition-duration: .15s;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+.w-full {
+    width: 100%;
+}
+.flex {
+    display: flex;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.dark .gr-block.gr-box span.text-gray-500, .dark label.block span {
+    background-color: rgb(31, 41, 55);
+    box-shadow: none;
+    border: 1px solid rgba(128, 128, 128, 0.1);
+    border-radius: 6px;
+    padding: 0.1em 0.5em;
+}
+
+.gr-box > div > div > input.gr-text-input {
+    position: absolute;
+    right: 0.9em;
+    top: 0.3em;
+    z-index: 400;
+    width: 6em;
+}
+
+.gr-compact .gr-box {
+    border-radius: 0.5rem !important;
+    border-width: 1px !important;
+}
+
+.dark .gr-input {
+    --tw-border-opacity: 1;
+    border-color: rgb(55 65 81 / var(--tw-border-opacity));
+    --tw-text-opacity: 1;
+    color: rgb(229 231 235 / var(--tw-text-opacity));
+}
+
+.gr-compact .gr-box {
+    border-radius: 0.5rem !important;
+    border-width: 1px !important;
+}
+
+.gr-compact .gr-block, .gr-compact .gr-form {
+    border: none;
+    box-shadow: none;
+}
+.dark .gr-box {
+    --tw-bg-opacity: 1;
+    background-color: rgb(31 41 55 / var(--tw-bg-opacity));
+}
+
+.gr-compact>*, .gr-compact .gr-box {
+    border-radius: 0!important;
+    border-width: 0!important;
+}
+.col>*, .col>.gr-form>* {
+    width: 100%;
+}
+.gr-form>.gr-block {
+    border-radius: 0;
+    border-width: 0;
+    --tw-shadow: 0 0 #0000 !important;
+    --tw-shadow-colored: 0 0 #0000 !important;
+}
+
+.dark .border, .dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300, .dark .\!border, .dark .\!border-gray-300 {
+    --tw-border-opacity: 1;
+    border-color: rgb(55 65 81 / var(--tw-border-opacity));
+}
+.gr-padded {
+    padding: 0.625rem 0.75rem;
+}
+.gr-box {
+    position: relative;
+    border-radius: 0.5rem;
+    --tw-bg-opacity: 1;
+    font-size: .875rem;
+    line-height: 1.25rem;
+    --tw-text-opacity: 1;
+}
+.border-gray-200 {
+    --tw-border-opacity: 1;
+    border-color: rgb(229 231 235);
+}
+.border-solid {
+    border-style: solid;
+}
+.border {
+    border-width: 1px;
+}
+.w-full {
+    width: 100%;
+}
+.relative {
+    position: relative;
+}

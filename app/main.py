@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from core.handlers.cache import CacheHandler
 from core.handlers.config import ConfigHandler
 from core.handlers.extensions import ExtensionHandler
+from core.handlers.file import FileHandler
 from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
 from core.handlers.websockets import SocketHandler
@@ -86,7 +87,6 @@ for name, c_dir in dirs.items():
 shared.models_path = dirs["models"]
 cache_handler = CacheHandler(dirs["cache"])
 config_handler = ConfigHandler(dirs["config"])
-models_handler = ModelHandler(dirs["models"])
 module_handler = ModuleHandler(os.path.join(path, "core", "modules"))
 extension_handler = ExtensionHandler(path, dirs["extensions"])
 
@@ -115,6 +115,9 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 socket_handler = SocketHandler(app)
+file_handler = FileHandler(dirs["user"])
+models_handler = ModelHandler(dirs["models"])
+
 
 # Initialize API endpoints if the module has them.
 dreambooth_api(None, app)

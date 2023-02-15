@@ -5,7 +5,8 @@ const SOCKET_URL = "ws://localhost:8080/ws";
 // region Initialization
 
 document.addEventListener("DOMContentLoaded", function () {
-
+    // Set up socket
+    connectSocket();
     // Navbar toggle listener
     const showNavbar = (toggleId, navId, bodyId, headerId) => {
         const toggle = document.getElementById(toggleId),
@@ -26,8 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     showNavbar('header-toggle', 'nav-bar', 'body-pd', 'header')
 
-    // Set up socket
-    connectSocket();
+
 });
 
 // endregion
@@ -83,44 +83,83 @@ function showPane(module_id) {
 
 // Send a socket message to the specified endpoint name
 function sendMessage(name, data) {
-    let message = {
-        type: name,
-        data: data
-    }
+    return new Promise((resolve, reject) => {
+        console.log("Message request: ", name, data);
+        let message = {
+            name: name,
+            data: data
+        }
 
-    console.log("Sending socket message: ", message);
-    if (globalSocket.readyState !== WebSocket.OPEN) {
-        connectSocket();
-    }
-    if (globalSocket.readyState === WebSocket.OPEN) {
-        globalSocket.send(JSON.stringify(message));
-        clearError();
-    } else {
-        showError("Unable to communicate with websocket.");
-    }
+        console.log("Sending socket message: ", message);
+        const maxRetries = 5;
+        let retryCount = 0;
+
+        function send() {
+            if (globalSocket.readyState === WebSocket.OPEN) {
+                console.log("Sending: ", message);
+                globalSocket.send(JSON.stringify(message));
+                clearError();
+
+                globalSocket.onmessage = function (event) {
+                    console.log("Evt: ", event);
+                    let data = JSON.parse(event.data);
+                    console.log("Returning:", data);
+                    resolve(data);
+
+                };
+            } else {
+                retryCount++;
+                if (retryCount <= maxRetries) {
+                    console.log("No socket connection, reconnecting and retrying...");
+                    connectSocket();
+                    setTimeout(send, 500);
+                } else {
+                    showError("Unable to communicate with websocket.");
+                    reject();
+                    return false;
+                }
+            }
+        }
+
+        if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
+            console.log("WebSocket not connected, connecting...");
+            connectSocket();
+            globalSocket.onopen = function () {
+                console.log("WebSocket connected");
+                return send();
+            };
+        } else {
+            return send();
+        }
+    });
 }
+
 
 // Set up socket and it's event listeners
 function connectSocket() {
     if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
         globalSocket = new WebSocket(SOCKET_URL);
-        globalSocket.onopen = function() {
+        globalSocket.onopen = function () {
             clearError();
             console.log("WebSocket connected");
         };
         globalSocket.onmessage = function (event) {
-            console.log("MESSAGE: ", event);
             if (event.hasOwnProperty("name")) {
                 let method_name = event.name;
                 if (socketMethods.hasOwnProperty(method_name)) {
+                    console.log("Forwarding method: ", method_name, event);
                     socketMethods[method_name](event);
+                } else {
+                    console.log("Unknown method name: ", method_name, event);
                 }
+            } else {
+                console.log("Event has no name property, can't process: ", event);
             }
         };
-        globalSocket.onclose = function() {
+        globalSocket.onclose = function () {
             console.log("WebSocket disconnected");
             showError("Websocket Disconnected, attempting reconnect...");
-            setTimeout(function() {
+            setTimeout(function () {
                 console.log("Reconnecting to WebSocket...");
                 connectSocket();
             }, 2000);
@@ -161,7 +200,7 @@ function registerExtension(module_name, module_id, module_icon) {
     newModule.appendChild(name);
     navList.appendChild(newModule);
 
-    newModule.addEventListener("click", function() {
+    newModule.addEventListener("click", function () {
         showPane(module_id);
     });
 }
@@ -191,5 +230,17 @@ function deRegisterSocketMethod(extension_name, method) {
         delete socketMethods[extension_name + "" + method];
     }
 }
+
+// endregion
+
+// region helperFunctions
+const generateRandomString = (length) => {
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+};
 
 // endregion
