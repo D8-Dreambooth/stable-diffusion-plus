@@ -1,15 +1,27 @@
+<!-- Base div is always a "module" class -->
 <div class="module" id="moduleInfer">
+    <!-- The rest of this can be whatever you want. Note that bootstrap grid is used, along with card shadow -->
     <div class="container-fluid">
         <div class="row">
-            <div class="col-lg-12 col-md-6">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <!-- Auto-populated "model-select" element. See JS -->
+                        <div class="modelSelect" id="inferModel"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
                 <div class="card shadow">
                     <div class="card-header">
                         Output
                     </div>
                     <div class="card-body">
-                        <div class="image-container inline-gallery-container" id="inferGallery">
-
-                        </div>
+                        <!-- Gallery and progressGroup elements. -->
+                        <div class="progressGroup" id="inferProgress"></div>
+                        <div class="image-container inline-gallery-container" id="inferGallery"></div>
                     </div>
                 </div>
             </div>
@@ -20,44 +32,30 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label for="prompt">Prompt:</label>
-                            <input type="text" class="form-control" id="prompt">
+                            <label for="infer_prompt">Prompt:</label>
+                            <input type="text" class="form-control" id="infer_prompt">
                         </div>
                         <div class="form-group">
-                            <label for="negative-prompt">Negative Prompt:</label>
-                            <input type="text" class="form-control" id="negative-prompt">
+                            <label for="infer_negative_prompt">Negative Prompt:</label>
+                            <input type="text" class="form-control" id="infer_negative_prompt">
                         </div>
-                        <div class="form-group" id="stepSlider">
+                        <!-- Gradio-esque slider elements, populated by JS -->
 
-                        </div>
-                        <div class="form-group" id="scaleSlider">
-
+                        <div class="form-group" id="infer_width"></div>
+                        <div class="form-group" id="infer_height"></div>
+                        <div class="form-group" id="infer_steps"></div>
+                        <div class="form-group" id="infer_scale"></div>
+                        <div class="form-group" id="infer_num_images"></div>
+                        <div class="form-group" id="infer_batch_size"></div>
+                        <div class="form-group">
+                            <label for="infer_seed">Seed:</label>
+                            <input type="number" class="form-control" id="infer_seed" value="-1">
                         </div>
                         <div class="form-group">
-                            <label for="seed">Seed:</label>
-                            <input type="number" class="form-control" id="seed" value="-1">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <div class="form-group fileBrowser" id="fileTest"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card shadow">
-                    <div class="card-header">
-                        Execute
-                    </div>
-                    <div class="card-body">
-                        <div class="modelSelect" id="inferModel"></div>
-                        <div class="form-group">
-                            <div class="btn-group">
-                            <button class="btn btn-primary" id="startInfer">Generate</button>
-                            <button class="btn btn-secondary btn-disabled" id="stopInfer">Cancel</button>
+                            <div class="btn-group form-control">
+                                <button class="btn btn-primary" id="startInfer">Generate</button>
+                                <button class="btn btn-secondary btn-disabled" id="stopInfer">Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>

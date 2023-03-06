@@ -75,20 +75,17 @@ class BootstrapSlider {
         this.value = newValue;
         this.numberInput.value = this.value;
         this.rangeInput.value = this.value;
-        if (this.onChange) {
-            this.onChange(this.value);
+        if (this.onChangeCallback) {
+            this.onChangeCallback(this.value);
         }
     }
 
-    getValue() {
-        return this.value;
-    }
 
     setOnChange(callback) {
         this.onChangeCallback = callback;
         this.rangeInput.addEventListener("input", (event) => {
             const value = parseInt(event.target.value, 10);
-            this.numberInput.value = value;
+            this.numberInput.value = String(value);
             if (this.onChangeCallback) {
                 this.onChangeCallback(value);
             }
@@ -96,7 +93,7 @@ class BootstrapSlider {
 
         this.numberInput.addEventListener("input", (event) => {
             const value = parseInt(event.target.value, 10);
-            this.rangeInput.value = value;
+            this.rangeInput.value = String(value);
             if (this.onChangeCallback) {
                 this.onChangeCallback(value);
             }

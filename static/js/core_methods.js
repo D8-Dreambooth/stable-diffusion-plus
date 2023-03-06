@@ -82,7 +82,7 @@ function showPane(module_id) {
 
 
 // Send a socket message to the specified endpoint name
-function sendMessage(name, data) {
+function sendMessage(name, data, await=true) {
     return new Promise((resolve, reject) => {
         console.log("Message request: ", name, data);
         let message = {
@@ -137,9 +137,13 @@ function sendMessage(name, data) {
             }
         }
 
-        globalSocket.addEventListener("message", handleResponse);
+        // Move the event listener registration outside the send() function
+        if (await) {
+            globalSocket.addEventListener("message", handleResponse);
+        }
     });
 }
+
 
 // Generate a random message ID
 function generateMessageId() {
@@ -155,13 +159,24 @@ function connectSocket() {
             console.log("WebSocket connected");
         };
         globalSocket.onmessage = function (event) {
+            let message;
+            if (typeof event.data === 'string') {
+                message = JSON.parse(event.data); // parse the message string to an object
+            } else {
+                message = event.data; // use the received object as-is
+            }
+            event = message;
+            console.log("Message: ", message);
             if (event.hasOwnProperty("name")) {
                 let method_name = event.name;
                 if (socketMethods.hasOwnProperty(method_name)) {
                     console.log("Forwarding method: ", method_name, event);
-                    socketMethods[method_name](event);
+                    for (let i = 0; i < socketMethods[method_name].length; i++) {
+                        console.log("Forwarding method: ", method_name, event);
+                        socketMethods[method_name][i](event);
+                    }
                 } else {
-                    console.log("Unknown method name: ", method_name, event);
+                    console.log("Unknown message name: ", method_name, event);
                 }
             } else {
                 console.log("Event has no name property, can't process: ", event);
@@ -219,7 +234,10 @@ function registerExtension(module_name, module_id, module_icon) {
 
 // Register a socket call
 function registerSocketMethod(extension_name, method, callback) {
-    socketMethods[extension_name + "_" + method] = callback;
+    if (!socketMethods[method]) {
+        socketMethods[method] = [];
+    }
+    socketMethods[method].push(callback);
 }
 
 

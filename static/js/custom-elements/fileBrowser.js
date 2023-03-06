@@ -1,23 +1,22 @@
 class FileBrowser {
-    constructor(parentElement,
-                showSelectButton = false,
-                listFiles = false,
-                placeholder="Select something...",
-                expand = false) {
+    constructor(parentElement, options = {}) {
         this.parentElement = parentElement;
-        this.placeholder = placeholder;
         this.endpoint = "files"
-        this.showSelectButton = showSelectButton;
+
         this.currentPath = "";
         this.currentParent = "";
         this.selectedLink = undefined;
-        this.listFiles = listFiles;
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
         this.treeParent = document.createElement("div");
         this.treeParent.classList.add("tree-container");
-        this.expanded = expand;
-        if (expand) {
+        this.placeholder = options["placeholder"] || "Select something...";
+        this.showSelectButton = options["showSelectButton"] || false;
+        this.listFiles = options["listFiles"] || false;
+        this.expanded = options["expand"] || false;
+        this.multiselect = options["multiselect"] || false;
+
+        if (this.expanded) {
             this.treeParent.classList.add("full");
         }
         this.buildInput();
@@ -176,46 +175,64 @@ class FileBrowser {
         return root;
     }
 
-    attachEventHandlers() {
-        const allLinks = this.treeContainer.querySelectorAll(".fileLi");
-        console.log("Links: ", allLinks);
-        allLinks.forEach((link) => {
-            if (link.dataset.path) {
-                link.addEventListener("dblclick", () => {
-                    console.log("DBL: ", link);
-                    if (link.dataset.type === "directory") {
-                        this.currentPath = link.dataset.path;
-                        this.buildTree();
+   attachEventHandlers() {
+    const allLinks = this.treeContainer.querySelectorAll(".fileLi");
+    console.log("Links: ", allLinks);
+    let startLink;
+    allLinks.forEach((link) => {
+        if (link.dataset.path) {
+            link.addEventListener("dblclick", () => {
+                console.log("DBL: ", link);
+                if (link.dataset.type === "directory") {
+                    this.currentPath = link.dataset.path;
+                    this.buildTree();
+                }
+                this.onDoubleClickCallbacks.forEach((callback) =>
+                    callback(link.dataset.path, link.dataset.type)
+                );
+            });
+            link.addEventListener("click", (event) => {
+                console.log("Click: ", link);
+                if (event.ctrlKey) {
+                    // Control key is pressed
+                    if (!this.selectedLinks.includes(link)) {
+                        this.selectedLinks.push(link);
                     }
+                } else if (event.shiftKey) {
+                    // Shift key is pressed
+                    if (this.selectedLinks.length > 0) {
+                        const currentIndex = Array.from(allLinks).indexOf(link);
+                        const startIndex = Array.from(allLinks).indexOf(startLink);
+                        const [minIndex, maxIndex] = [currentIndex, startIndex].sort((a, b) => a - b);
+                        for (let i = minIndex; i <= maxIndex; i++) {
+                            const selectedLink = allLinks[i];
+                            if (!this.selectedLinks.includes(selectedLink)) {
+                                this.selectedLinks.push(selectedLink);
+                                selectedLink.classList.add("selected");
+                            }
+                        }
+                    }
+                } else {
+                    // Neither control nor shift key is pressed
+                    startLink = link;
+                    this.selectedLinks = [link];
+                    allLinks.forEach((cLink) => {
+                        cLink.classList.remove("selected");
+                    });
+                    link.classList.add("selected");
+                }
+                console.log("Selected Links: ", this.selectedLinks);
+                this.onClickCallbacks.forEach((callback) =>
+                    callback(link.dataset.path)
+                );
+            });
+        } else {
+            console.log("No path: ", link);
+        }
+    });
 
-                    this.onDoubleClickCallbacks.forEach((callback) =>
-                        callback(link.dataset.path, link.dataset.type)
-                    );
-                });
-                link.addEventListener("click", () => {
-                    console.log("Click: ", link);
-                    this.selectLink(link);
-                    this.onClickCallbacks.forEach((callback) =>
-                        callback(link.dataset.path)
-                    );
-                });
-            } else {
-                console.log("No path: ", link);
-            }
-        });
-        const selectButton = this.treeContainer.querySelector(".fileSelect");
-    }
+}
 
-    selectLink(link) {
-        const allLinks = this.treeContainer.querySelectorAll(".fileLi");
-        allLinks.forEach((cLink) => {
-            cLink.classList.remove("selected");
-        });
-
-        link.classList.add("selected");
-        console.log("Link selected: ", link.dataset);
-        this.selectedLink = link;
-    }
 
     getClass(type) {
         console.log("Let's get an icon: ", type);

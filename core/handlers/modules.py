@@ -1,5 +1,6 @@
 import importlib
 import os
+import traceback
 from typing import Dict
 
 from core.modules.base.module_base import BaseModule
@@ -39,6 +40,7 @@ class ModuleHandler:
                                 print(f"Not callable: {initialize}")
                         except Exception as e:
                             print(f"Failed to initialize module '{module_name}': {e}")
+                            # traceback.print_exc()
 
     def get_modules(self) -> Dict[str, BaseModule]:
         return self.active_modules

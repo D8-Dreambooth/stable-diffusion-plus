@@ -1,10 +1,14 @@
+import logging
 import os.path
 
 from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
-from core.handlers.websockets import SocketHandler
+from core.dataclasses.infer_data import InferSettings
 from core.modules.base.module_base import BaseModule
+from core.modules.infer.src.infer_utils import start_inference
+
+logger = logging.getLogger(__name__)
 
 
 class InferenceModule(BaseModule):
@@ -26,15 +30,19 @@ class InferenceModule(BaseModule):
             """
             return JSONResponse(content={"message": f"Job started."})
 
-    def initialize_websocket(self, handler: SocketHandler):
-        super().initialize_websocket(handler)
-        print("Init infer handler!")
-        handler.register("infer", _start_inference)
 
+async def _start_inference(msg):
+    data = msg["data"]
+    websocket = msg["socket"]
+    msg_id = msg["id"]
 
-async def _start_inference(websocket, data):
-    print(f"Inference passed: {data}")
-    await websocket.send_text("Inference received.")
+    logger.debug(f"Raw data: {data}")
+    infer_data = InferSettings(data)
+    logger.debug("Sending response")
+    await websocket.send_json({"name": "infer", "message": "Inference received.", "id": msg_id})
+    logger.debug("Broadcasting response: ")
+    images, prompts = await start_inference(infer_data)
+    return {"name": "infer", "message": "Inference completed.", "images": images, "prompts": prompts}
 
 
 def initialize():

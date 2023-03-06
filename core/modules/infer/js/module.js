@@ -1,11 +1,25 @@
 let gallery;
-let fileTest;
 let moduleSelect;
+let inferProgress;
 
-document.addEventListener("DOMContentLoaded", function (event) {
-    console.log("Inferload...");
-    registerModule("Inference", "moduleInfer", "images")
+let inferSettings = {
+    "prompt": "",
+    "negative_prompt": "",
+    "steps": 20,
+    "scale": 7.5,
+    "num_images": 1,
+    "batch_size": 1,
+    "model": undefined
+}
 
+function inferResponse(data) {
+    console.log("Inference response received: ", data);
+}
+// Wait till the doc is loaded
+document.addEventListener("DOMContentLoaded", function () {
+    // Register the module with the UI. Icon is from boxicons by default.
+    registerModule("Inference", "moduleInfer", "images", true)
+    registerSocketMethod("infer", "infer", inferResponse);
     // Sample stuff, just to play with the gallery.
     const dynamicElements = [
         {
@@ -30,21 +44,57 @@ document.addEventListener("DOMContentLoaded", function (event) {
         },
     ];
 
-    fileTest = new FileBrowser(document.getElementById("fileTest"), true, true);
+    let promptEl = document.getElementById("infer_prompt");
+    let negEl = document.getElementById("infer_negative_prompt");
+    let seedEl = document.getElementById("infer_seed");
 
+    promptEl.addEventListener("change", function () {
+        inferSettings["prompt"] = promptEl.value;
+    });
+
+    negEl.addEventListener("change", function () {
+        inferSettings["negativePrompt"] = negEl.value;
+    });
+
+    seedEl.addEventListener("change", function () {
+        inferSettings["seed"] = parseInt(seedEl.value);
+    });
+    // fileTest = new FileBrowser(document.getElementById("fileTest"), true, true);
+
+    // Create model select element
     moduleSelect = new ModelSelect(document.getElementById("inferModel"), {
-        label: "Model Selection:"
+        label: "Model Selection:",
+        load_on_select: true, // Enable auto-loading model on selected...needs code in modelHandler
+        "model_type": "diffusers" // Type of model...duh.
     });
 
-    moduleSelect.setOnChangeHandler(function(data) {
-       console.log("Model changed: ", data);
+    // Example change handler for module Selector, use it to update info about the loaded model or something.
+    moduleSelect.setOnChangeHandler(function (data) {
+        // The data element is the whole model info, not just a string.
+        console.log("Model changed: ", data);
+        inferSettings.model = data;
     });
-    gallery = new InlineGallery('inferGallery', {}, dynamicElements);
-    gallery.openGallery();
-    console.log("Gallery:", gallery);
-    let scaleSlider = document.getElementById("scaleSlider");
-    let stepSlider = document.getElementById("stepSlider");
-    let scaleTest = new BootstrapSlider(scaleSlider, {
+
+    // Progress group example. Options can also be passed to inferProgress.update() in the same format.
+    inferProgress = new ProgressGroup(document.getElementById("inferProgress"), {
+        "primary_status": "Status 1", // Status 1 text
+        "secondary_status": "Status 2", // Status 2...
+        "bar1_progress": 10, // Progressbar 1 position
+        "bar2_progress": 40 // etc
+    });
+
+    // Gallery creation. Options can also be passed to .update()
+    gallery = new InlineGallery(document.getElementById('inferGallery'),
+        {
+            "thumbnail": true,
+            "closeable": false,
+            "show_maximize": true,
+            "start_open": true,
+            "data": dynamicElements
+        }
+    );
+
+    let scaleTest = new BootstrapSlider(document.getElementById("infer_scale"), {
         elem_id: "scaleSlid",
         min: 1,
         max: 20,
@@ -53,7 +103,31 @@ document.addEventListener("DOMContentLoaded", function (event) {
         label: "Scale"
     });
 
-    let stepTest = new BootstrapSlider(scaleSlider, {
+    scaleTest.setOnChange(function (value) {
+        inferSettings.scale = value
+    })
+
+    let widthSlider = new BootstrapSlider(document.getElementById("infer_width"), {
+        elem_id: "widthSlid",
+        min: 256,
+        max: 4096,
+        value: 512,
+        step: 64,
+        label: "Width"
+    });
+
+    let heightSlider = new BootstrapSlider(document.getElementById("infer_height"), {
+        elem_id: "heightSlid",
+        min: 256,
+        max: 4096,
+        value: 512,
+        step: 64,
+        label: "Height"
+    });
+
+
+
+    let stepTest = new BootstrapSlider(document.getElementById("infer_steps"), {
         elem_id: "stepSlid",
         min: 5,
         max: 100,
@@ -62,7 +136,49 @@ document.addEventListener("DOMContentLoaded", function (event) {
         label: "Steps"
     });
 
-    console.log("Scale Test: ", scaleTest);
+    stepTest.setOnChange(function (value) {
+        inferSettings.steps = value
+    })
 
+    let numImages = new BootstrapSlider(document.getElementById("infer_num_images"), {
+        elem_id: "numImages",
+        min: 1,
+        max: 100,
+        value: 1,
+        step: 1,
+        label: "Number of Images"
+    });
 
+    numImages.setOnChange(function (value) {
+        inferSettings.num_images = value
+    })
+
+    // Same as above. Why not?
+    let batchSize = new BootstrapSlider(document.getElementById("infer_batch_size"), {
+        elem_id: "batchSize",
+        min: 1,
+        max: 100,
+        value: 1,
+        step: 1,
+        label: "Batch Size",
+        model: undefined
+    });
+
+    batchSize.setOnChange(function (value) {
+        inferSettings.batch_size = value
+    })
+
+    let submit = document.getElementById("startInfer");
+    let cancel = document.getElementById("stopInfer");
+
+    submit.addEventListener("click", function () {
+        console.log("Clicked?")
+        startInference().then(function (result) {
+            console.log("Inference started.", result);
+        })
+    });
 });
+
+async function startInference() {
+    return sendMessage("start_inference", inferSettings, false);
+}

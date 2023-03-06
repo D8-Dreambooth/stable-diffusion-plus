@@ -4,7 +4,7 @@
 // region RegistrationMethods
 
 // Register a UI Module in the menu
-function registerModule(module_name, module_id, module_icon) {
+function registerModule(module_name, module_id, module_icon, is_default = false) {
     console.log("Register module: ", module_name, module_id);
 
     let navList = document.getElementById("navList");
@@ -34,6 +34,10 @@ function registerModule(module_name, module_id, module_icon) {
     newModule.addEventListener("click", function() {
         showPane(module_id);
     });
+
+    if (is_default) {
+        showPane(module_id);
+    }
 }
 
 // Deregister a UI Module from the menu

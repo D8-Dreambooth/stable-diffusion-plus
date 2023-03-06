@@ -2,6 +2,7 @@ import os
 import types
 from typing import Dict
 
+from core.handlers.websockets import SocketHandler
 from core.modules.base.module_base import BaseModule
 
 
@@ -18,6 +19,7 @@ class ExtensionHandler:
             cls._instance._base_dir = base_dir
             cls._instance._extensions_dir = extensions_dir
             cls._instance._initialize_extensions()
+            cls._socket_handler = SocketHandler()
         return cls._instance
 
     def _initialize_extensions(self):

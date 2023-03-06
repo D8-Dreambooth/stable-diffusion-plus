@@ -214,3 +214,11 @@ a {
     height: 100%;
     z-index: 10000;
 }
+
+.card.shadow {
+    margin: 5px 0;
+}
+
+.align-items-stretch {
+    align-items: stretch !important;
+}

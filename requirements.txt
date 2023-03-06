@@ -10,6 +10,7 @@ fastapi
 ftfy
 gitpython
 jinja2
+lion-pytorch>=0.0.4
 matplotlib
 pandas
 modelcards

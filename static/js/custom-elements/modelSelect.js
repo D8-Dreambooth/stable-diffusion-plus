@@ -4,10 +4,12 @@ class ModelSelect {
         this.model_type = options.model_type || "stable-diffusion";
         this.ext_include = options.ext_include || [".safetensors"];
         this.ext_exclude = options.ext_exclude || [];
+        this.load_on_select = options.load_on_select || false;
         this.modelList = [];
         this.selectElement = document.createElement("select");
         this.selectElement.classList.add("form-control");
         this.selectElement.id = "inferModelSelection";
+        this.currentModel = options.value || "none";
         const wrapper = document.createElement("div");
         wrapper.classList.add("form-group");
 
@@ -21,7 +23,10 @@ class ModelSelect {
 
         wrapper.appendChild(this.selectElement);
         this.container.appendChild(wrapper);
-
+        this.setOnChangeHandler((selectedModel)=>{
+            console.log("Current model: ", selectedModel);
+            this.currentModel = selectedModel;
+        });
         this.addOptions();
     }
 
@@ -36,10 +41,18 @@ class ModelSelect {
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");
         blankOption.value = "none";
+
+        if (this.selectedModel === "none") {
+            blankOption.selected = true;
+        }
+
         this.selectElement.appendChild(blankOption);
         modelList.models.forEach(model => {
             let option = document.createElement("option");
             option.value = model.hash;
+            if (this.selectedModel === option.value) {
+                option.selected = true;
+            }
             option.textContent = model.display_name;
             this.selectElement.appendChild(option);
         });
@@ -64,12 +77,26 @@ class ModelSelect {
             let selectedOption = this.selectElement.options[
                 this.selectElement.selectedIndex
                 ];
+            console.log("Change handler: ", selectedOption);
             if (selectedOption.value !== "none") {
                 let selectedModel = this.modelList.models.find(
                     model => model.hash === selectedOption.value
                 );
+                console.log("Setting selected model: ", selectedModel);
+                if (this.load_on_select) {
+                    selectedModel["model_type"] = this.model_type;
+                    console.log("Loading model:", selectedModel);
+                    let result = sendMessage("load_model", selectedModel);
+                }
                 callback(selectedModel);
+            } else {
+                console.log("No model...");
+                this.currentModel = "none";
             }
         };
+    }
+
+    selectedModel() {
+        return this.currentModel;
     }
 }

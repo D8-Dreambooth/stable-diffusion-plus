@@ -1,5 +1,5 @@
 import json
-import shutil
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -10,6 +10,7 @@ from core.handlers.cache import CacheHandler
 from core.handlers.config import ConfigHandler
 from core.handlers.extensions import ExtensionHandler
 from core.handlers.file import FileHandler
+from core.handlers.images import ImageHandler
 from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
 from core.handlers.websockets import SocketHandler
@@ -21,6 +22,7 @@ clients = []
 socket_callbacks = {}
 active_modules = {}
 active_extensions = {}
+logger = logging.getLogger(__name__)
 
 
 def get_files():
@@ -57,41 +59,35 @@ shared.script_path = path
 
 launch_settings_path = os.path.join(shared.script_path, "launch_settings.json")
 
-if not os.path.exists(launch_settings_path):
-    conf_src = os.path.join(shared.script_path, "conf_src")
-    shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
-
 with open(launch_settings_path, "r") as ls:
     launch_settings = json.load(ls)
 
 keys_to_check = ["cache", "config", "shared", "user", "models", "extensions"]
+if "data_shared" in launch_settings:
+    data_path = launch_settings["data_shared"]
+    if not os.path.exists(data_path):
+        os.mkdir(data_path)
+else:
+    data_path = os.path.join(path, "data_shared")
 
-data_path = os.path.join(path, "data_shared")
-
-dirs = {}
+dirs = {"shared_data": data_path}
 for key in keys_to_check:
     if launch_settings.get(f"{key}_dir"):
         val = launch_settings[key]
         if val != "" and os.path.exists(val):
-            print(f"Appending path from settings: {val}")
+            logger.debug(f"Appending path from settings: {val}")
             dirs[key] = val
     else:
         val = os.path.join(data_path, key)
-        print(f"Appending path from datapath: {val}")
+        logger.debug(f"Appending path from datapath: {val}")
         dirs[key] = val
 
 for name, c_dir in dirs.items():
     if not os.path.exists(c_dir):
         os.mkdir(c_dir)
 
+shared.paths = dirs
 shared.models_path = dirs["models"]
-cache_handler = CacheHandler(dirs["cache"])
-config_handler = ConfigHandler(dirs["config"])
-module_handler = ModuleHandler(os.path.join(path, "core", "modules"))
-extension_handler = ExtensionHandler(path, dirs["extensions"])
-
-active_modules = module_handler.get_modules()
-active_extensions = extension_handler.get_extensions()
 
 print(f"Launch settings: {launch_settings}")
 
@@ -115,9 +111,20 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 socket_handler = SocketHandler(app)
+
+image_handler = ImageHandler(dirs["user"])
+cache_handler = CacheHandler(dirs["cache"])
+config_handler = ConfigHandler(dirs["config"])
+module_handler = ModuleHandler(os.path.join(path, "core", "modules"))
+extension_handler = ExtensionHandler(path, dirs["extensions"])
 file_handler = FileHandler(dirs["user"])
 models_handler = ModelHandler(dirs["models"])
 
+active_modules = module_handler.get_modules()
+active_extensions = extension_handler.get_extensions()
+
+logging.basicConfig(level=logging.DEBUG)
+logger.debug(f"Paths: {dirs}")
 
 # Initialize API endpoints if the module has them.
 dreambooth_api(None, app)
