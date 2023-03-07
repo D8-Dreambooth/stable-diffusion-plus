@@ -1,5 +1,6 @@
 import json
 import logging
+import os.path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -66,14 +67,23 @@ with open(launch_settings_path, "r") as ls:
     launch_settings = json.load(ls)
 
 keys_to_check = ["cache", "config", "shared", "user", "models", "extensions"]
-if "data_shared" in launch_settings:
-    data_path = launch_settings["data_shared"]
-    if not os.path.exists(data_path):
-        os.mkdir(data_path)
-else:
-    data_path = os.path.join(path, "data_shared")
 
-dirs = {"shared_data": data_path}
+if "data_shared" in launch_settings:
+    shared_path = launch_settings["data_shared"]
+    if not os.path.exists(shared_path):
+        os.mkdir(shared_path)
+else:
+    shared_path = os.path.join(path, "data_shared")
+    
+if "data_protected" in launch_settings:
+    protected_path = launch_settings["data_protected"]
+    if not os.path.exists(protected_path):
+        os.mkdir(protected_path)
+else:
+    protected_path = os.path.join(path, "data_protected")
+
+
+dirs = {"shared_data": shared_path}
 for key in keys_to_check:
     if launch_settings.get(f"{key}_dir"):
         val = launch_settings[key]
@@ -81,13 +91,21 @@ for key in keys_to_check:
             logger.debug(f"Appending path from settings: {val}")
             dirs[key] = val
     else:
-        val = os.path.join(data_path, key)
+        val = os.path.join(shared_path, key)
         logger.debug(f"Appending path from datapath: {val}")
         dirs[key] = val
 
 for name, c_dir in dirs.items():
     if not os.path.exists(c_dir):
         os.mkdir(c_dir)
+
+shared_config = dirs["config"]
+protected_config = os.path.join(protected_path, "config")
+
+if not os.path.exists(protected_config):
+    os.makedirs(protected_config)
+
+config_handler = ConfigHandler(shared_path, protected_path)
 
 shared.paths = dirs
 shared.models_path = dirs["models"]
@@ -116,11 +134,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 logger.debug("Initializing handlers")
 
 socket_handler = SocketHandler(app)
+socket_handler.register("get_config", config_handler.socket_get_config)
+socket_handler.register("set_config", config_handler.socket_set_config)
+socket_handler.register("get_config_item", config_handler.socket_get_config_item)
+socket_handler.register("set_config_item", config_handler.socket_set_config_item)
 file_handler = FileHandler(dirs["user"])
 models_handler = ModelHandler(dirs["models"])
 image_handler = ImageHandler(dirs["user"])
 cache_handler = CacheHandler(dirs["cache"])
-config_handler = ConfigHandler(dirs["config"])
 module_handler = ModuleHandler(os.path.join(path, "core", "modules"))
 extension_handler = ExtensionHandler(path, dirs["extensions"])
 
