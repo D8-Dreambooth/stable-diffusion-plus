@@ -11,7 +11,7 @@ import torch
 from basicsr.utils.download_util import load_file_from_url
 
 from core.dataclasses.model_data import ModelData
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ class ModelHandler:
 
     def __new__(cls, models_path=None):
         if cls._instance is None:
+            logger.debug(f"INIT MODEL HANDLER: {models_path}")
             cls._instance = super(ModelHandler, cls).__new__(cls)
             cls._instance.models = {}
             cls._instance.loaded_models = {}
@@ -48,7 +49,11 @@ class ModelHandler:
             model_list = self.load_models(data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
             logger.debug(f"Got model_list: {model_list}")
             model_json = [model.serialize() for model in model_list]
-            return {"models": model_json}
+            loaded_model = None
+            if data["model_type"] in self.loaded_models:
+                model_data, _ = self.loaded_models[data["model_type"]]
+                loaded_model = model_data.hash
+            return {"models": model_json, "loaded": loaded_model}
 
     async def loadmodel(self, msg):
         data = msg["data"]
@@ -175,11 +180,14 @@ class ModelHandler:
     def load_model(self, model_type: str, model_data: ModelData):
         logger.debug(f"We need to load: {model_data.serialize()}")
         if model_type in self.loaded_models:
-            logger.debug(f"Unloading: {self.loaded_models[model_type]}")
-            del self.loaded_models[model_type]
-            if torch.has_cuda:
-                torch.cuda.empty_cache()
-            gc.collect()
+            loaded_model_data, model = self.loaded_models[model_type]
+            if model_data != loaded_model_data:
+                logger.debug(f"Unloading model: {self.loaded_models[model_type]}")
+                del model
+                del self.loaded_models[model_type]
+                if torch.has_cuda:
+                    torch.cuda.empty_cache()
+                gc.collect()
         # Convert stable-diffusion/checkpoints to diffusers
         if model_type == "stable-diffusion":
             logger.debug("Convert sd model to diffusers.")
@@ -222,7 +230,7 @@ class ModelHandler:
                         except:
                             logger.debug("Couldn't load model to GPU.")
 
-                    self.loaded_models[model_type] = loaded
+                    self.loaded_models[model_type] = (model_data, loaded)
                     return loaded
         return None
 

@@ -3,7 +3,7 @@ import os.path
 from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 
 

@@ -23,7 +23,7 @@ class ModelSelect {
 
         wrapper.appendChild(this.selectElement);
         this.container.appendChild(wrapper);
-        this.setOnChangeHandler((selectedModel)=>{
+        this.setOnChangeHandler((selectedModel) => {
             console.log("Current model: ", selectedModel);
             this.currentModel = selectedModel;
         });
@@ -41,6 +41,11 @@ class ModelSelect {
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");
         blankOption.value = "none";
+        const loaded = modelList["loaded"];
+        console.log("Loaded: ", loaded);
+        if (loaded !== undefined) {
+            this.selectedModel = loaded;
+        }
 
         if (this.selectedModel === "none") {
             blankOption.selected = true;
@@ -57,6 +62,32 @@ class ModelSelect {
             this.selectElement.appendChild(option);
         });
     }
+
+    getModel() {
+        const selectedOption = this.selectElement.options[this.selectElement.selectedIndex];
+        console.log("Selected option:", selectedOption);
+
+        if (selectedOption.value === "none") {
+            console.log("No model selected");
+            return undefined;
+        }
+
+        const selectedHash = selectedOption.value;
+        console.log("Looking for model with hash:", selectedHash);
+
+        const selectedModel = this.modelList.models.find(
+            model => model.hash === selectedHash
+        );
+
+        if (!selectedModel) {
+            console.log("Model not found with hash:", selectedHash);
+            return undefined;
+        }
+
+        console.log("Selected model:", selectedModel);
+        return selectedModel;
+    }
+
 
     setOnClickHandler(callback) {
         this.selectElement.onclick = () => {

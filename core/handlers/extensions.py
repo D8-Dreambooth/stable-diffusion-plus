@@ -2,7 +2,7 @@ import os
 import types
 from typing import Dict
 
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 
 

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os.path
 
@@ -5,6 +6,7 @@ from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
 from core.dataclasses.infer_data import InferSettings
+from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 from core.modules.infer.src.infer_utils import start_inference
 
@@ -17,6 +19,8 @@ class InferenceModule(BaseModule):
     def __init__(self, name):
         self.path = os.path.abspath(os.path.dirname(__file__))
         super().__init__(name, self.path)
+        socket_handler = SocketHandler()
+        socket_handler.register("start_inference", _start_inference)
 
     def initialize_api(self, app: FastAPI):
         @app.get(f"/{self.name}/infer")
@@ -33,16 +37,15 @@ class InferenceModule(BaseModule):
 
 async def _start_inference(msg):
     data = msg["data"]
-    websocket = msg["socket"]
     msg_id = msg["id"]
-
     logger.debug(f"Raw data: {data}")
     infer_data = InferSettings(data)
-    logger.debug("Sending response")
-    await websocket.send_json({"name": "infer", "message": "Inference received.", "id": msg_id})
-    logger.debug("Broadcasting response: ")
-    images, prompts = await start_inference(infer_data)
-    return {"name": "infer", "message": "Inference completed.", "images": images, "prompts": prompts}
+    logger.debug(f"Inference data: {infer_data}")
+    # Call start_inference() in a separate thread using asyncio.create_task()
+    asyncio.create_task(start_inference(infer_data))
+
+    # Immediately return a reply to the websocket
+    return {"name": "inference_started", "message": "Inference started.", "id": msg_id}
 
 
 def initialize():

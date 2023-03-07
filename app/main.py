@@ -13,7 +13,7 @@ from core.handlers.file import FileHandler
 from core.handlers.images import ImageHandler
 from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 from dreambooth.dreambooth import shared
 from dreambooth.scripts.api import dreambooth_api
 from .library.helpers import *
@@ -22,6 +22,9 @@ clients = []
 socket_callbacks = {}
 active_modules = {}
 active_extensions = {}
+
+logging.basicConfig(level=logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,20 +113,20 @@ templates = Jinja2Templates(directory="templates")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-socket_handler = SocketHandler(app)
+logger.debug("Initializing handlers")
 
+socket_handler = SocketHandler(app)
+file_handler = FileHandler(dirs["user"])
+models_handler = ModelHandler(dirs["models"])
 image_handler = ImageHandler(dirs["user"])
 cache_handler = CacheHandler(dirs["cache"])
 config_handler = ConfigHandler(dirs["config"])
 module_handler = ModuleHandler(os.path.join(path, "core", "modules"))
 extension_handler = ExtensionHandler(path, dirs["extensions"])
-file_handler = FileHandler(dirs["user"])
-models_handler = ModelHandler(dirs["models"])
 
 active_modules = module_handler.get_modules()
 active_extensions = extension_handler.get_extensions()
 
-logging.basicConfig(level=logging.DEBUG)
 logger.debug(f"Paths: {dirs}")
 
 # Initialize API endpoints if the module has them.

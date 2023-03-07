@@ -7,7 +7,7 @@ from PIL import Image, PngImagePlugin
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.file import FileHandler
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
 

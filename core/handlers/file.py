@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Union
 
 from starlette.websockets import WebSocket
 
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 
 
 class FileHandler:

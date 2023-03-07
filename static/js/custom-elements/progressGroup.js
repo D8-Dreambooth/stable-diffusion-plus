@@ -69,6 +69,16 @@ class ProgressGroup {
         this.update(options);
     }
 
+    clear() {
+        this.options.progress_1_current = 0;
+        this.options.progress_2_current = 0;
+        this.options.progress_1_total = 0;
+        this.options.progress_2_total = 0;
+        this.options.status = "";
+        this.options.status2 = "";
+        this.update(this.options);
+    }
+
     update(options) {
         if (options.hasOwnProperty("status")) {
             options = options.status;
@@ -78,10 +88,7 @@ class ProgressGroup {
         console.log("Updated options: ", this.options, this.progressBar1);
         // Update progress bars
         this.progressBar1.setAttribute("aria-valuenow", this.options.progress_1_current);
-        this.progressBar1.style.setProperty("width", this.options.progress_1_current + "%");
-
         this.progressBar2.setAttribute("aria-valuenow", this.options.progress_2_current);
-        this.progressBar2.style.setProperty("width", this.options.progress_2_current + "%");
 
         // Update progress bar visibility
         if (this.options.show_bar1) {
@@ -96,14 +103,38 @@ class ProgressGroup {
             this.progressBar2.style.setProperty("display", "none");
         }
 
-        if (this.options.show_percent) {
-            let pct_1 = (this.options.progress_1_current / this.options.progress_1_total) * 100;
-            let pct_2 = (this.options.progress_2_current / this.options.progress_2_total) * 100;
-            this.progressBar1.innerHTML = String(pct_1) + "%";
-            this.progressBar2.innerHTML = String(pct_2) + "%";
+        let pct_1 = (this.options.progress_1_current / this.options.progress_1_total) * 100;
+        let pct_2 = (this.options.progress_2_current / this.options.progress_2_total) * 100;
+        if (!isNaN(pct_1) && !isNaN(pct_2)) {
+            if (pct_1 > 0 && pct_2 > 0) {
+                let total_pct = pct_1 + pct_2;
+                let adj_pct_1 = (pct_1 / total_pct) * 100;
+                let adj_pct_2 = (pct_2 / total_pct) * 100;
+                this.progressBar1.style.setProperty("width", adj_pct_1 + "%");
+                this.progressBar2.style.setProperty("width", adj_pct_2 + "%");
+            } else {
+                this.progressBar1.style.setProperty("width", pct_1 + "%");
+                this.progressBar2.style.setProperty("width", pct_2 + "%");
+            }
+
+            if (this.options.show_percent) {
+                this.progressBar1.innerHTML = String(pct_1) + "%";
+                this.progressBar2.innerHTML = String(pct_2) + "%";
+            } else {
+                this.progressBar1.innerHTML = "";
+                this.progressBar2.innerHTML = "";
+            }
         } else {
-            this.progressBar1.innerHTML = "";
-            this.progressBar2.innerHTML = "";
+            if (!isNaN(pct_1)) {
+                this.progressBar1.style.setProperty("width", pct_1 + "%");
+                if (this.options.show_percent) {
+                    this.progressBar1.innerHTML = String(pct_1) + "%";
+                }
+            } else {
+                this.progressBar1.style.setProperty("width", "0");
+            }
+
+                this.progressBar2.style.setProperty("width", "0");
         }
 
         // Update status text

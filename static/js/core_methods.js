@@ -1,7 +1,7 @@
 let globalSocket = null;
 let socketMethods = {};
 const SOCKET_URL = "ws://localhost:8080/ws";
-
+const keyListener = new KeyListener();
 // region Initialization
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -15,7 +15,6 @@ document.addEventListener("DOMContentLoaded", function () {
             headerpd = document.getElementById(headerId)
 
         if (toggle && nav && bodypd && headerpd) {
-            console.log("Adding toggle listener...");
             toggle.addEventListener('click', () => {
                 nav.classList.toggle('show')
                 toggle.classList.toggle('bx-x')
@@ -63,7 +62,6 @@ function showPane(module_id) {
     let activeLink = document.getElementById(module_id + "_link");
 
     for (let i = 0; i < panes.length; i++) {
-        console.log("Removing class: ", panes[i]);
         panes[i].classList.remove("activePane");
         links[i].classList.remove("activeLink");
     }
@@ -71,7 +69,6 @@ function showPane(module_id) {
     if (activePane) {
         activePane.classList.add("activePane");
         activeLink.classList.add("activeLink");
-        console.log("Activating:", activePane);
     }
 }
 
@@ -84,14 +81,13 @@ function showPane(module_id) {
 // Send a socket message to the specified endpoint name
 function sendMessage(name, data, await=true) {
     return new Promise((resolve, reject) => {
-        console.log("Message request: ", name, data);
         let message = {
             id: generateMessageId(),
             name: name,
-            data: data
+            data: data,
+            await: await
         }
 
-        console.log("Sending socket message: ", message);
         const maxRetries = 5;
         let retryCount = 0;
 
@@ -115,10 +111,8 @@ function sendMessage(name, data, await=true) {
         }
 
         if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
-            console.log("WebSocket not connected, connecting...");
             connectSocket();
             globalSocket.onopen = function () {
-                console.log("WebSocket connected");
                 send();
             };
         } else {
@@ -127,12 +121,10 @@ function sendMessage(name, data, await=true) {
 
         // Register a callback to handle the response message
         function handleResponse(event) {
-            console.log("Received response: ", event);
             let response = JSON.parse(event.data);
             if (response.id === message.id) {
                 // This is the response we're waiting for
                 globalSocket.removeEventListener("message", handleResponse);
-                console.log("Returning response:", response);
                 resolve(response);
             }
         }
@@ -156,7 +148,6 @@ function connectSocket() {
         globalSocket = new WebSocket(SOCKET_URL);
         globalSocket.onopen = function () {
             clearError();
-            console.log("WebSocket connected");
         };
         globalSocket.onmessage = function (event) {
             let message;
@@ -165,28 +156,28 @@ function connectSocket() {
             } else {
                 message = event.data; // use the received object as-is
             }
-            event = message;
-            console.log("Message: ", message);
-            if (event.hasOwnProperty("name")) {
-                let method_name = event.name;
-                if (socketMethods.hasOwnProperty(method_name)) {
-                    console.log("Forwarding method: ", method_name, event);
-                    for (let i = 0; i < socketMethods[method_name].length; i++) {
-                        console.log("Forwarding method: ", method_name, event);
-                        socketMethods[method_name][i](event);
-                    }
+            if (message.hasOwnProperty("name")) {
+                let method_name = message.name;
+                if (method_name === "Received") {
+                    console.log("Message received: ", event);
                 } else {
-                    console.log("Unknown message name: ", method_name, event);
+                    if (socketMethods.hasOwnProperty(method_name)) {
+                        console.log("Forwarding method: ", method_name, message);
+                        for (let i = 0; i < socketMethods[method_name].length; i++) {
+                            socketMethods[method_name][i](message);
+                        }
+                    } else {
+                        console.log("Unknown message name: ", method_name, event);
+                    }
                 }
             } else {
                 console.log("Event has no name property, can't process: ", event);
             }
         };
         globalSocket.onclose = function () {
-            console.log("WebSocket disconnected");
+            console.log("WebSocket disconnected!");
             showError("Websocket Disconnected, attempting reconnect...");
             setTimeout(function () {
-                console.log("Reconnecting to WebSocket...");
                 connectSocket();
             }, 2000);
         };
@@ -200,7 +191,6 @@ function connectSocket() {
 
 // Register an extension in the menu
 function registerExtension(module_name, module_id, module_icon) {
-    console.log("Register extension: ", module_name, module_id);
 
     let navList = document.getElementById("extensionList");
     let existingModule = document.getElementById(module_id);
@@ -243,11 +233,8 @@ function registerSocketMethod(extension_name, method, callback) {
 
 // Deregister an extension from the menu
 function DeregisterExtension(module_id) {
-    console.log("Deregister extension: ", module_id);
-
     let navList = document.getElementById("extensionList");
     let existingModule = document.getElementById(module_id);
-
     if (existingModule) {
         navList.removeChild(existingModule);
     }

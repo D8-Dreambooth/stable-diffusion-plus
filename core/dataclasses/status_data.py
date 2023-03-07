@@ -58,7 +58,7 @@ class StatusData:
                             with open(img, 'rb') as image_file:
                                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                             images.append(image_data)
-                    obj[attr] = json.dumps(images)
+                    obj[attr] = images
 
             except TypeError:
                 pass

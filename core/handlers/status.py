@@ -1,7 +1,7 @@
 import logging
 
 from core.dataclasses.status_data import StatusData
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
 
@@ -59,5 +59,9 @@ class StatusHandler:
                 await self.send({"name": "status", "status": self.status.dict()})
                 
     async def send(self, message):
-        logger.debug(f"Sending message: {message}")
-        await self.socket_handler.broadcast(message)
+        logger.debug("Really sending")
+        socket_handler = SocketHandler()
+        logger.debug("Broadcasting")
+        # logger.debug(f"Sending message: {message}")
+        await socket_handler.manager.broadcast(message)
+        logger.debug("Broadcasted...")

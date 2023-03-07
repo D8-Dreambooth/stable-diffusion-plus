@@ -2,7 +2,7 @@ import os.path
 
 from fastapi import FastAPI
 
-from core.handlers.websockets import SocketHandler
+from core.handlers.websocket import SocketHandler
 
 
 class BaseModule:
