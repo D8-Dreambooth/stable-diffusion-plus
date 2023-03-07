@@ -13,7 +13,7 @@ class ConfigHandler:
     config_shared = {}
     config_protected = {}
 
-    def __new__(cls, shared_dir, protected_dir):
+    def __new__(cls, shared_dir = None, protected_dir=None):
         if cls._instance is None and shared_dir is not None and protected_dir is not None:
             cls._instance = super(ConfigHandler, cls).__new__(cls)
             cls._instance._shared_dir = shared_dir
@@ -74,6 +74,11 @@ class ConfigHandler:
 
     def get_item(self, key, section_key=None, default=None):
         return self._get_item_from_dict(key, section_key, default, self.config_shared)
+
+    def set_default_config(self, config, section_key=None):
+        if section_key and section_key not in self.config_shared.keys():
+            logger.debug(f"Setting default config for {section_key}")
+            self._set_config_dict(config, section_key, False)
 
     def set_config(self, config, section_key=None):
         self._set_config_dict(config, section_key, self.config_shared)
@@ -140,16 +145,19 @@ class ConfigHandler:
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
 
         target_dict = self.config_protected if is_protected else self.config_shared
-        if section_key is not None:
+        if section_key is None:
             section_key = "core"
         target_dict["core"] = config
         self._save_config_file(section_key, config, is_protected)
 
     def _save_config_file(self, section_key, data, is_protected=False):
-        if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
+        caller_file = inspect.getouterframes(inspect.currentframe())[1].filename
+        if caller_file != __file__:
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
 
         target_dir = self._protected_dir if is_protected else self._shared_dir
         target_file = os.path.join(target_dir, f"{section_key}.json")
+        logger.debug(f"Writing: {target_file}")
         with open(target_file, "w") as cfg_out:
-            json.dump(target_file, data, indent=4)
+            json.dump(data, cfg_out, indent=4)
+

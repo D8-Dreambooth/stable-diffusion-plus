@@ -105,7 +105,7 @@ protected_config = os.path.join(protected_path, "config")
 if not os.path.exists(protected_config):
     os.makedirs(protected_config)
 
-config_handler = ConfigHandler(shared_path, protected_path)
+config_handler = ConfigHandler(shared_config, protected_config)
 
 shared.paths = dirs
 shared.models_path = dirs["models"]
