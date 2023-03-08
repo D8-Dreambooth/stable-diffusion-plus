@@ -1,9 +1,12 @@
+import importlib
+import inspect
 import os
 import types
 from typing import Dict
 
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
+from core.shared.base_extension import BaseExtension
 
 
 class ExtensionHandler:
@@ -28,7 +31,7 @@ class ExtensionHandler:
         def get_shared_methods():
             methods = {}
             for file in os.listdir(shared_path):
-                if file.endswith(".py"):
+                if file.endswith(".py") and "__init__" not in file:
                     module_name = file[:-3]
                     module = __import__(f"core.shared.{module_name}")
                     for attr in dir(module):
@@ -44,7 +47,15 @@ class ExtensionHandler:
                 if file.endswith(".py"):
                     extension_file = os.path.join(root, file)
                     extension_name = file[:-3]
+                    extension_dir = os.path.basename(os.path.dirname(extension_file))
                     try:
+                        module_str = f"core.extensions.{extension_dir}.{extension_name}"
+                        ext = importlib.import_module(module_str)
+                        module_classes = inspect.getmembers(ext, inspect.isclass)
+                        base_classes = [cls for name, cls in module_classes if
+                                        issubclass(cls, BaseExtension) and cls is not BaseExtension]
+                        if not base_classes:
+                            continue
                         extension = types.ModuleType(extension_name)
                         exec(open(extension_file).read(), vars(extension))
                         initialize = getattr(extension, "initialize", None)

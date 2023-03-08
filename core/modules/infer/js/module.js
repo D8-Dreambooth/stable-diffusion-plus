@@ -2,6 +2,7 @@ let gallery;
 let moduleSelect;
 let inferProgress;
 let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
+let userConfig;
 
 let inferSettings = {
     "prompt": "",
@@ -21,15 +22,12 @@ function inferResponse(data) {
 // Wait till the doc is loaded
 document.addEventListener("DOMContentLoaded", function () {
     // Register the module with the UI. Icon is from boxicons by default.
-    registerModule("Inference", "moduleInfer", "images", true)
+    registerModule("Inference", "moduleInfer", "images", true);
     registerSocketMethod("infer", "infer", inferResponse);
     keyListener.register("ctrl+Enter","#inferSettings", startInference);
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
-
-
-    // fileTest = new FileBrowser(document.getElementById("fileTest"), true, true);
 
     // Create model select element
     moduleSelect = new ModelSelect(document.getElementById("inferModel"), {
@@ -155,8 +153,25 @@ document.addEventListener("DOMContentLoaded", function () {
     let cancel = document.getElementById("stopInfer");
 
     submit.addEventListener("click", function () {startInference().then(function (result) {})});
+
+    sendMessage("get_config",{"section_key": "infer"}).then((data)=>{
+        userConfig = data;
+        loadSettings(data);
+        console.log("Infer settings: ", userConfig);
+    });
+
 });
 
+function loadSettings(data) {
+    console.log("Data: ", data);
+    if (data.hasOwnProperty("basic_infer")) {
+        if (data.basic_infer) {
+            batchSize.hide();
+            stepTest.hide();
+            scaleTest.hide();
+        }
+    }
+}
 async function startInference() {
     gallery.clear();
     inferProgress.clear();
@@ -177,6 +192,8 @@ async function startInference() {
         inferSettings.steps = parseInt(stepTest.value);
         inferSettings.num_images = parseInt(numImages.value);
         inferSettings.batch_size = parseInt(batchSize.value);
+        inferSettings.width = parseInt(widthSlider.value);
+        inferSettings.height = parseInt(heightSlider.value);
         return sendMessage("start_inference", inferSettings, false);
     }
 }

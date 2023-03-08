@@ -38,7 +38,7 @@ class StatusData:
         self.progress_1_current = 0
         self.progress_2_total = 0
         self.progress_2_current = 0
-        self.active = False
+        self.active = True
         self.canceled = False
         self.images = []
         self.prompts = []

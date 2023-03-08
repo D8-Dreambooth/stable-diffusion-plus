@@ -25,9 +25,31 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     showNavbar('header-toggle', 'nav-bar', 'body-pd', 'header')
-
-
+    sendMessage("get_config", {"section_key": "core"}).then((data)=>{
+        loadCoreSettings(data);
+    });
 });
+
+function loadCoreSettings(data) {
+    console.log("Got core settings: ", data);
+    const settingsButton = $("#settingsButton");
+    if (data["show_settings"]) {
+        settingsButton.hide();
+    } else {
+        settingsButton.show();
+    }
+
+    const logoutButton = $("#signOutButton");
+    if (data["multi_user"]) {
+        logoutButton.show();
+    } else {
+        logoutButton.hide();
+    }
+
+    const logoText = $("#menuTitle");
+    logoText.innerHTML = data["title"];
+    document.title = data["title"];
+}
 
 // endregion
 
@@ -62,8 +84,10 @@ function showPane(module_id) {
     let activeLink = document.getElementById(module_id + "_link");
 
     for (let i = 0; i < panes.length; i++) {
-        panes[i].classList.remove("activePane");
-        links[i].classList.remove("activeLink");
+        let pane = panes[i];
+        let link = links[i];
+        if (pane !== undefined) pane.classList.remove("activePane");
+        if (link !== undefined) link.classList.remove("activeLink");
     }
 
     if (activePane) {

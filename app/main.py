@@ -15,8 +15,8 @@ from core.handlers.images import ImageHandler
 from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
 from core.handlers.websocket import SocketHandler
-from dreambooth.dreambooth import shared
-from dreambooth.scripts.api import dreambooth_api
+from core.modules.dreambooth.dreambooth import shared
+from core.modules.dreambooth.scripts.api import dreambooth_api
 from .library.helpers import *
 
 clients = []
@@ -105,7 +105,7 @@ protected_config = os.path.join(protected_path, "config")
 if not os.path.exists(protected_config):
     os.makedirs(protected_config)
 
-config_handler = ConfigHandler(shared_config, protected_config)
+config_handler = ConfigHandler(shared_config, protected_config, path)
 
 shared.paths = dirs
 shared.models_path = dirs["models"]

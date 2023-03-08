@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 
-from dreambooth.dreambooth import shared
+from core.modules.dreambooth.dreambooth import shared
 
 # Make safetensors faster
 os.environ["SAFETENSORS_FAST_GPU"] = "1"

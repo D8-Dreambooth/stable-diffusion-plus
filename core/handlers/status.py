@@ -24,9 +24,9 @@ class StatusHandler:
         return {"status": self.status.dict()}
 
     def start(self, total: int, desc: str):
+        self.status.start()
         self.status.progress_1_total = total
         self.status.status = desc
-        self.status.active = True
         self.send({"name": "status", "status": self.status.dict()})
 
     async def step(self, n: int = 1, secondary_bar: bool = False):

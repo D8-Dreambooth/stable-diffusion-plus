@@ -157,3 +157,4 @@ cython_debug/
 #.idea/
 launch_settings.json
 /data_shared/
+/data_protected/

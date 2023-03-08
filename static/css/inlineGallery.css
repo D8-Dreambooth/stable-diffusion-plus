@@ -7,6 +7,11 @@
     bottom: 100px !important;
 }
 
+.lg-content {
+    top: 47px;
+    bottom: 47px !important;
+}
+
 .lg-thumb-outer {
     background-color: #ffffff44 !important;
 }

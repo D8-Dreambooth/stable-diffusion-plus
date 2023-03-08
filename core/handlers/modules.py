@@ -1,6 +1,6 @@
 import importlib
+import inspect
 import os
-import traceback
 from typing import Dict
 
 from core.modules.base.module_base import BaseModule
@@ -32,6 +32,11 @@ class ModuleHandler:
                         try:
                             module_str = f"core.modules.{module_dir}.{module_name}"
                             module = importlib.import_module(module_str)
+                            module_classes = inspect.getmembers(module, inspect.isclass)
+                            base_classes = [cls for name, cls in module_classes if
+                                            issubclass(cls, BaseModule) and cls is not BaseModule]
+                            if not base_classes:
+                                continue
                             initialize = getattr(module, "initialize", None)
                             if callable(initialize):
                                 module_obj = initialize()

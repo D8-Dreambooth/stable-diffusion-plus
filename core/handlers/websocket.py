@@ -54,7 +54,11 @@ class SocketHandler:
         return cls._instance
 
     async def handle_socket_callback(self, name, msg, websocket):
-        response = await self.socket_callbacks[name](msg)
+        try:
+            response = await self.socket_callbacks[name](msg)
+        except Exception as e:
+            response = {"data": f"Exception with socket callback: {e}"}
+            traceback.print_exc()
         response["id"] = msg["id"]
         response["name"] = name
         logger.debug(f"Sending response: {response}")

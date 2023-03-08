@@ -195,7 +195,7 @@ class ModelHandler:
             if os.path.exists(target_model):
                 logger.debug("Model already extracted")
                 return target_model
-            from dreambooth.dreambooth.sd_to_diff import extract_checkpoint
+            from core.modules.dreambooth.dreambooth import extract_checkpoint
             try:
                 results = extract_checkpoint("test", model_data.path, extract_ema=True, train_unfrozen=True)
                 model_dir = results[1]

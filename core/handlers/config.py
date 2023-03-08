@@ -2,6 +2,7 @@ import inspect
 import os
 import json
 import logging
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -13,27 +14,54 @@ class ConfigHandler:
     config_shared = {}
     config_protected = {}
 
-    def __new__(cls, shared_dir = None, protected_dir=None):
-        if cls._instance is None and shared_dir is not None and protected_dir is not None:
+    def __new__(cls, shared_dir = None, protected_dir=None, src_dir=None):
+        if cls._instance is None and shared_dir is not None and protected_dir is not None and src_dir is not None:
             cls._instance = super(ConfigHandler, cls).__new__(cls)
             cls._instance._shared_dir = shared_dir
             cls._instance._protected_dir = protected_dir
             cls._instance._create_directories()
+            cls._instance._check_defaults(src_dir)
             cls._instance._enumerate_configs()
+
 
         return cls._instance
 
-    def socket_set_config(self, data):
+    async def socket_set_config(self, data):
         logger.debug(f"Set socket config: {data}")
 
-    def socket_get_config(self, data):
-        logger.debug(f"Get socket config: {data}")
+    async def socket_get_config(self, data):
+        self._enumerate_configs()
+        key = data["data"]["section_key"] if "section_key" in data["data"] else None
+        logger.debug(f"Get socket config: {key}")
+        data = self.get_config(key)
+        print(f"Socket data: {data}")
+        return {} if data is None else data
 
-    def socket_set_config_item(self, data):
+    async def socket_set_config_item(self, data):
+        self._enumerate_configs()
+        section_key = data["section_key"] if "section_key" in data else None
+        key = data["key"] if "key" in data else None
+        value = data["value"] if "value" in data else None
         logger.debug(f"Set socket config item: {data}")
+        if key and value:
+            self.set_item(key, value, section_key)
+        value = self.get_item(key, section_key)
+        return {"name": "set_config_item", key: value}
 
-    def socket_get_config_item(self, data):
-        logger.debug(f"Get socket config item: {data}")
+    async def socket_get_config_item(self, data):
+        self._enumerate_configs()
+        section_key = data["section_key"] if "section_key" in data else None
+        key = data["key"] if "key" in data else None
+        logger.debug(f"Set socket config item: {data}")
+        return self.get_item(key, section_key)
+
+    def _check_defaults(self, script_path):
+        if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
+            raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
+        core_path = os.path.join(self._shared_dir, "core.json")
+        if not os.path.exists(core_path):
+            core_src = os.path.join(script_path, "conf_src", "core.json")
+            shutil.copy(core_src, core_path)
 
     def _create_directories(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
@@ -55,6 +83,7 @@ class ConfigHandler:
         self._enumerate_directory(self._protected_dir, self.config_protected)
 
     def _enumerate_directory(self, directory, config_dict):
+        print(f"Enumerating config dir: {directory}")
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
 
@@ -65,14 +94,19 @@ class ConfigHandler:
                     try:
                         config = json.load(f)
                         file_key = os.path.splitext(file_name)[0]
+                        print(f"Setting {file_key}")
                         config_dict[file_key] = config
                     except json.JSONDecodeError:
                         pass
 
     def get_config(self, section_key=None):
-        return self._get_config_dict(section_key, self.config_shared)
+        self._enumerate_configs()
+        data = self._get_config_dict(section_key, self.config_shared)
+        print(f"Got data: {data}")
+        return data
 
     def get_item(self, key, section_key=None, default=None):
+        self._enumerate_configs()
         return self._get_item_from_dict(key, section_key, default, self.config_shared)
 
     def set_default_config(self, config, section_key=None):
@@ -109,13 +143,15 @@ class ConfigHandler:
     def _get_config_dict(self, section_key, config_dict):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
-
+        print(f"Config dict get: {section_key}")
         if section_key is None:
             return config_dict.get("core")
         else:
+            print(f"Getting from dict: {config_dict}")
             section_config = config_dict.get(section_key)
             if section_config is not None:
-                return section_config.get("config")
+                print(f"Returning: {section_config}")
+                return section_config
         return None
 
     def _get_item_from_dict(self, key, section_key, default, config_dict):

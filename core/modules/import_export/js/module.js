@@ -1,5 +1,13 @@
 document.addEventListener("DOMContentLoaded", function (event) {
-    console.log("Extload...");
+    sendMessage("get_config",{"section_key": "import_export"}).then((data)=>{
+        console.log("IODATA: ", data);
+        if (data["enable"]) {
+            loadModule();
+        }
+    });
+});
+
+function loadModule() {
     registerModule("Input/Output", "moduleImportExport", "import");
     const modelSelect = document.getElementById("modelSelect");
     const modelExportSelect = document.getElementById("modelExportSelect");
@@ -29,5 +37,4 @@ document.addEventListener("DOMContentLoaded", function (event) {
         let modelInfo = selectorEx.selectedModel();
         console.log("Current export model: ", modelInfo);
     });
-
-});
+}

@@ -37,7 +37,7 @@ class InlineGallery {
         console.log("Got status: ", data);
         const formatted = this.extractImageData(data);
         console.log("Formatted: ", formatted);
-        this.update(formatted,true);
+        this.update(formatted,false);
     }
 
     extractImageData(data) {
@@ -105,9 +105,12 @@ class InlineGallery {
             setTimeout(() => {
                 this.loaded = true;
                 this.gallery = lightGallery(this.container, this.gallery_options);
-                this.gallery.openGallery();
+                if (updatedDynamicElements.length > 0) {
+                    this.gallery.openGallery();
+                }
             }, 500);
         } else {
+            this.loaded = true;
             this.gallery.refresh(dynamicElements);
         }
 
