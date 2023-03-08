@@ -1,3 +1,5 @@
 {
-  "basic_infer": false
+  "basic_infer": false,
+  "max_resolution": 768,
+  "show_aspect_ratios": false
 }

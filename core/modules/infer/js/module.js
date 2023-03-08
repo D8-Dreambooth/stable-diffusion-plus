@@ -19,6 +19,14 @@ let inferSettings = {
 function inferResponse(data) {
     //console.log("Inference response received: ", data);
 }
+
+const ratioContainer = $("#infer_ratios");
+const inferWidth = $("#infer_width");
+const inferHeight = $("#infer_height");
+ratioContainer.hide();
+inferWidth.hide();
+inferHeight.hide();
+
 // Wait till the doc is loaded
 document.addEventListener("DOMContentLoaded", function () {
     // Register the module with the UI. Icon is from boxicons by default.
@@ -169,9 +177,44 @@ function loadSettings(data) {
             batchSize.hide();
             stepTest.hide();
             scaleTest.hide();
+        } else {
+            batchSize.show();
+            stepTest.show();
+            scaleTest.show();
         }
     }
+    if (data["show_aspect_ratios"]) {
+        addRatioCards(data["max_resolution"]);
+        ratioContainer.show();
+    } else {
+        inferWidth.show();
+        inferHeight.show();
+    }
 }
+
+function addRatioCards(max_resolution) {
+  const ratioContainer = document.querySelector("#infer_ratios");
+  const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
+  const buttonGroup = document.createElement("div");
+  buttonGroup.classList.add("btn-group");
+  buttonGroup.id = "aspectButtons";
+  for (let i = 0; i < aspectRatios.length; i++) {
+    const button = document.createElement("button");
+    button.classList.add("btn", "aspectButton", "btn-secondary");
+    if (aspectRatios[i] === "1:1") button.classList.add("btn-selected");
+
+    button.setAttribute("data-ratio", aspectRatios[i]);
+    button.textContent = aspectRatios[i];
+    buttonGroup.appendChild(button);
+  }
+  const label = document.createElement("label");
+  label.setAttribute("for", "aspectButtons");
+  label.innerHTML = "Aspect Ratio";
+  ratioContainer.appendChild(label);
+  ratioContainer.appendChild(buttonGroup);
+}
+
+
 async function startInference() {
     gallery.clear();
     inferProgress.clear();

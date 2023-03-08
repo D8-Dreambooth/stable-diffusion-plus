@@ -46,7 +46,7 @@ function loadCoreSettings(data) {
         logoutButton.hide();
     }
 
-    const logoText = $("#menuTitle");
+    const logoText = document.getElementById("menuTitle");
     logoText.innerHTML = data["title"];
     document.title = data["title"];
 }
