@@ -14,15 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 class InferenceModule(BaseModule):
-    name: str = "Inference"
 
-    def __init__(self, name):
+    def __init__(self):
+        self.name = "Inference"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        super().__init__(name, self.path)
-        socket_handler = SocketHandler()
-        socket_handler.register("start_inference", _start_inference)
+        super().__init__(self.name, self.path)
 
-    def initialize_api(self, app: FastAPI):
+    def initialize(self, app: FastAPI, handler: SocketHandler):
+        self._initialize_api(app)
+        self._initialize_websocket(handler)
+
+    def _initialize_api(self, app: FastAPI):
         @app.get(f"/{self.name}/infer")
         async def create_image(
                 api_key: str = Query("", description="If an API key is set, this must be present.", )) -> \
@@ -33,6 +35,9 @@ class InferenceModule(BaseModule):
             @return:
             """
             return JSONResponse(content={"message": f"Job started."})
+
+    def _initialize_websocket(self, handler: SocketHandler):
+        handler.register("start_inference", _start_inference)
 
 
 async def _start_inference(msg):
@@ -46,8 +51,3 @@ async def _start_inference(msg):
 
     # Immediately return a reply to the websocket
     return {"name": "inference_started", "message": "Inference started.", "id": msg_id}
-
-
-def initialize():
-    print("Infer Init!")
-    return InferenceModule("Inference")

@@ -1,9 +1,13 @@
 import importlib
 import inspect
+import logging
 import os
 from typing import Dict
 
 from core.modules.base.module_base import BaseModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class ModuleHandler:
@@ -37,15 +41,19 @@ class ModuleHandler:
                                             issubclass(cls, BaseModule) and cls is not BaseModule]
                             if not base_classes:
                                 continue
-                            initialize = getattr(module, "initialize", None)
-                            if callable(initialize):
-                                module_obj = initialize()
+                            module_obj = None
+                            for cls in base_classes:
+                                try:
+                                    module_obj = cls()
+                                    break
+                                except Exception as e:
+                                    logging.warning(f"Failed to instantiate module {module_name}: {e}")
+                            if module_obj:
                                 self.active_modules[module_name] = module_obj
-                            else:
-                                print(f"Not callable: {initialize}")
+
                         except Exception as e:
-                            print(f"Failed to initialize module '{module_name}': {e}")
-                            # traceback.print_exc()
+                            logger.debug(f"Failed to initialize module '{module_name}': {e}")
+                            # traceback.logger.debug_exc()
 
     def get_modules(self) -> Dict[str, BaseModule]:
         return self.active_modules

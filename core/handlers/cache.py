@@ -1,5 +1,8 @@
 import json
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 
 class CacheHandler:
@@ -33,7 +36,7 @@ class CacheHandler:
                         else:
                             return self.cache[cache_name].get(key, default)
                     except json.JSONDecodeError as e:
-                        print(f"Error reading cache file: {e}")
+                        logger.warning(f"Error reading cache file: {e}")
                         self.cache[cache_name] = {}
             else:
                 self.cache[cache_name] = {}
@@ -41,7 +44,6 @@ class CacheHandler:
 
     def set(self, cache_name, key=None, value=None, cache_data=None):
         cache_file = os.path.join(self.cache_dir, cache_name + ".json")
-        print(f"Cache file: {cache_file}")
         if cache_data:
             with open(cache_file, "w") as f:
                 json.dump(cache_data, f)
@@ -54,7 +56,7 @@ class CacheHandler:
                         try:
                             self.cache[cache_name] = json.load(f)
                         except json.JSONDecodeError as e:
-                            print(f"Error reading cache file: {e}")
+                            logger.warning(f"Error reading cache file: {e}")
                             self.cache[cache_name] = {}
                 else:
                     self.cache[cache_name] = {}

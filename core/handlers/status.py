@@ -40,7 +40,6 @@ class StatusHandler:
             if self.status.progress_1_current >= self.status.progress_1_total:
                 self.status.progress_1_current = self.status.progress_1_total
         await self.send({"name": "status", "status": self.status.dict()})
-        logger.debug("SENT")
 
     async def cancel(self, data):
         self.status.canceled = True
@@ -59,9 +58,5 @@ class StatusHandler:
                 await self.send({"name": "status", "status": self.status.dict()})
                 
     async def send(self, message):
-        logger.debug("Really sending")
         socket_handler = SocketHandler()
-        logger.debug("Broadcasting")
-        # logger.debug(f"Sending message: {message}")
         await socket_handler.manager.broadcast(message)
-        logger.debug("Broadcasted...")

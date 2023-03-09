@@ -11,13 +11,14 @@ from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
 
-class BaseModule:
-    name: str = "Base"
 
-    def __init__(self, name, base_path=None):
+class BaseModule:
+
+    def __init__(self, name, path):
         self.name = name
+        self.path = path
+        self.logger = logger
         self.socket_handler = None
-        self.path = os.path.abspath(os.path.dirname(__file__)) if base_path is None else base_path
         self.source = os.path.join(self.path, "index.html")
         self.css_files, self.js_files, self.custom_files = self._enum_files()
 
@@ -69,13 +70,13 @@ class BaseModule:
                     logger.warning(f"Exception loading default JSON: {e}")
                     traceback.print_exc()
 
-    def initialize_api(self, app: FastAPI):
+    def initialize(self, app: FastAPI, handler: SocketHandler):
+        self._initialize_api(app)
+        self._initialize_websocket(handler)
+
+    def _initialize_api(self, app: FastAPI):
         pass
 
-    def initialize_websocket(self, handler: SocketHandler):
+    def _initialize_websocket(self, handler: SocketHandler):
         # Keep a reference to the handler for deregister and broadcast functions
         self.socket_handler = handler
-
-
-def initialize():
-    return BaseModule("BaseModule")

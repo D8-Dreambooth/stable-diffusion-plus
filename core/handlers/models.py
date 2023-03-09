@@ -216,10 +216,10 @@ class ModelHandler:
                     shutil.rmtree(model_dir)
 
             except Exception as e:
-                logger.debug(f"Couldn't extract checkpoint: {e}")
+                logger.warning(f"Couldn't extract checkpoint: {e}")
         else:
             if model_type not in self.model_loaders:
-                logger.debug(f"No registered loader for model type: {model_type}")
+                logger.warning(f"No registered loader for model type: {model_type}")
             else:
                 loaded = self.model_loaders[model_type](model_data)
                 if loaded:

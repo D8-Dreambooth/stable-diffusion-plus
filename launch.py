@@ -5,17 +5,20 @@ import shutil
 import subprocess
 import sys
 
-from core.modules.dreambooth.dreambooth import shared
-
 # Make safetensors faster
 os.environ["SAFETENSORS_FAST_GPU"] = "1"
 
-# Set base path
-path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-shared.script_path = path
-
-logging.basicConfig(level=logging.DEBUG)
+# Set up logging
+logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Set base path
+path = os.path.abspath(os.path.dirname(__file__))
+logger.debug(f"Script path: {path}")
+from dreambooth import shared
+
+shared.script_path = path
+shared.load_vars(path)
 
 launch_settings_path = os.path.join(shared.script_path, "launch_settings.json")
 
@@ -31,10 +34,11 @@ if sys.version_info < (3, 10):
 
 # Placeholder functionality
 def install_extensions():
-    logger.debug("Load extensions or something")
+    logger.debug("Checking extension installations...")
 
 
 def run(command, desc=None, errdesc=None, custom_env=None, live=False):
+    logger.debug(f"Executing shell command: {command}")
     if desc:
         logger.debug(desc)
 
@@ -61,7 +65,6 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
 with open(os.path.join(path, "launch_settings.json"), "r") as ls:
     launch_settings = json.load(ls)
 
-logger.debug(f"Launch settings: {launch_settings}")
 
 # Set port
 listen_port = 8080
@@ -83,24 +86,23 @@ if "venv" in launch_settings:
             python = user_python
             venv = user_venv
         else:
-            logger.debug(f"Unable to load user-specified python: {user_python}")
+            logger.warning(f"Unable to load user-specified python: {user_python}")
 
 else:
     if not os.path.isdir(default_venv):
         venv_command = f"\"{python}\" -m venv \"{default_venv}\""
         # if sys.platform == "win32":
         #     venv_command = f"cmd.exe /c {venv_command}"
-        logger.debug(f"Creating venv: {venv_command}")
+        logger.info(f"Creating venv: {venv_command}")
         run(venv_command, "Creating venv.")
     default_python = os.path.join(default_venv, "scripts", "python.exe" if os.name == "nt" else "python")
     venv = default_venv
     if not os.path.isfile(default_python):
-        logger.debug("Unable to find python executable!")
+        logger.warning("Unable to find python executable!")
         sys.exit()
     python = default_python
 
 path = os.environ.get("PATH")
-logger.debug(f"Current path: {path}")
 
 freeze_command = "pip freeze"
 if sys.platform == "win32":
@@ -115,8 +117,10 @@ frozen = run(run_command)
 # Install extensions first
 install_extensions()
 
+# NOW we install our requirements
 requirements = os.path.join(shared.script_path, "requirements.txt")
 
+# Check to make sure what's installed matches requirements
 do_install = False
 with open(requirements, "r") as req_file:
     reqs = set(req_file.read().splitlines())
@@ -125,6 +129,8 @@ frozen = set(frozen.splitlines())
 if reqs.difference(frozen):
     do_install = True
 
+
+# Install torch stuff
 torch_command = None
 if "torch_command" in launch_settings:
     torch_command = launch_settings["torch_command"]
@@ -144,9 +150,7 @@ else:
 run(torch_command, "Checking torch versions...", "Unable to install torch.")
 
 if do_install:
-    logger.debug(f"Installing: {install_command}")
+    logger.info(f"Installing: {install_command}")
     run(install_command, "Installing requirements.", "Unable to install requirements.")
-
-logger.debug(f"Running: {run_command}")
 
 run(run_command, live=True)

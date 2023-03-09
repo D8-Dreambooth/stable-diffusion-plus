@@ -16,19 +16,18 @@ from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.dreambooth.dreambooth import shared
-from core.modules.dreambooth.scripts.api import dreambooth_api
 from .library.helpers import *
 
+logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
+
+# I think some of these can go away.
 clients = []
 socket_callbacks = {}
 active_modules = {}
 active_extensions = {}
 
-logging.basicConfig(level=logging.DEBUG)
 
-logger = logging.getLogger(__name__)
-
-
+# Enumerate files in modules. This should probably be in a class somewhere
 def get_files():
     css_files = []
     js_files = []
@@ -39,6 +38,8 @@ def get_files():
     dict_idx = 0
     for active_dict in (active_modules, active_extensions):
         for module_name, module in active_dict.items():
+            logger.debug(f"Listing files for module: {module_name}")
+
             for dest, attr in [(css_files, "css_files"), (js_files, "js_files"), (custom_files, "custom_files")]:
                 if attr == "js_files" and dict_idx == 1:
                     dest = js_files_ext
@@ -58,14 +59,38 @@ def get_files():
     return css_files, js_files, js_files_ext, custom_files, html
 
 
+# Determine our absolute path
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 shared.script_path = path
 
+
+# Load our basic launch settings
 launch_settings_path = os.path.join(shared.script_path, "launch_settings.json")
 
 with open(launch_settings_path, "r") as ls:
     launch_settings = json.load(ls)
 
+
+# Set the global debugging level
+debug_level = launch_settings.get("debug_level", "debug")
+if debug_level == "debug":
+    logging.basicConfig(level=logging.DEBUG)
+elif debug_level == "info":
+    logging.basicConfig(level=logging.INFO)
+elif debug_level == "warning":
+    logging.basicConfig(level=logging.WARNING)
+elif debug_level == "error":
+    logging.basicConfig(level=logging.ERROR)
+elif debug_level == "critical":
+    logging.basicConfig(level=logging.CRITICAL)
+else:
+    logging.basicConfig(level=logging.DEBUG)
+    logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
+
+logger = logging.getLogger(__name__)
+
+
+# Check/set shared directories based on launch settings
 keys_to_check = ["cache", "config", "shared", "user", "models", "extensions"]
 
 if "data_shared" in launch_settings:
@@ -83,35 +108,38 @@ else:
     protected_path = os.path.join(path, "data_protected")
 
 
+# Enumerate and create shared directories. We probably need to also do this for protected dirs.
 dirs = {"shared_data": shared_path}
 for key in keys_to_check:
     if launch_settings.get(f"{key}_dir"):
         val = launch_settings[key]
         if val != "" and os.path.exists(val):
-            logger.debug(f"Appending path from settings: {val}")
             dirs[key] = val
     else:
         val = os.path.join(shared_path, key)
-        logger.debug(f"Appending path from datapath: {val}")
         dirs[key] = val
 
 for name, c_dir in dirs.items():
     if not os.path.exists(c_dir):
         os.mkdir(c_dir)
 
+
+# Set final config directories
 shared_config = dirs["config"]
 protected_config = os.path.join(protected_path, "config")
 
 if not os.path.exists(protected_config):
     os.makedirs(protected_config)
 
+# Create master config handler
 config_handler = ConfigHandler(shared_config, protected_config, path)
 
+# TODO: Remove this and make dreambooth use our system-wide stuff
 shared.paths = dirs
 shared.models_path = dirs["models"]
 
-print(f"Launch settings: {launch_settings}")
 
+# Create our base webserver
 app = FastAPI(
     title="Stable-Diffusion Plus",
     description="Stable Diffusion Done Right",
@@ -128,38 +156,46 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory="templates")
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-logger.debug("Initializing handlers")
 
+# Initialize our handlers
+
+# Socket handler after config handler
 socket_handler = SocketHandler(app)
+
+# Register config handler callbacks
 socket_handler.register("get_config", config_handler.socket_get_config)
 socket_handler.register("set_config", config_handler.socket_set_config)
 socket_handler.register("get_config_item", config_handler.socket_get_config_item)
 socket_handler.register("set_config_item", config_handler.socket_set_config_item)
+
+# Now create the other handlers, which use our dirs vars from above
 file_handler = FileHandler(dirs["user"])
 models_handler = ModelHandler(dirs["models"])
 image_handler = ImageHandler(dirs["user"])
 cache_handler = CacheHandler(dirs["cache"])
+
+# Now that all the other handlers are alive, initialize modules and extensions
 module_handler = ModuleHandler(os.path.join(path, "core", "modules"))
 extension_handler = ExtensionHandler(path, dirs["extensions"])
 
+# Enumerate data for the UI from each module and extension
 active_modules = module_handler.get_modules()
 active_extensions = extension_handler.get_extensions()
 
-logger.debug(f"Paths: {dirs}")
-
-# Initialize API endpoints if the module has them.
-dreambooth_api(None, app)
-for module_name, module in active_modules.items():
-    module.initialize_api(app)
-    module.initialize_websocket(socket_handler)
-
+# Initialize extensions *first*, so if one happens to try and override a core socket/api method, it can't.
 for ext_name, extension in active_extensions.items():
-    extension.initialize_api(app)
+    logger.debug(f"Initializing extension: {ext_name}")
+    extension.initialize(app, socket_handler)
+
+# Initialize modules last, so they always have precedence with registered methods.
+for module_name, module in active_modules.items():
+    logger.debug(f"Initializing module: {module_name}")
+    module.initialize(app, socket_handler)
 
 
+# Add our home endpoint (and others)?
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     css_files, js_files, js_files_ext, custom_files, html = get_files()

@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import traceback
 from typing import Dict, List
@@ -27,7 +26,7 @@ class ConnectionManager:
                 await connection.send_json(message)
             except Exception as e:
                 # client is not connected, disconnect them
-                print(f"Error broadcasting message to client {connection}: {e}")
+                logger.warning(f"Error broadcasting message to client {connection}: {e}")
                 disconnected.append(connection)
 
         # disconnect inactive connections
@@ -37,9 +36,6 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            print(f"Disconnected client {websocket}")
-        else:
-            print(f"Client {websocket} was already disconnected")
 
 
 class SocketHandler:
@@ -61,14 +57,12 @@ class SocketHandler:
             traceback.print_exc()
         response["id"] = msg["id"]
         response["name"] = name
-        logger.debug(f"Sending response: {response}")
         await self.manager.send_personal_message(response, websocket)
 
     def _init(self, app=None):
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             await self.manager.connect(websocket)
-            logger.debug(f"Socket added: {websocket}")
             while True:
                 try:
                     data = await websocket.receive_json()
@@ -77,7 +71,6 @@ class SocketHandler:
                         response["id"] = data["id"]
                     if data is not None:
                         try:
-                            logger.debug(f"Raw message: {data}")
                             message = data
                             if "name" in message and "data" in message:
                                 logger.debug(f"Message is valid: {message}")
@@ -99,17 +92,15 @@ class SocketHandler:
                             else:
                                 logger.debug(f"Invalid message: {message}")
                         except Exception as e:
-                            logger.debug(f"Exception parsing socket message: {e}")
+                            logger.warning(f"Exception parsing socket message: {e}")
                             traceback.print_exc()
-                    else:
-                        logger.debug("NO DATA!")
                 except WebSocketDisconnect as d:
                     logger.debug("Socket disconnected.")
                     if websocket in self.clients:
                         self.clients.remove(websocket)
                     break
                 except Exception as f:
-                    logger.debug(f"SOCKET EXCEPTION: {f}")
+                    logger.warning(f"SOCKET EXCEPTION: {f}")
                     traceback.print_exc()
                     if websocket in self.clients:
                         self.clients.remove(websocket)
@@ -119,23 +110,14 @@ class SocketHandler:
         self.socket_callbacks = {}
 
     async def broadcast_async(self, message: Dict):
-        logger.debug("Broadcasting...")
         await self.manager.broadcast(message)
-        logger.debug("Broadcasted, for real...")
 
     def broadcast(self, message: Dict):
-        logger.debug("Broadcast fired")
         loop = asyncio.get_event_loop()
-        logger.debug("Got loop")
         if loop.is_running():
-            logger.debug("Loop running, creating task")
             asyncio.ensure_future(self.manager.broadcast(message))
-            # asyncio.create_task(self.manager.broadcast(message))
-            logger.debug("Task created")
         else:
-            logger.debug("Creating loop?")
             loop.run_until_complete(self.broadcast_async(message))
-            logger.debug("Loop created")
 
     def register(self, name: str, callback):
         logger.debug(f"Socket callback registered: {name}")

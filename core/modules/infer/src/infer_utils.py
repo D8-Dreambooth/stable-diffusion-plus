@@ -26,10 +26,9 @@ async def start_inference(inference_settings: InferSettings):
     loaded_models = model_handler.loaded_models
     model_info, diff_model = loaded_models.get("diffusers", None)
     if diff_model is None:
-        logger.debug("Loading model...")
+        logger.info(f"Loading model: {model_info}")
         diff_model = model_handler.load_model("diffusers", inference_settings.model)
     else:
-        logger.debug("Model already loaded.")
         loaded_models = model_handler.loaded_models
         model_info, diff_model = loaded_models.get("diffusers", None)
 
@@ -37,11 +36,10 @@ async def start_inference(inference_settings: InferSettings):
     out_prompts = []
 
     if diff_model is None:
-        logger.debug("NOTHING TO INFER WITH.")
+        logger.warning("No model selected.")
 
     else:
         try:
-            logger.debug("Really starting inference...")
             prompts = [inference_settings.prompt] * inference_settings.batch_size
             negative_prompts = [inference_settings.negative_prompt] * inference_settings.batch_size
             await status_handler.update(items={"status": f"Generating {len(out_images)}/{inference_settings.num_images} images."})
@@ -79,7 +77,7 @@ async def start_inference(inference_settings: InferSettings):
                     negative_prompts = [inference_settings.negative_prompt] * remaining
 
         except Exception as e:
-            logger.debug(f"Exception inferring: {e}")
+            logger.error(f"Exception inferring: {e}")
             traceback.print_exc()
     await status_handler.update(
         items={"status": f"Generation complete."})

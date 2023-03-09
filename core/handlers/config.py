@@ -23,7 +23,6 @@ class ConfigHandler:
             cls._instance._check_defaults(src_dir)
             cls._instance._enumerate_configs()
 
-
         return cls._instance
 
     async def socket_set_config(self, data):
@@ -34,7 +33,6 @@ class ConfigHandler:
         key = data["data"]["section_key"] if "section_key" in data["data"] else None
         logger.debug(f"Get socket config: {key}")
         data = self.get_config(key)
-        print(f"Socket data: {data}")
         return {} if data is None else data
 
     async def socket_set_config_item(self, data):
@@ -83,7 +81,6 @@ class ConfigHandler:
         self._enumerate_directory(self._protected_dir, self.config_protected)
 
     def _enumerate_directory(self, directory, config_dict):
-        print(f"Enumerating config dir: {directory}")
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
 
@@ -94,7 +91,6 @@ class ConfigHandler:
                     try:
                         config = json.load(f)
                         file_key = os.path.splitext(file_name)[0]
-                        print(f"Setting {file_key}")
                         config_dict[file_key] = config
                     except json.JSONDecodeError:
                         pass
@@ -102,7 +98,6 @@ class ConfigHandler:
     def get_config(self, section_key=None):
         self._enumerate_configs()
         data = self._get_config_dict(section_key, self.config_shared)
-        print(f"Got data: {data}")
         return data
 
     def get_item(self, key, section_key=None, default=None):
@@ -143,14 +138,11 @@ class ConfigHandler:
     def _get_config_dict(self, section_key, config_dict):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
-        print(f"Config dict get: {section_key}")
         if section_key is None:
             return config_dict.get("core")
         else:
-            print(f"Getting from dict: {config_dict}")
             section_config = config_dict.get(section_key)
             if section_config is not None:
-                print(f"Returning: {section_config}")
                 return section_config
         return None
 

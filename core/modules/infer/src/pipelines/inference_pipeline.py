@@ -1,7 +1,10 @@
+import logging
 from typing import Dict, Any
 
 from core.handlers.models import ModelHandler
 from core.pipelines.base_pipeline import BasePipeline
+
+logger = logging.getLogger(__name__)
 
 
 class InferencePipeline(BasePipeline):
@@ -19,7 +22,7 @@ class InferencePipeline(BasePipeline):
             self.pipe = loaded_models.get("diffusers", None)
 
         if diff_model is None:
-            print("NOTHING TO INFER WITH.")
+            logger.warning("Select a diffusion model!")
         pass
 
     def unload(self):

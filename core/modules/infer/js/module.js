@@ -32,7 +32,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Register the module with the UI. Icon is from boxicons by default.
     registerModule("Inference", "moduleInfer", "images", true);
     registerSocketMethod("infer", "infer", inferResponse);
-    keyListener.register("ctrl+Enter","#inferSettings", startInference);
+    keyListener.register("ctrl+Enter", "#inferSettings", startInference);
+
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
@@ -94,8 +95,6 @@ document.addEventListener("DOMContentLoaded", function () {
         step: 64,
         label: "Height"
     });
-
-
 
     stepTest = new BootstrapSlider(document.getElementById("infer_steps"), {
         elem_id: "stepSlid",
@@ -160,9 +159,12 @@ document.addEventListener("DOMContentLoaded", function () {
     let submit = document.getElementById("startInfer");
     let cancel = document.getElementById("stopInfer");
 
-    submit.addEventListener("click", function () {startInference().then(function (result) {})});
+    submit.addEventListener("click", function () {
+        startInference().then(function (result) {
+        })
+    });
 
-    sendMessage("get_config",{"section_key": "infer"}).then((data)=>{
+    sendMessage("get_config", {"section_key": "infer"}).then((data) => {
         userConfig = data;
         loadSettings(data);
         console.log("Infer settings: ", userConfig);
@@ -193,27 +195,50 @@ function loadSettings(data) {
 }
 
 function addRatioCards(max_resolution) {
-  const ratioContainer = document.querySelector("#infer_ratios");
-  const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
-  const buttonGroup = document.createElement("div");
-  buttonGroup.classList.add("btn-group");
-  buttonGroup.id = "aspectButtons";
-  for (let i = 0; i < aspectRatios.length; i++) {
-    const button = document.createElement("button");
-    button.classList.add("btn", "aspectButton", "btn-secondary");
-    if (aspectRatios[i] === "1:1") button.classList.add("btn-selected");
-
-    button.setAttribute("data-ratio", aspectRatios[i]);
-    button.textContent = aspectRatios[i];
-    buttonGroup.appendChild(button);
-  }
-  const label = document.createElement("label");
-  label.setAttribute("for", "aspectButtons");
-  label.innerHTML = "Aspect Ratio";
-  ratioContainer.appendChild(label);
-  ratioContainer.appendChild(buttonGroup);
+    const ratioContainer = document.querySelector("#infer_ratios");
+    const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
+    const buttonGroup = document.createElement("div");
+    buttonGroup.classList.add("btn-group");
+    buttonGroup.id = "aspectButtons";
+    for (let i = 0; i < aspectRatios.length; i++) {
+        const button = document.createElement("button");
+        button.classList.add("btn", "aspectButton", "btn-secondary");
+        if (aspectRatios[i] === "1:1") button.classList.add("btn-selected");
+        button.setAttribute("data-ratio", aspectRatios[i]);
+        button.textContent = aspectRatios[i];
+        buttonGroup.appendChild(button);
+    }
+    const label = document.createElement("label");
+    label.setAttribute("for", "aspectButtons");
+    label.innerHTML = "Aspect Ratio";
+    ratioContainer.appendChild(label);
+    ratioContainer.appendChild(buttonGroup);
+    document.querySelectorAll('.aspectButton').forEach(function (button) {
+        button.addEventListener('click', function () {
+            console.log('CLICK.');
+            document.querySelector('.aspectButton.btn-selected').classList.remove('btn-selected');
+            this.classList.add('btn-selected');
+            setResolution(this.dataset.ratio);
+        });
+    });
 }
 
+
+function setResolution(ratio) {
+    const maxRes = userConfig["max_resolution"];
+    const [heightRatio, widthRatio] = ratio.split(":");
+    const ratioValue = parseInt(widthRatio) / parseInt(heightRatio);
+
+    let width = Math.round(Math.min(maxRes, ratioValue * maxRes));
+    let height = Math.round(Math.min(maxRes, maxRes / ratioValue));
+
+    width = Math.floor(width / 64) * 64;
+    height = Math.floor(height / 64) * 64;
+    inferSettings.width = width;
+    inferSettings.height = height;
+    console.log("Updated infer settings: ", inferSettings);
+    return {width, height};
+}
 
 async function startInference() {
     gallery.clear();
@@ -231,12 +256,18 @@ async function startInference() {
         inferSettings.prompt = promptEl.value;
         inferSettings.negativePrompt = negEl.value;
         inferSettings.seed = parseInt(seedEl.value);
-		inferSettings.scale = scaleTest.value;
+        inferSettings.scale = scaleTest.value;
         inferSettings.steps = parseInt(stepTest.value);
         inferSettings.num_images = parseInt(numImages.value);
         inferSettings.batch_size = parseInt(batchSize.value);
-        inferSettings.width = parseInt(widthSlider.value);
-        inferSettings.height = parseInt(heightSlider.value);
+        if (userConfig["show_aspect_ratios"]) {
+            const selectedRatio = document.querySelector(".aspectButton.btn-selected");
+            setResolution(selectedRatio.dataset.ratio);
+        } else {
+            inferSettings.width = parseInt(widthSlider.value);
+            inferSettings.height = parseInt(heightSlider.value);
+        }
+
         return sendMessage("start_inference", inferSettings, false);
     }
 }

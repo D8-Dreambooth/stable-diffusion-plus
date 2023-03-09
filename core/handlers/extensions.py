@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import logging
 import os
 import types
 from typing import Dict
@@ -7,6 +8,8 @@ from typing import Dict
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 from core.shared.base_extension import BaseExtension
+
+logger = logging.getLogger(__name__)
 
 
 class ExtensionHandler:
@@ -66,7 +69,7 @@ class ExtensionHandler:
                                     setattr(item, "__globals__", shared_methods)
                             self._active_extensions[extension_name] = initialize()
                     except Exception as e:
-                        print(f"Failed to initialize extension '{extension_name}': {e}")
+                        logger.debug(f"Failed to initialize extension '{extension_name}': {e}")
 
     def get_extensions(self) -> Dict[str, BaseModule]:
         return self._active_extensions

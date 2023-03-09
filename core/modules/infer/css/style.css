@@ -2,3 +2,14 @@
     width: 100%;
 }
 
+.aspectButton {
+    padding: 1px 6px;
+}
+
+.btn-selected {
+    background: var(--bs-primary);
+}
+
+.btn-selected:focus {
+    background: var(--bs-primary);
+}

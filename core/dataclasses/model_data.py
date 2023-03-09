@@ -48,7 +48,6 @@ class ModelData:
             if existing_hash:
                 self.hash = existing_hash
             else:
-                print(f"Calculating hash for file {model_path}")
                 with open(model_path, "rb") as f:
                     # use sha256 hash algorithm to calculate the hash
                     hash_obj = hashlib.sha256()
@@ -62,7 +61,6 @@ class ModelData:
             if existing_hash:
                 self.hash = existing_hash
             else:
-                print(f"Calculating hash for directory {model_path}")
                 hash_obj = hashlib.sha256()
                 for dirpath, dirnames, filenames in os.walk(model_path):
                     for filename in filenames:
