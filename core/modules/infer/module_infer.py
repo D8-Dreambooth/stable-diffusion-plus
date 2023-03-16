@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os.path
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
@@ -43,6 +44,7 @@ class InferenceModule(BaseModule):
 async def _start_inference(msg):
     data = msg["data"]
     msg_id = msg["id"]
+
     logger.debug(f"Raw data: {data}")
     infer_data = InferSettings(data)
     logger.debug(f"Inference data: {infer_data}")

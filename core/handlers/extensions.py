@@ -69,7 +69,7 @@ class ExtensionHandler:
                                     setattr(item, "__globals__", shared_methods)
                             self._active_extensions[extension_name] = initialize()
                     except Exception as e:
-                        logger.debug(f"Failed to initialize extension '{extension_name}': {e}")
+                        pass
 
     def get_extensions(self) -> Dict[str, BaseModule]:
         return self._active_extensions

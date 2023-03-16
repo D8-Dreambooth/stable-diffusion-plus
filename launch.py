@@ -13,12 +13,12 @@ logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s
 logger = logging.getLogger(__name__)
 
 # Set base path
-path = os.path.abspath(os.path.dirname(__file__))
-logger.debug(f"Script path: {path}")
+base_path = os.path.abspath(os.path.dirname(__file__))
+logger.debug(f"Script path: {base_path}")
 from dreambooth import shared
 
-shared.script_path = path
-shared.load_vars(path)
+shared.script_path = base_path
+shared.load_vars(base_path)
 
 launch_settings_path = os.path.join(shared.script_path, "launch_settings.json")
 
@@ -62,7 +62,7 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
 
 
 # Load launch settings
-with open(os.path.join(path, "launch_settings.json"), "r") as ls:
+with open(os.path.join(base_path, "launch_settings.json"), "r") as ls:
     launch_settings = json.load(ls)
 
 
@@ -116,6 +116,23 @@ frozen = run(run_command)
 
 # Install extensions first
 install_extensions()
+
+# Define the dreambooth repository path
+dreambooth_path = os.path.join(base_path, "core", "modules", "dreambooth")
+
+# Check if the dreambooth repository exists
+if not os.path.exists(dreambooth_path):
+    logger.debug("Cloning dreambooth repository.")
+    # Clone dreambooth from GitHub
+    branch = launch_settings.get("dreambooth_branch", "dev")
+    clone_command = ["git", "clone", "-b", branch, "https://github.com/d8ahazard/sd_dreambooth_extension.git", dreambooth_path]
+    subprocess.run(clone_command, check=True)
+else:
+    # Fetch and pull changes from GitHub
+    fetch_command = ["git", "fetch", "origin"]
+    pull_command = ["git", "pull", "origin", launch_settings.get("dreambooth_branch", "dev")]
+    # subprocess.run(fetch_command, cwd=dreambooth_path, check=True)
+    # subprocess.run(pull_command, cwd=dreambooth_path, check=True)
 
 # NOW we install our requirements
 requirements = os.path.join(shared.script_path, "requirements.txt")

@@ -21,7 +21,10 @@ class ModelHandler:
     models_path = None
     socket_handler = None
     loaded_models = {}
+    listed_models = {}
     model_loaders = {}
+    model_finders = {}
+    load_params = {}
 
     def __new__(cls, models_path=None):
         if cls._instance is None:
@@ -44,9 +47,17 @@ class ModelHandler:
             logger.debug(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
-            ext_include = None if "ext_include" not in data else data["ext_include"]
-            ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
-            model_list = self.load_models(data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
+            model_list = []
+            model_type = data["model_type"]
+            if model_type in self.model_finders:
+                logger.debug(f"Using finder: {model_type}")
+                model_list = self.model_finders[model_type](data)
+            else:
+                logger.debug(f"Using default model loader: {model_type}")
+                ext_include = None if "ext_include" not in data else data["ext_include"]
+                ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
+                model_list = self.load_models(data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
+
             logger.debug(f"Got model_list: {model_list}")
             model_json = [model.serialize() for model in model_list]
             loaded_model = None
@@ -54,6 +65,19 @@ class ModelHandler:
                 model_data, _ = self.loaded_models[data["model_type"]]
                 loaded_model = model_data.hash
             return {"models": model_json, "loaded": loaded_model}
+
+    async def find_model(self, model_type: str, value: str):
+        if model_type in self.listed_models:
+            models = self.listed_models[model_type]
+        elif model_type in self.load_params:
+            params = self.load_params[model_type]
+            models = self.load_models(model_type, **params)
+        else:
+            logger.debug("Can't list models?")
+            models = []
+        for model in models:
+            if model.name == value or model.hash == value or model.display_name == value or model.path == value:
+                return model
 
     async def loadmodel(self, msg):
         data = msg["data"]
@@ -101,6 +125,14 @@ class ModelHandler:
 
         """
         output = []
+
+        # Save these for later so when "refresh" is called, we can reload.
+        self.load_params[model_type] = {
+            "model_url": model_url,
+            "ext_include": ext_include,
+            "ext_exclude": ext_exclude,
+            "download_name": download_name
+        }
 
         if model_type == "diffusers":
             logger.debug("Loading diffusion models??")
@@ -150,6 +182,19 @@ class ModelHandler:
 
         return output
 
+    def refresh(self, model_type: str):
+        if model_type not in self.load_params:
+            logger.debug("Unable to refresh model: ", model_type)
+        else:
+            params = self.load_params[model_type]
+            reloaded = self.load_models(model_type, **params)
+            msg = {
+                "name": "reload_models",
+                "model_type": model_type,
+                "models": reloaded
+            }
+            self.socket_handler.broadcast(msg)
+
     def load_diffusion_models(self, model_path=None):
         model_directories = []
         if not model_path:
@@ -176,6 +221,11 @@ class ModelHandler:
         if model_type not in self.model_loaders:
             logger.debug(f"Registered model loader: {model_type}")
             self.model_loaders[model_type] = callback
+
+    def register_finder(self, model_type: str, callback):
+        if model_type not in self.model_finders:
+            logger.debug(f"Registering model finder: {model_type}")
+            self.model_finders[model_type] = callback
 
     def load_model(self, model_type: str, model_data: ModelData):
         logger.debug(f"We need to load: {model_data.serialize()}")

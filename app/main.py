@@ -1,6 +1,8 @@
+import asyncio
 import json
 import logging
 import os.path
+from asyncio import Queue
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -14,6 +16,7 @@ from core.handlers.file import FileHandler
 from core.handlers.images import ImageHandler
 from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
+from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.dreambooth.dreambooth import shared
 from .library.helpers import *
@@ -34,8 +37,22 @@ def get_files():
     js_files_ext = []
     custom_files = []
     html = []
-
     dict_idx = 0
+
+    theme = config_handler.get_item("theme", default="theme-default")
+    system_css = os.path.join(path, "static", "css")
+    user_css = os.path.join(dirs["user"], "css")
+
+    theme_file = os.path.join(system_css, f"{theme}.css")
+    theme_file2 = os.path.join(user_css, f"{theme}.css")
+    for theme_check in [theme_file, theme_file2]:
+        if os.path.exists(theme_check):
+            logger.debug(f"Mounting {theme_check}")
+            mount_path = f"/theme"
+            file_dir = os.path.dirname(theme_check)
+            css_files.append(os.path.join(mount_path, os.path.basename(theme_check)))
+            app.mount(mount_path, StaticFiles(directory=file_dir), name="static")
+
     for active_dict in (active_modules, active_extensions):
         for module_name, module in active_dict.items():
             logger.debug(f"Listing files for module: {module_name}")
@@ -155,6 +172,8 @@ app = FastAPI(
     },
 )
 
+app.message_queue = asyncio.Queue()
+
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -169,7 +188,7 @@ socket_handler.register("get_config", config_handler.socket_get_config)
 socket_handler.register("set_config", config_handler.socket_set_config)
 socket_handler.register("get_config_item", config_handler.socket_get_config_item)
 socket_handler.register("set_config_item", config_handler.socket_set_config_item)
-
+status_handler = StatusHandler(socket_handler)
 # Now create the other handlers, which use our dirs vars from above
 file_handler = FileHandler(dirs["user"])
 models_handler = ModelHandler(dirs["models"])

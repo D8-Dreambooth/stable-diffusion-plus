@@ -7,7 +7,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <!-- Auto-populated "model-select" element. See JS -->
-                        <div class="modelSelect" id="inferModel"></div>
+                        <div class="inferModelSelect" id="inferModel" data-label="Model Selection" data-model_type="diffusers"></div>
                     </div>
                 </div>
             </div>
@@ -40,18 +40,18 @@
                             <input type="text" class="form-control" id="infer_negative_prompt">
                         </div>
                         <!-- Gradio-esque slider elements, populated by JS -->
-                        <div class="form-group" id="infer_ratios">
-
-                        </div>
+                        <div class="form-group" id="infer_ratios"></div>
                         <div class="form-group" id="infer_width"></div>
-                        <div class="form-group" id="infer_height"></div>
-                        <div class="form-group" id="infer_steps"></div>
-                        <div class="form-group" id="infer_scale"></div>
                         <div class="form-group" id="infer_num_images"></div>
-                        <div class="form-group" id="infer_batch_size"></div>
-                        <div class="form-group">
-                            <label for="infer_seed">Seed:</label>
-                            <input type="number" class="form-control" id="infer_seed" value="-1">
+                        <div id="advancedInferSettings">
+                            <div class="form-group" id="infer_batch_size"></div>
+                            <div class="form-group" id="infer_height"></div>
+                            <div class="form-group" id="infer_steps"></div>
+                            <div class="form-group" id="infer_scale"></div>
+                            <div class="form-group">
+                                <label for="infer_seed">Seed:</label>
+                                <input type="number" class="form-control" id="infer_seed" value="-1">
+                            </div>
                         </div>
                         <div class="form-group">
                             <div class="btn-group form-control">

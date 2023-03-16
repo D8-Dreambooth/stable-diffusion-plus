@@ -23,6 +23,9 @@ function inferResponse(data) {
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
+const advancedSettings = $("#advancedInferSettings");
+moduleSelect = $("#inferModel").modelSelect();
+advancedSettings.hide();
 ratioContainer.hide();
 inferWidth.hide();
 inferHeight.hide();
@@ -38,17 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
 
-    // Create model select element
-    moduleSelect = new ModelSelect(document.getElementById("inferModel"), {
-        label: "Model Selection:",
-        load_on_select: true, // Enable auto-loading model on selected...needs code in modelHandler
-        "model_type": "diffusers"
-    });
-
-    // Example change handler for module Selector, use it to update info about the loaded model or something.
-    moduleSelect.setOnChangeHandler(function (data) {
-        inferSettings.model = data;
-    });
 
     // Progress group example. Options can also be passed to inferProgress.update() in the same format.
     inferProgress = new ProgressGroup(document.getElementById("inferProgress"), {
@@ -174,15 +166,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function loadSettings(data) {
     console.log("Data: ", data);
+    const advancedSettings = $("#advancedInferSettings");
+
     if (data.hasOwnProperty("basic_infer")) {
         if (data.basic_infer) {
-            batchSize.hide();
-            stepTest.hide();
-            scaleTest.hide();
+            advancedSettings.hide();
         } else {
-            batchSize.show();
-            stepTest.show();
-            scaleTest.show();
+            advancedSettings.show();
         }
     }
     if (data["show_aspect_ratios"]) {
@@ -243,7 +233,8 @@ function setResolution(ratio) {
 async function startInference() {
     gallery.clear();
     inferProgress.clear();
-    const model = moduleSelect.getModel();
+    console.log("MS: ", moduleSelect);
+    const model = moduleSelect[0].val();
 
     if (model === undefined) {
         return alert("Please select a model.");
@@ -268,6 +259,6 @@ async function startInference() {
             inferSettings.height = parseInt(heightSlider.value);
         }
 
-        return sendMessage("start_inference", inferSettings, false);
+        return sendMessage("start_inference", inferSettings, true);
     }
 }

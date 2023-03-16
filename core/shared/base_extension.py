@@ -1,2 +1,3 @@
 class BaseExtension:
+
     name = ""

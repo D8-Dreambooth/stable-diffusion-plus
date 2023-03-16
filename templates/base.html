@@ -23,7 +23,7 @@
     <link href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <!-- Base CSS -->
-    <link href="{{ url_for('static', path='/css/lightgallery-bundle.min.css') }}" rel="stylesheet">
+    <link  href="https://cdnjs.cloudflare.com/ajax/libs/fotorama/4.6.4/fotorama.css" rel="stylesheet">
     <link href="{{ url_for('static', path='/css/inlineGallery.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', path='/css/bootstrapSlider.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', path='/css/fileBrowser.css') }}" rel="stylesheet">
@@ -41,18 +41,12 @@
 
 <body id="body-pd">
 
-<div id="topBar"></div>
-<header class="header" id="header">
-    <div class="header_toggle">
-        <i class='bx bx-menu' id="header-toggle"></i>
-    </div>
-    <div class="header_img" id="settingsButton">
-        <i class='bx bx-cog bx-md nav_logo-icon'></i>
-    </div>
-</header>
 <div class="l-navbar" id="nav-bar">
-    <nav class="nav">
+    <nav class="nav" id="mainNav">
         <div>
+            <div class="header_toggle" id="header_toggle">
+                <i class='bx bx-chevron-right' id="header-toggle"></i>
+            </div>
             <div class="nav_logo">
                 <i class='bx bx-layer nav_logo-icon'></i>
                 <span class="nav_logo-name" id="menuTitle">Stable-Diffusion+</span>
@@ -61,11 +55,15 @@
                 <div class="extensions" id="extensionList"></div>
             </div>
         </div>
+        <div class="header_img" id="settingsButton">
+            <i class='bx bx-cog bx-md nav_logo-icon'></i>
+        </div>
         <a href="#" class="nav_link" id="signOutButton">
             <i class='bx bx-log-out nav_icon'></i> <span class="nav_name">SignOut</span>
         </a>
     </nav>
 </div>
+
 <!--Container Main start-->
 <div class="bg-light" id="mainBody">
     {% for module in module_html %}
@@ -109,7 +107,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
 
 <!-- LightGallery + Plugins. -->
-<script type="text/javascript" src="/static/js/lightgallery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fotorama/4.6.4/fotorama.js"></script>
 <script type="text/javascript" src="/static/js/lg-plugins/fullscreen/lg-fullscreen.min.js"></script>
 <script type="text/javascript" src="/static/js/lg-plugins/relativeCaption/lg-relative-caption.min.js"></script>
 <script type="text/javascript" src="/static/js/lg-plugins/thumbnail/lg-thumbnail.min.js"></script>

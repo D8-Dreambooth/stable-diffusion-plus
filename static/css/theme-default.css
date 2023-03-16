@@ -1,1 +1,15 @@
-/*This stylesheet contains theme-specific styles*/
+
+:root {
+    --first-color: #4723D9;
+    --first-color-light: #AFA5D9;
+    --white-color: #F7F6FB;
+    --primary-color: #4723D9;
+    --primary-text-color: #FFF;
+    --primary-accent-color: #7a1fcb;
+    --primary-accent-text-color: #DDDDDD;
+    --primary-alert-color: #d94723;
+    --secondary-color: #F7F6FB;
+    --secondary-text-color: #000;
+    --secondary-accent-color: #555555;
+    --secondary-accent-text-color: #DDDDDD;
+}

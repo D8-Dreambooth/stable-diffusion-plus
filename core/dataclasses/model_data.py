@@ -1,10 +1,11 @@
 import hashlib
+import logging
 import os
 from dataclasses import dataclass
 from typing import Dict
 
 from core.handlers.cache import CacheHandler
-
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ModelData:
@@ -26,7 +27,8 @@ class ModelData:
                 self.is_url = True
         else:
             self.is_url = False
-            self.has = self.get_hash(model_path)
+            self.get_hash(model_path)
+
         self.name = os.path.basename(model_path)
         self.display_name = self.name + " [" + self.hash[:6] + "]" if self.hash else self.name
 
@@ -41,11 +43,13 @@ class ModelData:
         }
 
     def get_hash(self, model_path):
+        logger.debug(f"GET HASH: {model_path}")
         cache_handler = CacheHandler()
         if os.path.isfile(model_path):
             # If model_path is a file, calculate the hash for the file
             existing_hash = cache_handler.get("model_hash", model_path)
-            if existing_hash:
+            logger.debug(f"EXFILEHASH: {existing_hash}")
+            if existing_hash is not None:
                 self.hash = existing_hash
             else:
                 with open(model_path, "rb") as f:
@@ -54,11 +58,13 @@ class ModelData:
                     for chunk in iter(lambda: f.read(1024 * 1024), b""):
                         hash_obj.update(chunk)
                     self.hash = hash_obj.hexdigest()
+                    logger.debug(f"NEWFILEHASH: {self.hash}")
                     cache_handler.set("model_hash", model_path, self.hash)
         elif os.path.isdir(model_path):
             # If model_path is a directory, calculate the hash for all files in the directory
             existing_hash = cache_handler.get("directory_hash", model_path)
-            if existing_hash:
+            logger.debug(f"EXHDIRHASH: {existing_hash}")
+            if existing_hash is not None:
                 self.hash = existing_hash
             else:
                 hash_obj = hashlib.sha256()
@@ -69,9 +75,11 @@ class ModelData:
                             for chunk in iter(lambda: f.read(1024 * 1024), b""):
                                 hash_obj.update(chunk)
                 self.hash = hash_obj.hexdigest()
+                logger.debug(f"NEWDIRHASH: {self.hash}")
                 cache_handler.set("directory_hash", model_path, self.hash)
         else:
             raise ValueError(f"{model_path} is not a valid file or directory.")
+        logger.debug(f"SELF HASH: {self.hash}")
 
     def deserialize(self, data: Dict):
         for key, value in data.items():

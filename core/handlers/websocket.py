@@ -41,13 +41,26 @@ class ConnectionManager:
 class SocketHandler:
     _instance = None
     manager = None
+    queue = None
 
     def __new__(cls, app=None):
         if cls._instance is None and app is not None:
             cls._instance = super(SocketHandler, cls).__new__(cls)
             cls._instance._init(app)
             cls._instance.manager = ConnectionManager()
+            cls._instance.queue = app.message_queue
+
+            @app.on_event("startup")
+            async def start_db():
+                asyncio.create_task(cls._instance.consume_queue())
         return cls._instance
+
+    async def consume_queue(self):
+        while True:
+            message = await self.queue.get()
+            logger.debug("Pull queue...")
+            await self.manager.broadcast(message)
+            self.queue.task_done()
 
     async def handle_socket_callback(self, name, msg, websocket):
         try:
@@ -108,16 +121,6 @@ class SocketHandler:
             self.manager.disconnect(websocket)
         self.clients = []
         self.socket_callbacks = {}
-
-    async def broadcast_async(self, message: Dict):
-        await self.manager.broadcast(message)
-
-    def broadcast(self, message: Dict):
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.ensure_future(self.manager.broadcast(message))
-        else:
-            loop.run_until_complete(self.broadcast_async(message))
 
     def register(self, name: str, callback):
         logger.debug(f"Socket callback registered: {name}")

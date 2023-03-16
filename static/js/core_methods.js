@@ -2,6 +2,7 @@ let globalSocket = null;
 let socketMethods = {};
 const SOCKET_URL = "ws://localhost:8080/ws";
 const keyListener = new KeyListener();
+let messages = [];
 // region Initialization
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -12,20 +13,20 @@ document.addEventListener("DOMContentLoaded", function () {
         const toggle = document.getElementById(toggleId),
             nav = document.getElementById(navId),
             bodypd = document.getElementById(bodyId),
-            headerpd = document.getElementById(headerId)
+            toggleEl = document.getElementById("header_toggle");
 
-        if (toggle && nav && bodypd && headerpd) {
+        if (toggle && nav && bodypd) {
             toggle.addEventListener('click', () => {
-                nav.classList.toggle('show')
-                toggle.classList.toggle('bx-x')
-                bodypd.classList.toggle('body-pd')
-                headerpd.classList.toggle('body-pd')
+                nav.classList.toggle('show');
+                toggle.classList.toggle('rotate');
+                toggleEl.classList.toggle('header-open');
+                bodypd.classList.toggle('body-pd');
             })
         }
     }
 
     showNavbar('header-toggle', 'nav-bar', 'body-pd', 'header')
-    sendMessage("get_config", {"section_key": "core"}).then((data)=>{
+    sendMessage("get_config", {"section_key": "core"}).then((data) => {
         loadCoreSettings(data);
     });
 });
@@ -103,10 +104,11 @@ function showPane(module_id) {
 
 
 // Send a socket message to the specified endpoint name
-function sendMessage(name, data, await=true) {
+function sendMessage(name, data, await = true) {
+    let messageId = generateMessageId();
     return new Promise((resolve, reject) => {
         let message = {
-            id: generateMessageId(),
+            id: messageId,
             name: name,
             data: data,
             await: await
@@ -123,7 +125,7 @@ function sendMessage(name, data, await=true) {
             } else {
                 retryCount++;
                 if (retryCount <= maxRetries) {
-                    console.log("No socket connection, reconnecting and retrying...");
+                    console.log("Connecting socket: " + retryCount + "/" + maxRetries);
                     connectSocket();
                     setTimeout(send, 500);
                 } else {
@@ -147,6 +149,11 @@ function sendMessage(name, data, await=true) {
         function handleResponse(event) {
             let response = JSON.parse(event.data);
             if (response.id === message.id) {
+                const index = messages.indexOf(message.id);
+                if (index > -1) {
+                    messages.splice(index, 1);
+                }
+                console.log("Resolving: ", response);
                 // This is the response we're waiting for
                 globalSocket.removeEventListener("message", handleResponse);
                 resolve(response);
@@ -155,6 +162,7 @@ function sendMessage(name, data, await=true) {
 
         // Move the event listener registration outside the send() function
         if (await) {
+            messages.push(messageId);
             globalSocket.addEventListener("message", handleResponse);
         }
     });
@@ -179,6 +187,10 @@ function connectSocket() {
                 message = JSON.parse(event.data); // parse the message string to an object
             } else {
                 message = event.data; // use the received object as-is
+            }
+            const index = messages.indexOf(message.id);
+            if (index > -1) {
+                return;
             }
             if (message.hasOwnProperty("name")) {
                 let method_name = message.name;
