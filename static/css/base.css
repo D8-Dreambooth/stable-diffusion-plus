@@ -14,15 +14,37 @@ body {
     background: var(--secondary-color);
 }
 
+.hide {
+    display: none;
+    height: 0;
+    width: 0;
+}
+
+/*.module {*/
+/*    display: none !important;*/
+/*    padding: 1rem;*/
+/*}*/
+
+/*.module.activePane {*/
+/*    display: block !important;*/
+/*    width: 100% !important;*/
+/*    height: 100% !important;*/
+/*}*/
+
 .module {
-    display: none !important;
-    padding: 1rem;
+    margin-left: var(--nav-width);
+    position: fixed;
+    padding: 1rem 1rem calc(var(--nav-width) - 1rem) 1rem;
+    top: 0;
+    left: -100%;
+    width: calc(100% - var(--nav-width));
+    height: 100%;
+    background-color: #fff;
+    transition: left 0.5s ease-in-out;
 }
 
 .module.activePane {
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
+  left: 0;
 }
 
 @import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap");
@@ -85,11 +107,17 @@ a {
 }
 
 #header-toggle.rotate {
-  transform: rotate(180deg);
+    color: var(--primary-text-color);
+  transform: rotate(180deg) !important;
+}
+
+#header-toggle.rotate:hover {
+    color: var(--secondary-text-color);
+  transform: rotate(180deg) !important;
 }
 
 .header-open {
-    padding-left: 190px;
+    padding-left: 210px;
     background: transparent;
 }
 
@@ -213,7 +241,7 @@ a {
     }
 
     .l-navbar.show {
-        width: calc(var(--nav-width) + 156px)
+        width: calc(var(--nav-width) + 180px)
     }
 
     .body-pd {

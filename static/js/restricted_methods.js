@@ -1,5 +1,5 @@
 // A set of JS methods that are loaded *after* extensions, so they are only available to native modules
-
+let moduleIds = {};
 
 // region RegistrationMethods
 
@@ -19,7 +19,7 @@ function registerModule(module_name, module_id, module_icon, is_default = false)
     newModule.href = "#";
     newModule.className = "nav_link";
     newModule.id = module_id + "_link";
-
+    moduleIds[module_id] = module_name;
     let icon = document.createElement("i");
     icon.className = `bx bx-${module_icon} nav_icon`;
 

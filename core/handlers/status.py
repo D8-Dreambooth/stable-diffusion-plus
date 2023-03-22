@@ -1,5 +1,3 @@
-import asyncio
-from concurrent import futures
 import logging
 
 from core.dataclasses.status_data import StatusData
@@ -10,11 +8,13 @@ logger = logging.getLogger(__name__)
 class StatusHandler:
     socket_handler = None
     _instance = None
+    _instances = {}
     _do_send = False
     status = StatusData()
+    _user_name = None
 
-    def __new__(cls, socket_handler=None):
-        if cls._instance is None:
+    def __new__(cls, socket_handler=None, user_name=None):
+        if cls._instance is None and socket_handler is not None:
             cls._instance = super(StatusHandler, cls).__new__(cls)
             cls._instance.socket_handler = socket_handler
             cls._instance.socket_handler.register("get_status", cls._instance._get_status)
@@ -22,10 +22,26 @@ class StatusHandler:
             cls._instance.status = StatusData()
             cls._instance.queue = socket_handler.queue
             cls._instance._do_send = False
-        return cls._instance
+        if user_name is not None:
+            userinstance = cls._instances.get(user_name, None)
+            if userinstance is None:
+                logger.debug(f"Creating new status handler for user: {user_name}")
+                userinstance = super(StatusHandler, cls).__new__(cls)
+                userinstance.socket_handler = cls._instance.socket_handler
+                userinstance.socket_handler.register("get_status", userinstance._get_status, user_name)
+                userinstance.socket_handler.register("cancel", userinstance.cancel, user_name)
+                userinstance.status = StatusData()
+                userinstance.queue = userinstance.socket_handler.queue
+                userinstance._do_send = False
+                userinstance._user_name = user_name
+                cls._instances[user_name] = userinstance
+            return userinstance
+        else:
+            logger.debug(f"Returning existing user-specific instance of status handler: {user_name}")
+            return cls._instance
 
     def send(self):
-        message = {"name": "status", "status": self.status.dict()}
+        message = {"name": "status", "status": self.status.dict(), "user":self._user_name}
         self.queue.put_nowait(message)
         logger.debug("Really sent")
 
@@ -44,7 +60,7 @@ class StatusHandler:
         self.send()
 
     def step(self, n: int = 1, secondary_bar: bool = False):
-        logger.debug("\nSTEP")
+        logger.debug(f"\nSTEP: {n}")
         if secondary_bar:
             self.status.progress_2_current += n
             if self.status.progress_2_current >= self.status.progress_2_total:

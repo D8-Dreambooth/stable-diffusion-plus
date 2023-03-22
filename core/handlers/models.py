@@ -11,25 +11,31 @@ import torch
 from basicsr.utils.download_util import load_file_from_url
 
 from core.dataclasses.model_data import ModelData
+from core.handlers.directories import DirectoryHandler
 from core.handlers.websocket import SocketHandler
-
-logger = logging.getLogger(__name__)
+from dreambooth.sd_to_diff import extract_checkpoint
 
 
 class ModelHandler:
     _instance = None
-    models_path = None
+    _instances = {}
+    models_path = []
     socket_handler = None
     loaded_models = {}
     listed_models = {}
     model_loaders = {}
     model_finders = {}
     load_params = {}
+    user_name = None
+    logger = None
 
-    def __new__(cls, models_path=None):
+    def __new__(cls, user_name=None):
         if cls._instance is None:
-            logger.debug(f"INIT MODEL HANDLER: {models_path}")
+            dir_handler = DirectoryHandler()
+            models_path = dir_handler.get_directory("models")
             cls._instance = super(ModelHandler, cls).__new__(cls)
+            cls._instance.logger = logging.getLogger(f"{__name__}-shared")
+            cls._instance.logger.debug(f"INIT MODEL HANDLER: {models_path}")
             cls._instance.models = {}
             cls._instance.loaded_models = {}
             cls._instance.models_path = models_path
@@ -37,28 +43,47 @@ class ModelHandler:
             cls._instance.socket_handler.register("models", cls._instance.list_models)
             cls._instance.socket_handler.register("load_model", cls._instance.loadmodel)
             cls._instance.initialize_loaders()
+        if user_name is not None:
+            if user_name in cls._instances:
+                return cls._instances[user_name]
 
-        return cls._instance
+            else:
+                dir_handler = DirectoryHandler(user_name=user_name)
+                models_path = dir_handler.get_directory("models")
+                user_instance = super(ModelHandler, cls).__new__(cls)
+                user_instance.logger = logging.getLogger(f"{__name__}-{user_name}")
+                user_instance.models = {}
+                user_instance.loaded_models = {}
+                user_instance.models_path = models_path
+                user_instance.socket_handler = SocketHandler()
+                user_instance.socket_handler.register("models", user_instance.list_models, user_name)
+                user_instance.socket_handler.register("load_model", user_instance.loadmodel, user_name)
+                user_instance.user_name = user_name
+                user_instance.initialize_loaders()
+                cls._instances[user_name] = user_instance
+                return user_instance
+        else:
+            return cls._instance
 
     async def list_models(self, msg):
         data = msg["data"]
-        logger.debug(f"Socket model request received: {data}")
+        self.logger.debug(f"Socket model request received: {data}")
         if "model_type" not in data:
-            logger.debug(f"Invalid request: {data}")
+            self.logger.debug(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
             model_list = []
             model_type = data["model_type"]
             if model_type in self.model_finders:
-                logger.debug(f"Using finder: {model_type}")
+                self.logger.debug(f"Using finder: {model_type}")
                 model_list = self.model_finders[model_type](data)
             else:
-                logger.debug(f"Using default model loader: {model_type}")
+                self.logger.debug(f"Using default model loader: {model_type}")
                 ext_include = None if "ext_include" not in data else data["ext_include"]
                 ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
                 model_list = self.load_models(data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
 
-            logger.debug(f"Got model_list: {model_list}")
+            self.logger.debug(f"Got model_list: {model_list}")
             model_json = [model.serialize() for model in model_list]
             loaded_model = None
             if data["model_type"] in self.loaded_models:
@@ -73,7 +98,7 @@ class ModelHandler:
             params = self.load_params[model_type]
             models = self.load_models(model_type, **params)
         else:
-            logger.debug("Can't list models?")
+            self.logger.debug("Can't list models?")
             models = []
         for model in models:
             if model.name == value or model.hash == value or model.display_name == value or model.path == value:
@@ -81,16 +106,16 @@ class ModelHandler:
 
     async def loadmodel(self, msg):
         data = msg["data"]
-        logger.debug(f"Socket model request received: {data}")
+        self.logger.debug(f"Socket model request received: {data}")
         try:
             md = ModelData("http")
             md.deserialize(data)
         except Exception as e:
-            logger.debug(f"Can't deserialize: {data} {e}")
+            self.logger.debug(f"Can't deserialize: {data} {e}")
             return {"error": "Unable to deserialize data."}
 
         if "model_type" not in data:
-            logger.debug(f"Invalid request: {data}")
+            self.logger.debug(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
             model_type = data["model_type"]
@@ -135,9 +160,10 @@ class ModelHandler:
         }
 
         if model_type == "diffusers":
-            logger.debug("Loading diffusion models??")
+            self.logger.debug("Loading diffusion models??")
             diff_dirs = self.load_diffusion_models()
             for diff_dir in diff_dirs:
+                self.logger.debug(f"Enumerating: {diff_dir}")
                 output.append(ModelData(diff_dir))
             return output
 
@@ -146,7 +172,7 @@ class ModelHandler:
 
         try:
             model_path = os.path.join(self.models_path, model_type)
-            logger.debug(f"Checking: {model_path}")
+            self.logger.debug(f"Checking: {model_path}")
             if not os.path.exists(model_path):
                 os.makedirs(model_path)
 
@@ -155,14 +181,14 @@ class ModelHandler:
                 if os.path.isdir(full_path):
                     continue
                 if os.path.islink(full_path) and not os.path.exists(full_path):
-                    logger.debug(f"Skipping broken symlink: {full_path}")
+                    self.logger.debug(f"Skipping broken symlink: {full_path}")
                     continue
                 if ext_exclude is not None and any([full_path.endswith(x) for x in ext_exclude]):
                     continue
                 if len(ext_include) != 0:
                     model_type, extension = os.path.splitext(file)
                     if extension not in ext_include:
-                        logger.debug(f"NO EXT: {extension}")
+                        self.logger.debug(f"NO EXT: {extension}")
                         continue
                 model_data = ModelData(full_path)
                 if model_data not in output:
@@ -184,33 +210,48 @@ class ModelHandler:
 
     def refresh(self, model_type: str):
         if model_type not in self.load_params:
-            logger.debug("Unable to refresh model: ", model_type)
+            self.logger.debug("Unable to refresh model: ", model_type)
         else:
             params = self.load_params[model_type]
             reloaded = self.load_models(model_type, **params)
             msg = {
                 "name": "reload_models",
                 "model_type": model_type,
-                "models": reloaded
+                "models": reloaded,
+                "user": self.user_name
             }
-            self.socket_handler.broadcast(msg)
+            self.socket_handler.manager.broadcast(msg)
 
-    def load_diffusion_models(self, model_path=None):
+    def load_diffusion_models(self):
         model_directories = []
-        if not model_path:
-            model_path = os.path.join(self.models_path, "diffusers")
-        for root, dirs, files in os.walk(model_path):
-            # Check if the current directory contains a "model_index.json" file
-            if "model_index.json" in files:
-                model_directories.append(root)
-                # Stop searching this directory's subdirectories
-                dirs[:] = []
-            # Continue searching other directories
-            else:
-                for ck_dir in dirs:
-                    subdir = os.path.join(root, ck_dir)
-                    if os.path.isdir(subdir):
-                        model_directories.extend(self.load_diffusion_models(subdir))
+        target_directories = []
+        for path in self.models_path:
+            target_directories.append(os.path.join(path, "diffusers"))
+
+        self.logger.debug(f"Model dirs: {target_directories}")
+        for model_path in target_directories:
+            for root, dirs, files in os.walk(model_path):
+                # Check if the current directory contains a "model_index.json" file
+                if "model_index.json" in files:
+                    model_directories.append(root)
+                    # Stop searching this directory's subdirectories
+                    dirs[:] = []
+                # Continue searching other directories
+                else:
+                    subdirs = [os.path.join(root, d) for d in dirs if os.path.isdir(os.path.join(root, d))]
+                    for subdir in subdirs:
+                        for subroot, subdirs, subfiles in os.walk(subdir):
+                            # Check if the current directory contains a "model_index.json" file
+                            if "model_index.json" in subfiles:
+                                model_directories.append(subroot)
+                                # Stop searching this directory's subdirectories
+                                subdirs[:] = []
+                            # Continue searching other directories
+                            else:
+                                subsubdirs = [os.path.join(subroot, d) for d in subdirs if
+                                              os.path.isdir(os.path.join(subroot, d))]
+                                subdirs[:] = subsubdirs
+
         output = []
         for md in model_directories:
             if md not in output:
@@ -219,20 +260,20 @@ class ModelHandler:
 
     def register_loader(self, model_type, callback):
         if model_type not in self.model_loaders:
-            logger.debug(f"Registered model loader: {model_type}")
+            self.logger.debug(f"Registered model loader: {model_type}")
             self.model_loaders[model_type] = callback
 
     def register_finder(self, model_type: str, callback):
         if model_type not in self.model_finders:
-            logger.debug(f"Registering model finder: {model_type}")
+            self.logger.debug(f"Registering model finder: {model_type}")
             self.model_finders[model_type] = callback
 
     def load_model(self, model_type: str, model_data: ModelData):
-        logger.debug(f"We need to load: {model_data.serialize()}")
+        self.logger.debug(f"We need to load: {model_data.serialize()}")
         if model_type in self.loaded_models:
             loaded_model_data, model = self.loaded_models[model_type]
             if model_data != loaded_model_data:
-                logger.debug(f"Unloading model: {self.loaded_models[model_type]}")
+                self.logger.debug(f"Unloading model: {self.loaded_models[model_type]}")
                 del model
                 del self.loaded_models[model_type]
                 if torch.has_cuda:
@@ -240,45 +281,45 @@ class ModelHandler:
                 gc.collect()
         # Convert stable-diffusion/checkpoints to diffusers
         if model_type == "stable-diffusion":
-            logger.debug("Convert sd model to diffusers.")
+            self.logger.debug("Convert sd model to diffusers.")
             target_model = os.path.join(self.models_path, "diffusers", os.path.basename(model_data.path))
             if os.path.exists(target_model):
-                logger.debug("Model already extracted")
+                self.logger.debug("Model already extracted")
                 return target_model
-            from core.modules.dreambooth.dreambooth import extract_checkpoint
+
             try:
                 results = extract_checkpoint("test", model_data.path, extract_ema=True, train_unfrozen=True)
                 model_dir = results[1]
-                logger.debug(f"Model Dir: {model_dir}")
+                self.logger.debug(f"Model Dir: {model_dir}")
                 if os.path.exists(model_dir):
-                    logger.debug(f"We got something: {model_dir}")
+                    self.logger.debug(f"We got something: {model_dir}")
                     diffusers_path = os.path.join(model_dir, "working")
                     if os.path.exists(diffusers_path):
-                        logger.debug("Found the diffusers too.")
+                        self.logger.debug("Found the diffusers too.")
                         dest_path = os.path.join(self.models_path, "diffusers")
                         os.makedirs(dest_path)
                         dest_path = os.path.join(self.models_path, "diffusers", os.path.basename(model_data.path))
                         if os.path.exists(dest_path):
-                            logger.debug("Model already exists!")
+                            self.logger.debug("Model already exists!")
                         else:
                             shutil.copytree(diffusers_path, dest_path)
-                            logger.debug("Diffusers extracted?")
+                            self.logger.debug("Diffusers extracted?")
                     shutil.rmtree(model_dir)
 
             except Exception as e:
-                logger.warning(f"Couldn't extract checkpoint: {e}")
+                self.logger.warning(f"Couldn't extract checkpoint: {e}")
         else:
             if model_type not in self.model_loaders:
-                logger.warning(f"No registered loader for model type: {model_type}")
+                self.logger.warning(f"No registered loader for model type: {model_type}")
             else:
                 loaded = self.model_loaders[model_type](model_data)
                 if loaded:
-                    logger.debug(f"{model_type} model loaded.")
+                    self.logger.debug(f"{model_type} model loaded.")
                     if torch.has_cuda:
                         try:
                             loaded = loaded.to("cuda")
                         except:
-                            logger.debug("Couldn't load model to GPU.")
+                            self.logger.debug("Couldn't load model to GPU.")
 
                     self.loaded_models[model_type] = (model_data, loaded)
                     return loaded

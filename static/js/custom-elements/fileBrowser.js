@@ -1,28 +1,46 @@
 class FileBrowser {
     constructor(parentElement, options = {}) {
-        this.parentElement = parentElement;
-        this.endpoint = "files"
-
+        this.onDoubleClickCallbacks = [];
+        this.onClickCallbacks = [];
+        this.onSelectCallbacks = [];
+        this.onCancelCallbacks = [];
+        this.selected = "";
+        let wrapper = document.createElement("div");
+        wrapper.classList.add("row", "fileBrowserContainer");
+        parentElement.appendChild(wrapper);
+        this.parentElement = wrapper;
+        this.infoPanel = undefined;
+        this.endpoint = "files";
+        this.fileEndpoint = "file";
         this.currentPath = "";
         this.currentParent = "";
         this.selectedLink = undefined;
+        console.log("Options: ", options);
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
         this.treeParent = document.createElement("div");
-        this.treeParent.classList.add("tree-container");
+        this.treeParent.classList.add("tree-container", "col-6");
         this.placeholder = options["placeholder"] || "Select something...";
         this.showSelectButton = options["showSelectButton"] || false;
         this.listFiles = options["listFiles"] || false;
         this.expanded = options["expand"] || false;
         this.multiselect = options["multiselect"] || false;
-
+        this.dropdown = options["dropdown"] !== undefined ? options["dropdown"] : false;
+        this.showTitle = options["showTitle"] !== undefined ? options["showTitle"] : true;
+        this.showInfo = options["showInfo"] !== undefined ? options["showInfo"] : true;
+        this.style = options["style"] !== undefined ? options["style"] : "";
         if (this.expanded) {
             this.treeParent.classList.add("full");
         }
-        this.buildInput();
+        if (this.style !== "") {
+            this.treeParent.style.cssText = this.style;
+        }
+
 
 
         this.buildTree().then(() => {
+            let inputGroup = this.buildInput();
+            this.parentElement.prepend(inputGroup);
             this.treeParent.appendChild(this.treeContainer);
 
             if (this.showSelectButton) {
@@ -50,20 +68,91 @@ class FileBrowser {
                 this.treeParent.appendChild(btnGroup);
 
             }
-            this.parentElement.appendChild(this.treeParent);
-
+            this.parentElement.append(this.treeParent);
+            if (this.showInfo) {
+                this.onClickCallbacks.push(this.showFileInfo);
+                this.infoPanel = document.createElement("div");
+                this.infoPanel.classList.add("infoPanel", "closed", "col-6");
+                this.parentElement.appendChild(this.infoPanel);
+            }
         });
 
-        this.onDoubleClickCallbacks = [];
-        this.onClickCallbacks = [];
-        this.onSelectCallbacks = [];
-        this.onCancelCallbacks = [];
-        this.selected = "";
+
     }
+
+    buildInfoPanel(fileInfo) {
+        console.log("Building: ", fileInfo);
+        const panelContainer = document.createElement("div");
+        panelContainer.classList.add("row");
+
+        // File info panel
+        const infoPanel = document.createElement("div");
+        infoPanel.classList.add("col-12");
+        const infoList = document.createElement("ul");
+        infoList.classList.add("list-group", "list-group-flush");
+        const filename = document.createElement("li");
+        filename.classList.add("list-group-item", "active");
+        filename.textContent = fileInfo.filename;
+        infoList.appendChild(filename);
+        const created = document.createElement("li");
+        created.classList.add("list-group-item");
+        created.textContent = `Created: ${fileInfo.date_created}`;
+        infoList.appendChild(created);
+        const modified = document.createElement("li");
+        modified.classList.add("list-group-item");
+        modified.textContent = `Modified: ${fileInfo.date_modified}`;
+        infoList.appendChild(modified);
+        const size = document.createElement("li");
+        size.classList.add("list-group-item");
+        size.textContent = `Size: ${fileInfo.size}`;
+        infoList.appendChild(size);
+        infoPanel.appendChild(infoList);
+        panelContainer.appendChild(infoPanel);
+
+        // Image panel
+        if (fileInfo.src) {
+            const imgPanel = document.createElement("div");
+            imgPanel.classList.add("col-12");
+            const img = document.createElement("img");
+            img.classList.add("img-fluid", "img-thumbnail");
+            img.src = fileInfo.src;
+            imgPanel.appendChild(img);
+            panelContainer.appendChild(imgPanel);
+        }
+
+        // Data panel
+        if (fileInfo.data) {
+            const dataPanel = document.createElement("div");
+            dataPanel.classList.add("col-12", "mt-3", "dataPanel");
+            const pre = document.createElement("pre");
+            pre.classList.add("bg-light", "p-3", "border");
+            pre.textContent = fileInfo.data;
+            dataPanel.appendChild(pre);
+            if (fileInfo.src) {
+                panelContainer.appendChild(dataPanel);
+            } else {
+                const dataWrapper = document.createElement("div");
+                dataWrapper.classList.add("col-12");
+                dataWrapper.appendChild(dataPanel);
+                panelContainer.appendChild(dataWrapper);
+            }
+        }
+
+        return panelContainer;
+    }
+
+
+
 
     buildInput() {
         const inputGroup = document.createElement("div");
         inputGroup.classList.add("input-group");
+        if (this.dropdown) {
+            console.log("Dropdown enabled.");
+        } else {
+            console.log("Hide dropdown.")
+            inputGroup.classList.add("hide");
+        }
         const input = document.createElement("input");
         input.classList.add("form-control");
         input.type = "text";
@@ -80,30 +169,34 @@ class FileBrowser {
             this.toggleTree();
         });
         this.toggleButton = toggleButton;
-        this.parentElement.appendChild(inputGroup);
+        return inputGroup;
     }
 
     toggleTree() {
         this.treeParent.classList.toggle("full");
+        this.infoPanel.classList.toggle("closed");
         this.expanded = this.treeParent.classList.contains("full");
         this.toggleButton.innerHTML = this.expanded ? `<i class="fas fa-chevron-up"></i>` : `<i class="fas fa-chevron-down"></i>`;
     }
 
     async buildTree() {
         const response = await this.fetchFileTreeData(this.currentPath);
-        console.log("Build tree res: ", response);
         let items = response["items"] || [];
         this.currentParent = response["current"] || "";
         this.separator = response["separator"] || "\\";
         const tree = this.generateTree(items);
         this.treeContainer.innerHTML = "";
-        let title = document.createElement("span");
-        title.innerHTML = "File Browser";
-        title.classList.add("fileTitle");
+        if (this.showTitle) {
+            let title = document.createElement("span");
+            title.innerHTML = "File Browser";
+            title.classList.add("fileTitle");
+            this.treeContainer.appendChild(title);
+        }
+
         let currentPath = document.createElement("span");
         currentPath.innerHTML = this.currentParent;
         currentPath.classList.add("fileCurrent");
-        this.treeContainer.appendChild(title);
+
         this.treeContainer.appendChild(currentPath);
         this.treeContainer.appendChild(tree);
         if (this.showSelectButton) {
@@ -113,7 +206,6 @@ class FileBrowser {
     }
 
     generateTree(response) {
-        console.log("Parsing response: ", response);
         const root = document.createElement("ul");
         const listItem = document.createElement("li");
         const icon = document.createElement("i");
@@ -127,7 +219,6 @@ class FileBrowser {
         listItem.appendChild(link);
         root.appendChild(listItem);
         for (const [path, details] of Object.entries(response)) {
-            console.log("Path, details: ", path, details);
             const [dateModified, size, type, children] = details;
             const splitPath = path.split("/");
 
@@ -175,67 +266,62 @@ class FileBrowser {
         return root;
     }
 
-   attachEventHandlers() {
-    const allLinks = this.treeContainer.querySelectorAll(".fileLi");
-    console.log("Links: ", allLinks);
-    let startLink;
-    allLinks.forEach((link) => {
-        if (link.dataset.path) {
-            link.addEventListener("dblclick", () => {
-                console.log("DBL: ", link);
-                if (link.dataset.type === "directory") {
-                    this.currentPath = link.dataset.path;
-                    this.buildTree();
-                }
-                this.onDoubleClickCallbacks.forEach((callback) =>
-                    callback(link.dataset.path, link.dataset.type)
-                );
-            });
-            link.addEventListener("click", (event) => {
-                console.log("Click: ", link);
-                if (event.ctrlKey) {
-                    // Control key is pressed
-                    if (!this.selectedLinks.includes(link)) {
-                        this.selectedLinks.push(link);
+    attachEventHandlers() {
+        const allLinks = this.treeContainer.querySelectorAll(".fileLi");
+        let startLink;
+        allLinks.forEach((link) => {
+            if (link.dataset.path) {
+                link.addEventListener("dblclick", () => {
+                    if (link.dataset.type === "directory") {
+                        this.currentPath = link.dataset.path;
+                        this.buildTree();
                     }
-                } else if (event.shiftKey) {
-                    // Shift key is pressed
-                    if (this.selectedLinks.length > 0) {
-                        const currentIndex = Array.from(allLinks).indexOf(link);
-                        const startIndex = Array.from(allLinks).indexOf(startLink);
-                        const [minIndex, maxIndex] = [currentIndex, startIndex].sort((a, b) => a - b);
-                        for (let i = minIndex; i <= maxIndex; i++) {
-                            const selectedLink = allLinks[i];
-                            if (!this.selectedLinks.includes(selectedLink)) {
-                                this.selectedLinks.push(selectedLink);
-                                selectedLink.classList.add("selected");
+                    this.onDoubleClickCallbacks.forEach((callback) =>
+                        callback(link.dataset.path, link.dataset.type)
+                    );
+                });
+                link.addEventListener("click", (event) => {
+                    if (event.ctrlKey) {
+                        // Control key is pressed
+                        if (!this.selectedLinks.includes(link)) {
+                            this.selectedLinks.push(link);
+                        }
+                    } else if (event.shiftKey) {
+                        // Shift key is pressed
+                        if (this.selectedLinks.length > 0) {
+                            const currentIndex = Array.from(allLinks).indexOf(link);
+                            const startIndex = Array.from(allLinks).indexOf(startLink);
+                            const [minIndex, maxIndex] = [currentIndex, startIndex].sort((a, b) => a - b);
+                            for (let i = minIndex; i <= maxIndex; i++) {
+                                const selectedLink = allLinks[i];
+                                if (!this.selectedLinks.includes(selectedLink)) {
+                                    this.selectedLinks.push(selectedLink);
+                                    selectedLink.classList.add("selected");
+                                }
                             }
                         }
+                    } else {
+                        // Neither control nor shift key is pressed
+                        startLink = link;
+                        this.selectedLinks = [link];
+                        allLinks.forEach((cLink) => {
+                            cLink.classList.remove("selected");
+                        });
+                        link.classList.add("selected");
                     }
-                } else {
-                    // Neither control nor shift key is pressed
-                    startLink = link;
-                    this.selectedLinks = [link];
-                    allLinks.forEach((cLink) => {
-                        cLink.classList.remove("selected");
-                    });
-                    link.classList.add("selected");
-                }
-                console.log("Selected Links: ", this.selectedLinks);
-                this.onClickCallbacks.forEach((callback) =>
-                    callback(link.dataset.path)
-                );
-            });
-        } else {
-            console.log("No path: ", link);
-        }
-    });
+                    this.onClickCallbacks.forEach((callback) =>
+                        callback.call(this, link, link.dataset.path, link.dataset.type)
+                    );
+                });
+            } else {
+                console.log("No path: ", link);
+            }
+        });
 
-}
+    }
 
 
     getClass(type) {
-        console.log("Let's get an icon: ", type);
         switch (type) {
             case '.jpg':
             case '.jpeg':
@@ -274,9 +360,34 @@ class FileBrowser {
             recursive: recursive,
             filter: filter
         };
-        console.log("Requesting tree data...");
         const response = await sendMessage(this.endpoint, data);
         console.log("Response received:", response);
+        return response;
+    }
+
+    showFileInfo(link, data1, data2) {
+        console.log("File info: ", link, data1, data2);
+        this.fetchFileData(data1).then((data) =>{
+            console.log("SHOW: ", data);
+            let panel = this.buildInfoPanel(data[0]);
+            console.log("PANEL: ", panel);
+            this.infoPanel.innerHTML = panel.innerHTML;
+            if (this.infoPanel.classList.contains("closed")) {
+                this.infoPanel.classList.remove("closed");
+                this.treeParent.classList.add("full", "hasInfo");
+            }
+        });
+    }
+    async fetchFileData(file) {
+        console.log("FFD: ", file);
+        const data = {
+            files: file
+        };
+        const response = await sendMessage(this.fileEndpoint, data);
+        console.log("Response received:", response);
+        if (response.hasOwnProperty("files")) {
+            return response.files;
+        }
         return response;
     }
 

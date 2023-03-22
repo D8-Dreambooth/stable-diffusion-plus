@@ -4,6 +4,8 @@ import json
 import logging
 import shutil
 
+from core.handlers.directories import DirectoryHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,13 +16,14 @@ class ConfigHandler:
     config_shared = {}
     config_protected = {}
 
-    def __new__(cls, shared_dir = None, protected_dir=None, src_dir=None):
-        if cls._instance is None and shared_dir is not None and protected_dir is not None and src_dir is not None:
+    def __new__(cls):
+        if cls._instance is None:
             cls._instance = super(ConfigHandler, cls).__new__(cls)
-            cls._instance._shared_dir = shared_dir
-            cls._instance._protected_dir = protected_dir
+            dir_handler = DirectoryHandler()
+            cls._instance._shared_dir = os.path.join(dir_handler.shared_path, "config")
+            cls._instance._protected_dir = os.path.join(dir_handler.protected_path, "config")
             cls._instance._create_directories()
-            cls._instance._check_defaults(src_dir)
+            cls._instance._check_defaults(dir_handler.app_path)
             cls._instance._enumerate_configs()
 
         return cls._instance

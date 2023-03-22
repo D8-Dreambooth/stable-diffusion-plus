@@ -55,6 +55,7 @@ class ModelSelect {
             ext_include: this.ext_include,
             ext_exclude: this.ext_exclude
         });
+        console.log("Model list: ", modelList);
         this.modelList = modelList;
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");

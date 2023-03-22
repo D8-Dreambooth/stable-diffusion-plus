@@ -118,17 +118,20 @@ class ProgressGroup {
             }
 
             if (this.options.show_percent) {
-                this.progressBar1.innerHTML = String(pct_1) + "%";
-                this.progressBar2.innerHTML = String(pct_2) + "%";
+                let roundedPct1 = pct_1.toFixed(0);
+                let roundedPct2 = pct_2.toFixed(0);
+                this.progressBar1.innerHTML = String(roundedPct1) + "%";
+                this.progressBar2.innerHTML = String(roundedPct2) + "%";
             } else {
                 this.progressBar1.innerHTML = "";
                 this.progressBar2.innerHTML = "";
             }
         } else {
             if (!isNaN(pct_1)) {
+                let roundedPct1 = pct_1.toFixed(0);
                 this.progressBar1.style.setProperty("width", pct_1 + "%");
                 if (this.options.show_percent) {
-                    this.progressBar1.innerHTML = String(pct_1) + "%";
+                    this.progressBar1.innerHTML = String(roundedPct1) + "%";
                 }
             } else {
                 this.progressBar1.style.setProperty("width", "0");

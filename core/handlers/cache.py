@@ -2,6 +2,8 @@ import json
 import logging
 import os
 
+from core.handlers.directories import DirectoryHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -10,8 +12,10 @@ class CacheHandler:
     cache_dir = ""
     cache = {}
 
-    def __new__(cls, cache_dir=None):
+    def __new__(cls):
         if cls._instance is None:
+            dir_handler = DirectoryHandler()
+            cache_dir = dir_handler.get_directory("cache")[0]
             cls._instance = super().__new__(cls)
             cls._instance.cache_dir = cache_dir
             if cache_dir:

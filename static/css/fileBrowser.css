@@ -42,18 +42,34 @@ li.fileLi * {
 
 }
 
+.dataPanel {
+    overflow-y: scroll;
+}
+
+.infoPanel {
+    transition: right 0.5s ease-in-out;
+}
+
+.infoPanel.closed {
+    right: -50%; /* initially hide the panel */
+}
+
+
 .tree-container {
     display: none;
 }
 
 .tree-container.full {
     display: block;
+    overflow-y: scroll;
+}
+
+.tree-container.full.hasInfo {
+    width: 50% !important;
 }
 
 .tree {
     display: block;
-    max-height: 200px;
-    overflow-y: scroll;
 }
 
 .file-buttons {

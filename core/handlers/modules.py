@@ -33,6 +33,8 @@ class ModuleHandler:
                         module_name = file[:-3]
                         if module_name == "module_base":
                             continue
+                        if "install" in file:
+                            continue
                         try:
                             module_str = f"core.modules.{module_dir}.{module_name}"
                             module = importlib.import_module(module_str)

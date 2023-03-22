@@ -1,7 +1,7 @@
 {
-  "cache_dir": "",
-  "config_dir": "",
   "shared_dir": "",
-  "user_dir": "",
+  "protected_dir": "",
+  "user_auth": false,
+  "infer:basic": false,
   "torch_command": "pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117"
 }

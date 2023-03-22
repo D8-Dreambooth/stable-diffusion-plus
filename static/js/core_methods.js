@@ -1,31 +1,45 @@
 let globalSocket = null;
 let socketMethods = {};
-const SOCKET_URL = "ws://localhost:8080/ws";
+let SOCKET_URL = "ws://localhost:8080/ws";
 const keyListener = new KeyListener();
 let messages = [];
 // region Initialization
 
-document.addEventListener("DOMContentLoaded", function () {
-    // Set up socket
-    connectSocket();
-    // Navbar toggle listener
-    const showNavbar = (toggleId, navId, bodyId, headerId) => {
-        const toggle = document.getElementById(toggleId),
-            nav = document.getElementById(navId),
-            bodypd = document.getElementById(bodyId),
-            toggleEl = document.getElementById("header_toggle");
+const toggleNavbar = () => {
+    const nav = document.getElementById('nav-bar'),
+        bodypd = document.getElementById('body-pd'),
+        toggleEl = document.getElementById('header_toggle'),
+    toggle = document.getElementById('header-toggle');
+    toggle.classList.toggle('rotate');
 
-        if (toggle && nav && bodypd) {
-            toggle.addEventListener('click', () => {
-                nav.classList.toggle('show');
-                toggle.classList.toggle('rotate');
-                toggleEl.classList.toggle('header-open');
-                bodypd.classList.toggle('body-pd');
-            })
-        }
+    if (nav && bodypd) {
+        nav.classList.toggle('show');
+        toggleEl.classList.toggle('header-open');
+        bodypd.classList.toggle('body-pd');
     }
+}
 
-    showNavbar('header-toggle', 'nav-bar', 'body-pd', 'header')
+const showNavbar = () => {
+    const toggle = document.getElementById('header-toggle'), nav = document.getElementById('nav-bar');
+    toggleNavbar();
+    if (toggle && nav) {
+        toggle.addEventListener('click', () => {
+            toggleNavbar();
+        });
+    }
+}
+
+const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    connectSocket();
+
+    showNavbar();
     sendMessage("get_config", {"section_key": "core"}).then((data) => {
         loadCoreSettings(data);
     });
@@ -81,19 +95,25 @@ function clearError() {
 function showPane(module_id) {
     let panes = document.querySelectorAll(".module");
     let links = document.querySelectorAll(".nav_link");
+    let ht = document.getElementById("header_toggle");
     let activePane = document.getElementById(module_id);
     let activeLink = document.getElementById(module_id + "_link");
-
+    let sectionTitle = document.getElementById("sectionTitle");
     for (let i = 0; i < panes.length; i++) {
         let pane = panes[i];
         let link = links[i];
         if (pane !== undefined) pane.classList.remove("activePane");
         if (link !== undefined) link.classList.remove("activeLink");
     }
+    if (ht.classList.contains("header-open")) {
+        toggleNavbar();
+    }
+
 
     if (activePane) {
         activePane.classList.add("activePane");
         activeLink.classList.add("activeLink");
+        sectionTitle.innerHTML = moduleIds[module_id];
     }
 }
 
@@ -156,7 +176,7 @@ function sendMessage(name, data, await = true) {
                 console.log("Resolving: ", response);
                 // This is the response we're waiting for
                 globalSocket.removeEventListener("message", handleResponse);
-                resolve(response);
+                resolve(response.data);
             }
         }
 
@@ -208,6 +228,14 @@ function connectSocket() {
                 }
             } else {
                 console.log("Event has no name property, can't process: ", event);
+            }
+        };
+        globalSocket.onerror = function (event) {
+            if (event.status === 403) {
+                console.log("WebSocket error: 403 Forbidden");
+                location.reload();
+            } else {
+                console.log("WebSocket error: ", event);
             }
         };
         globalSocket.onclose = function () {

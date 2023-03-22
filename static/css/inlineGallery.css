@@ -1,3 +1,37 @@
 .inline-gallery-container {
-    background: var(--secondary-text-color)
+    background: var(--secondary-text-color);
+    max-height: 400px;
+}
+
+.fotorama__wrap--css3 .fotorama__download-icon:not(:focus) {
+    transition-property: -webkit-transform,opacity;
+    transition-property: transform,opacity;
+    transition-duration: .3s;
+}
+.fotorama__wrap--no-controls.fotorama__wrap--toggle-arrows .fotorama__download-icon {
+    opacity: 0;
+}
+
+.fotorama__img {
+    left: 0!important;
+    margin: 0 auto !important;
+}
+
+.fotorama__stage__shaft {
+    width: 100% !important;
+}
+
+.fotorama__wrap--css3 .fotorama__download-icon {
+    -webkit-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+}
+.fotorama__download-icon {
+    width: 32px;
+    height: 32px;
+    top: 10px;
+    left: 7px;
+    position: absolute;
+    background-position: 0 -32px;
+    z-index: 20;
+    color: white;
 }
