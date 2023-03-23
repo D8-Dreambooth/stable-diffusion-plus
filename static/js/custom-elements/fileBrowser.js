@@ -5,6 +5,7 @@ class FileBrowser {
         this.onSelectCallbacks = [];
         this.onCancelCallbacks = [];
         this.selected = "";
+        this.startLink = "";
         let wrapper = document.createElement("div");
         wrapper.classList.add("row", "fileBrowserContainer");
         parentElement.appendChild(wrapper);
@@ -19,7 +20,7 @@ class FileBrowser {
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
         this.treeParent = document.createElement("div");
-        this.treeParent.classList.add("tree-container", "col-6");
+        this.treeParent.classList.add("tree-container", "col");
         this.placeholder = options["placeholder"] || "Select something...";
         this.showSelectButton = options["showSelectButton"] || false;
         this.listFiles = options["listFiles"] || false;
@@ -36,6 +37,7 @@ class FileBrowser {
             this.treeParent.style.cssText = this.style;
         }
 
+        this.addKeyboardListener();
 
 
         this.buildTree().then(() => {
@@ -69,16 +71,266 @@ class FileBrowser {
 
             }
             this.parentElement.append(this.treeParent);
+
+            const fileButtons = this.buildFileButtons();
+            parentElement.append(fileButtons);
+
             if (this.showInfo) {
                 this.onClickCallbacks.push(this.showFileInfo);
                 this.infoPanel = document.createElement("div");
-                this.infoPanel.classList.add("infoPanel", "closed", "col-6");
+                this.infoPanel.classList.add("infoPanel", "closed", "col-sm-12", "col-md-6", "col-lg-4");
                 this.parentElement.appendChild(this.infoPanel);
+                this.createImageModal("");
             }
         });
 
 
     }
+
+    buildFileButtons() {
+        let buttonCol = document.createElement("div");
+        buttonCol.classList.add("col-12", "text-center", "buttonCol");
+
+        let buttonGroup = document.createElement("div");
+        buttonGroup.classList.add("btn-group", "btn-group-sm");
+
+        let uploadButton = document.createElement("button");
+        uploadButton.innerHTML = '<i class="bx bx-upload"></i>';
+        uploadButton.classList.add("btn", "btn-primary");
+        uploadButton.dataset["function"] = "upload";
+
+        let refreshButton = document.createElement("button");
+        refreshButton.innerHTML = '<i class="bx bx-refresh"></i>';
+        refreshButton.classList.add("btn", "btn-secondary");
+        refreshButton.dataset["function"] = "refresh";
+
+        let newButton = document.createElement("button");
+        newButton.innerHTML = '<i class="bx bx-plus"></i>';
+        newButton.classList.add("btn", "btn-secondary");
+        newButton.dataset["function"] = "new";
+
+        let renameButton = document.createElement("button");
+        renameButton.innerHTML = '<i class="bx bx-rename"></i>';
+        renameButton.classList.add("btn", "btn-secondary");
+        renameButton.dataset["function"] = "rename";
+
+        let deleteButton = document.createElement("button");
+        deleteButton.innerHTML = '<i class="bx bx-trash"></i>';
+        deleteButton.classList.add("btn", "btn-danger");
+        deleteButton.dataset["function"] = "delete";
+
+        buttonGroup.appendChild(uploadButton);
+        buttonGroup.appendChild(refreshButton);
+        buttonGroup.appendChild(newButton);
+        buttonGroup.appendChild(renameButton);
+        buttonGroup.appendChild(deleteButton);
+
+        buttonGroup.querySelectorAll("button").forEach(button => {
+            button.addEventListener("click", () => {
+                this.handleFileMethod(button.dataset.function);
+            });
+        });
+
+        buttonCol.appendChild(buttonGroup);
+        buttonCol.appendChild(buttonGroup);
+        let btnRow = document.createElement("div");
+        btnRow.classList.add("row", "fileBtnRow");
+        btnRow.appendChild(buttonCol);
+        return btnRow;
+    }
+
+    handleFileMethod(method) {
+        // Get data-path attribute of each of these elements
+        const selected = this.treeContainer.querySelectorAll(".fileLi.selected");
+
+        // The innerHTML of this contains the current path
+        const fileCurrent = this.treeContainer.querySelector(".fileCurrent");
+
+        // Methods are delete, rename, new, refresh, upload
+        // If the method is upload, we can .
+        // Otherwise, we need to call the async 'sendMessage("handleFile", {dir=CURRENT_PATH, files={selected_files}),
+        // populating files as described below.
+        const selectedFiles = [];
+        selected.forEach((item) => {
+            selectedFiles.push(item.dataset.path);
+        });
+        switch (method) {
+            case "refresh":
+                // call the async this.refresh() method
+                this.refresh().then(() => {
+                    console.log("Refreshed!");
+                });
+                break;
+            case "delete":
+                // Send the list of selected files
+                if (selectedFiles.length > 0) {
+                    if (confirm(`Are you sure you want to delete these ${selectedFiles.length} file(s)? This action is irreversible.`)) {
+                        const data = {dir: fileCurrent.innerHTML, files: selectedFiles, method: method};
+                        sendMessage("handleFile", data).then(() => {
+                            this.refresh().then(() => {
+                                console.log("Deleted and refreshed!");
+                            })
+                        });
+                    }
+                }
+                break;
+            case "rename":
+                // Prompt the user for new filename if only one file is selected
+
+                if (selectedFiles.length === 1) {
+                    const existingFileName = selectedFiles[0].split("/").pop();
+                    const newFileName = prompt(`Enter a new name for ${existingFileName}:`, existingFileName);
+                    if (newFileName) {
+                        const data = {
+                            dir: fileCurrent.innerHTML,
+                            files: selectedFiles,
+                            method: method,
+                            newName: newFileName
+                        };
+                        sendMessage("handleFile", data).then(() => {
+                            this.refresh().then(() => {
+                                console.log("Renamed and refreshed!");
+                            })
+                        });
+                    }
+                } else {
+                    alert("Please select only one file to rename.");
+                }
+
+                break;
+            case "upload":
+                // Open an explorer window and let the user select files
+                const input = document.createElement("input");
+                input.type = "file";
+                input.multiple = true;
+                input.addEventListener("change", async () => {
+                    const files = Array.from(input.files);
+                    const formData = new FormData();
+                    formData.append("dir", fileCurrent.innerText);
+                    files.forEach((file) => {
+                        formData.append("files", file);
+                    });
+                    const response = await fetch("/files/upload", {
+                        method: "POST",
+                        body: formData,
+                    });
+                    const data = await response.json();
+                    console.log(data);
+                    await this.refresh();
+                });
+
+                input.click();
+                break;
+
+            case "new":
+                // Open a dialog asking for the folder name, then sendMessage to handleFile with the user input for the dir name under "files".
+                const folderName = prompt("Enter the folder name:");
+                if (folderName) {
+                    const data = {dir: fileCurrent.innerHTML, files: [folderName], method: method};
+                    sendMessage("handleFile", data).then(() => {
+                        this.refresh().then(() => {
+                            console.log("Created folder!");
+                        });
+                    });
+                }
+                break;
+        }
+    }
+
+
+    selectNextItem(direction, ctrl_pressed, shift_pressed) {
+        const selected = this.treeContainer.querySelector(".fileLi.selected");
+
+        if (selected) {
+            const sibling = direction === -1 ?
+                selected.previousElementSibling : selected.nextElementSibling;
+            if (sibling) {
+                console.log("Found sibling.");
+                // if (multi === false) selected.classList.remove("selected");
+                // sibling.classList.add("selected");
+                // sibling.click();
+                this.handleLinkClick(sibling, ctrl_pressed, shift_pressed);
+            }
+        } else {
+            const firstChild = this.treeContainer.querySelector(".fileLi");
+            if (firstChild) {
+                // firstChild.classList.add("selected");
+                // console.log("Firstchild");
+                // firstChild.click();
+                this.handleLinkClick(firstChild, ctrl_pressed, shift_pressed);
+            }
+        }
+
+        console.log("NEXT!", direction);
+        const images = document.querySelector(".img-info");
+        const fullScreen = document.querySelector(".img-fullscreen");
+        fullScreen.src = images.src;
+        fullScreen.dataset["name"] = images.dataset["name"];
+    }
+
+    addKeyboardListener() {
+        console.log("Adding keylistener.");
+        document.addEventListener("keydown", function (event) {
+            const focusedElement = document.activeElement;
+            if (this.treeContainer.contains(focusedElement)) {
+                if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                    const direction = event.key === "ArrowUp" ? -1 : 1;
+                    this.selectNextItem(direction, event.ctrlKey, event.shiftKey);
+                }
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (event.srcElement.classList.contains("fileLi") && event.srcElement.classList.contains("selected")) {
+                        console.log("We got us a selected li: ", event.srcElement);
+                        event.srcElement.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+                    }
+                }
+            }
+        }.bind(this));
+
+
+        let hideTimeout;
+
+
+        this.treeContainer.addEventListener('dragenter', (e) => {
+            const tempDiv = document.querySelector(".tempDiv");
+            console.log("ENTER");
+            e.preventDefault();
+            tempDiv.classList.add('show');
+        });
+
+        this.treeContainer.addEventListener('dragover', (e) => {
+            console.log("OVER");
+            e.preventDefault();
+        });
+
+        this.treeContainer.addEventListener('dragleave', () => {
+            console.log("LEAVE!");
+            const tempDiv = document.querySelector(".tempDiv");
+            tempDiv.classList.remove('show');
+        });
+
+        this.treeContainer.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const tempDiv = document.querySelector(".tempDiv");
+            tempDiv.classList.remove('show');
+            const fileCurrent = this.treeContainer.querySelector(".fileCurrent");
+            const files = Array.from(e.dataTransfer.files);
+            const formData = new FormData();
+            formData.append('dir', fileCurrent.innerText);
+            files.forEach((file) => {
+                formData.append('files', file);
+            });
+            const response = await fetch('/files/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            console.log(data);
+            await this.refresh();
+        });
+    }
+
 
     buildInfoPanel(fileInfo) {
         console.log("Building: ", fileInfo);
@@ -87,7 +339,7 @@ class FileBrowser {
 
         // File info panel
         const infoPanel = document.createElement("div");
-        infoPanel.classList.add("col-12");
+        infoPanel.classList.add("panelWrap");
         const infoList = document.createElement("ul");
         infoList.classList.add("list-group", "list-group-flush");
         const filename = document.createElement("li");
@@ -112,9 +364,18 @@ class FileBrowser {
         // Image panel
         if (fileInfo.src) {
             const imgPanel = document.createElement("div");
-            imgPanel.classList.add("col-12");
+            imgPanel.classList.add("imgPanel", "mt-2");
+
+            const leftIcon = document.createElement("i");
+            leftIcon.classList.add("bx", "bx-download", "info-icon-left", "infoBtn");
+            imgPanel.appendChild(leftIcon);
+
+            const rightIcon = document.createElement("i");
+            rightIcon.classList.add("bx", "bx-fullscreen", "info-icon-right", "infoBtn");
+            imgPanel.appendChild(rightIcon);
             const img = document.createElement("img");
-            img.classList.add("img-fluid", "img-thumbnail");
+            img.classList.add("img-info");
+            img.dataset["name"] = fileInfo.filename;
             img.src = fileInfo.src;
             imgPanel.appendChild(img);
             panelContainer.appendChild(imgPanel);
@@ -123,7 +384,7 @@ class FileBrowser {
         // Data panel
         if (fileInfo.data) {
             const dataPanel = document.createElement("div");
-            dataPanel.classList.add("col-12", "mt-3", "dataPanel");
+            dataPanel.classList.add("mt-2", "dataPanel");
             const pre = document.createElement("pre");
             pre.classList.add("bg-light", "p-3", "border");
             pre.textContent = fileInfo.data;
@@ -132,7 +393,8 @@ class FileBrowser {
                 panelContainer.appendChild(dataPanel);
             } else {
                 const dataWrapper = document.createElement("div");
-                dataWrapper.classList.add("col-12");
+                dataWrapper.classList.add("col-12", "dataPanel");
+                dataPanel.classList.remove("dataPanel");
                 dataWrapper.appendChild(dataPanel);
                 panelContainer.appendChild(dataWrapper);
             }
@@ -141,7 +403,78 @@ class FileBrowser {
         return panelContainer;
     }
 
+    // Function to download image
 
+    downloadImage(src, name) {
+        const link = document.createElement("a");
+        link.href = src;
+        link.download = name;
+        link.click();
+    }
+
+
+    createImageModal(src) {
+        let modal = document.createElement("div");
+        modal.classList.add("infoModal", "fade");
+        modal.id = "imageInfoModal";
+        modal.setAttribute("tabindex", "-1");
+        modal.setAttribute("role", "dialog");
+        modal.setAttribute("aria-hidden", "true");
+        modal.innerHTML = `
+    <img class="img-fullscreen" id="infoModalImage" src="${src}" />
+    <i class="bx bx-download icon-left infoBtn infoDownload"></i>
+    <i class="bx bx-fullscreen icon-right infoBtn infoFullscreen"></i>
+  `;
+
+        document.body.appendChild(modal);
+
+        const imgFullscreen = document.querySelector(".img-fullscreen");
+        const leftNavIcon = document.createElement("i");
+        leftNavIcon.classList.add("bx", "bx-chevron-left", "icon-left-nav", "infoBtn", "infoLeft");
+        leftNavIcon.addEventListener("click", () => {
+            this.selectNextItem(-1);
+        });
+        imgFullscreen.parentElement.appendChild(leftNavIcon);
+
+        const rightNavIcon = document.createElement("i");
+        rightNavIcon.classList.add("bx", "bx-chevron-right", "icon-right-nav", "infoBtn", "infoRight");
+        rightNavIcon.addEventListener("click", () => {
+            this.selectNextItem(1);
+        });
+        imgFullscreen.parentElement.appendChild(rightNavIcon);
+
+        const downloadIcon = document.querySelector(".infoDownload");
+        downloadIcon.addEventListener("click", () => {
+            this.downloadImage(imgFullscreen.src, imgFullscreen.dataset["name"]);
+        });
+
+        const fullscreenIcon = document.querySelector(".infoFullscreen");
+        fullscreenIcon.addEventListener("click", () => {
+            $("#imageInfoModal").toggleClass("show");
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.keyCode === 37) {
+                // Left arrow key
+                this.selectNextItem(-1);
+            } else if (event.keyCode === 39) {
+                // Right arrow key
+                this.selectNextItem(1);
+            } else if (event.keyCode === 27) {
+                // Escape key
+                $("#imageInfoModal").removeClass("show");
+            }
+        });
+
+
+        const images = document.querySelectorAll(".img-info");
+        images.forEach((image) => {
+            image.addEventListener("click", () => {
+                imgFullscreen.src = image.src;
+                imgFullscreen.dataset["name"] = image.dataset["name"];
+            });
+        });
+    }
 
 
     buildInput() {
@@ -193,20 +526,42 @@ class FileBrowser {
             this.treeContainer.appendChild(title);
         }
 
-        let currentPath = document.createElement("span");
-        currentPath.innerHTML = this.currentParent;
-        currentPath.classList.add("fileCurrent");
+        let currentPathContainer = document.createElement("div");
+        currentPathContainer.classList.add("row", "pathContainer");
 
-        this.treeContainer.appendChild(currentPath);
+        let currentPathCol = document.createElement("div");
+        currentPathCol.classList.add("col", "fileTitleCol");
+
+        let currentPath = document.createElement("div");
+        currentPath.innerHTML = this.currentParent;
+        currentPath.classList.add("card-header", "fileCurrent");
+
+        currentPathCol.appendChild(currentPath);
+        currentPathContainer.appendChild(currentPathCol);
+
+        this.treeContainer.appendChild(currentPathContainer);
         this.treeContainer.appendChild(tree);
+
+
+        if (this.infoPanel) {
+            this.infoPanel.classList.add("closed");
+        }
+
         if (this.showSelectButton) {
 
         }
+
+        const tempDiv = document.createElement('div');
+        tempDiv.textContent = 'Drop files to upload';
+        tempDiv.className = 'tempDiv';
+        this.treeContainer.appendChild(tempDiv);
+
         this.attachEventHandlers();
     }
 
     generateTree(response) {
         const root = document.createElement("ul");
+        root.classList.add("treeRoot");
         const listItem = document.createElement("li");
         const icon = document.createElement("i");
         icon.classList.add("bx", "bx-hdd", "fileIcon");
@@ -268,56 +623,94 @@ class FileBrowser {
 
     attachEventHandlers() {
         const allLinks = this.treeContainer.querySelectorAll(".fileLi");
-        let startLink;
         allLinks.forEach((link) => {
             if (link.dataset.path) {
                 link.addEventListener("dblclick", () => {
                     if (link.dataset.type === "directory") {
                         this.currentPath = link.dataset.path;
-                        this.buildTree();
+                        this.buildTree().then(() => {
+                            const selectFirstFileLi = (element) => {
+                                if (element.classList && element.classList.contains("fileLi")) {
+                                    element.classList.add("selected");
+                                    element.click();
+                                    return true;
+                                }
+                                for (let i = 0; i < element.children.length; i++) {
+                                    const child = element.children[i];
+                                    if (selectFirstFileLi(child)) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            };
+                            selectFirstFileLi(this.treeContainer);
+                        });
+                    } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type ===".jpeg") {
+                        if (this.showInfo) {
+                            let img = document.getElementById("infoModalImage");
+                            let infoImg = document.querySelector(".img-info");
+                            img.src = infoImg.src;
+                            img.dataset["name"] = infoImg.dataset["name"];
+                            $("#imageInfoModal").addClass("show");
+                        }
                     }
                     this.onDoubleClickCallbacks.forEach((callback) =>
                         callback(link.dataset.path, link.dataset.type)
                     );
                 });
                 link.addEventListener("click", (event) => {
-                    if (event.ctrlKey) {
-                        // Control key is pressed
-                        if (!this.selectedLinks.includes(link)) {
-                            this.selectedLinks.push(link);
-                        }
-                    } else if (event.shiftKey) {
-                        // Shift key is pressed
-                        if (this.selectedLinks.length > 0) {
-                            const currentIndex = Array.from(allLinks).indexOf(link);
-                            const startIndex = Array.from(allLinks).indexOf(startLink);
-                            const [minIndex, maxIndex] = [currentIndex, startIndex].sort((a, b) => a - b);
-                            for (let i = minIndex; i <= maxIndex; i++) {
-                                const selectedLink = allLinks[i];
-                                if (!this.selectedLinks.includes(selectedLink)) {
-                                    this.selectedLinks.push(selectedLink);
-                                    selectedLink.classList.add("selected");
-                                }
-                            }
-                        }
-                    } else {
-                        // Neither control nor shift key is pressed
-                        startLink = link;
-                        this.selectedLinks = [link];
-                        allLinks.forEach((cLink) => {
-                            cLink.classList.remove("selected");
-                        });
-                        link.classList.add("selected");
-                    }
-                    this.onClickCallbacks.forEach((callback) =>
-                        callback.call(this, link, link.dataset.path, link.dataset.type)
-                    );
+                    event.preventDefault();
+                    const ctrlKeyPressed = event.ctrlKey;
+                    const shiftKeyPressed = event.shiftKey;
+                    this.handleLinkClick(link, ctrlKeyPressed, shiftKeyPressed);
                 });
             } else {
                 console.log("No path: ", link);
             }
         });
 
+    }
+
+    handleLinkClick(link, ctrlKeyPressed, shiftKeyPressed) {
+        const allLinks = this.treeContainer.querySelectorAll(".fileLi");
+        if (ctrlKeyPressed) {
+            // Control key is pressed
+            if (!this.selectedLinks.includes(link)) {
+                this.selectedLinks.push(link);
+            } else {
+                const index = this.selectedLinks.indexOf(link);
+                if (index > -1) {
+                    this.selectedLinks.splice(index, 1);
+                }
+            }
+        } else if (shiftKeyPressed) {
+            // Shift key is pressed
+            if (this.selectedLinks.length > 0) {
+                const currentIndex = Array.from(allLinks).indexOf(link);
+                const startIndex = Array.from(allLinks).indexOf(this.startLink);
+                const [minIndex, maxIndex] = [currentIndex, startIndex].sort((a, b) => a - b);
+                for (let i = minIndex; i <= maxIndex; i++) {
+                    const selectedLink = allLinks[i];
+                    if (!this.selectedLinks.includes(selectedLink)) {
+                        this.selectedLinks.push(selectedLink);
+                        selectedLink.classList.add("selected");
+                    }
+                }
+            }
+        } else {
+            link.tabIndex = -1;
+            link.focus();
+            // Neither control nor shift key is pressed
+            this.startLink = link;
+            this.selectedLinks = [link];
+            allLinks.forEach((cLink) => {
+                cLink.classList.remove("selected");
+            });
+            link.classList.add("selected");
+        }
+        this.onClickCallbacks.forEach((callback) =>
+            callback.call(this, link, link.dataset.path, link.dataset.type)
+        );
     }
 
 
@@ -362,12 +755,17 @@ class FileBrowser {
         };
         const response = await sendMessage(this.endpoint, data);
         console.log("Response received:", response);
+        this.setCurrentPath(response["current"]);
         return response;
     }
 
     showFileInfo(link, data1, data2) {
         console.log("File info: ", link, data1, data2);
-        this.fetchFileData(data1).then((data) =>{
+        if (data1 === "..") {
+            this.infoPanel.classList.add("closed");
+            return;
+        }
+        this.fetchFileData(data1).then((data) => {
             console.log("SHOW: ", data);
             let panel = this.buildInfoPanel(data[0]);
             console.log("PANEL: ", panel);
@@ -376,8 +774,27 @@ class FileBrowser {
                 this.infoPanel.classList.remove("closed");
                 this.treeParent.classList.add("full", "hasInfo");
             }
+            let leftIcon = document.querySelector(".info-icon-left");
+            let rightIcon = document.querySelector(".info-icon-right");
+            if (leftIcon) {
+                leftIcon.addEventListener("click", () => {
+                    console.log("DOWNLOAD IMAGE");
+                    this.downloadImage(data[0].src, data[0].filename);
+                });
+            }
+            if (rightIcon) {
+                rightIcon.addEventListener("click", () => {
+                    console.log("SHOW MODAL");
+                    let img = document.getElementById("infoModalImage");
+                    img.src = data[0].src;
+                    img.dataset["name"] = data[0].filename;
+                    $("#imageInfoModal").toggleClass("show");
+                });
+            }
+
         });
     }
+
     async fetchFileData(file) {
         console.log("FFD: ", file);
         const data = {
@@ -392,15 +809,12 @@ class FileBrowser {
     }
 
     async refresh() {
-        const fileTreeData = await this.fetchFileTreeData(this.currentPath);
-        const tree = this.generateTree(fileTreeData);
-        this.treeContainer.innerHTML = '';
-        this.treeContainer.appendChild(tree);
+        await this.buildTree();
     }
 
     setCurrentPath(path) {
         this.currentPath = path;
-        this.refresh();
+        console.log("Current path set:", path);
     }
 
     addOnDoubleClick(callback) {

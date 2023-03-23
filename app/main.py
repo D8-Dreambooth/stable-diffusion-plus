@@ -3,6 +3,7 @@ import json
 import logging
 import os.path
 import traceback
+from typing import Dict
 
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -43,7 +44,7 @@ user_auth = False
 logger = logging.getLogger(__name__)
 
 
-def get_files(dir_handler: DirectoryHandler):
+def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
     css_files = []
     js_files = []
     js_files_ext = []
@@ -64,9 +65,13 @@ def get_files(dir_handler: DirectoryHandler):
             file_dir = os.path.dirname(theme_check)
             css_files.append(os.path.join(mount_path, os.path.basename(theme_check)))
             app.mount(mount_path, StaticFiles(directory=file_dir), name="static")
+    if theme_only:
+        return css_files, js_files, js_files_ext, custom_files, html
 
     for active_dict in (active_modules, active_extensions):
         for module_name, module in active_dict.items():
+            if module_name == "Settings" and not is_admin:
+                continue
             logger.debug(f"Listing files for module: {module_name}")
 
             for dest, attr in [(css_files, "css_files"), (js_files, "js_files"), (custom_files, "custom_files")]:
@@ -219,15 +224,15 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request, current_user: User = Depends(get_current_active_user)):
+async def home(request: Request, user_data: Dict = Depends(get_current_active_user)):
     global user_auth
-    logger.debug("HOMEGET.")
-    logger.debug(f"Session: {current_user}")
+    current_user = user_data.get("name", None)
+    logger.debug(f"Current user: {user_data}")
     dh = DirectoryHandler(current_user)
     if user_auth:
         if current_user:
             # User is logged in, show the usual home page
-            css_files, js_files, js_files_ext, custom_files, html = get_files(dh)
+            css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, user_data["admin"])
             return templates.TemplateResponse(
                 "base.html",
                 {
@@ -248,7 +253,7 @@ async def home(request: Request, current_user: User = Depends(get_current_active
         fh = FileHandler()
 
         # Authentication not required, show the usual home page
-        css_files, js_files, js_files_ext, custom_files, html = get_files(dh)
+        css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, True)
         return templates.TemplateResponse(
             "base.html",
             {
@@ -298,7 +303,16 @@ async def handle_login(request: Request, response: Response, form_data: dict):
 @app.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
     # If user is not logged in, show login page
-    return templates.TemplateResponse("login.html", {"request": request})
+    # User is logged in, show the usual home page
+    dh = DirectoryHandler()
+    css_files, js_files, js_files_ext, custom_files, html = get_files(dh, True)
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "css_files": css_files
+        }
+    )
 
 
 @app.get("/whoami")
@@ -306,7 +320,7 @@ async def whoami(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
-@app.post("/logout")
+@app.get("/logout")
 async def del_session(response: Response):
     response.delete_cookie("Authorization")
-    return RedirectResponse(url="/")
+    return RedirectResponse(url="/login")

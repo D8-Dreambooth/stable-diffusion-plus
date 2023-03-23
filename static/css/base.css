@@ -3,6 +3,51 @@
 */
 
 @import "https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700";
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap");
+
+:root {
+    --header-height: 2rem;
+    --footer-height: 1rem;
+    --nav-width: 66px;
+    --body-font: 'Nunito', sans-serif;
+    --normal-font-size: 1rem;
+    --z-fixed: 100;
+    --btn-row-height: 24px;
+    --bs-white: var(--white-color);
+    --bs-black: var(--black-color);
+    --bs-primary: var(--primary-color);
+    --bs-secondary: var(--secondary-color);
+    --bs-light: var(--secondary-text-color);
+    --bs-dark: var(--primary-text-color);
+    --bs-primary-rgb: rgb(var(--primary-color));
+    --bs-secondary-rgb: rgb(var(--secondary-color));
+    --bs-light-rgb: var(--primary-text-color);
+    --bs-dark-rgb: var(--secondary-text-color);
+    --bs-white-rgb: rgb(var(--bs-white));
+    --bs-black-rgb: rgb(var(--bs-black));
+    --bs-body-color-rgb: rgb(var(--secondary-color));
+    --bs-body-color: var(--secondary-color);
+    --bs-body-bg-rgb: rgb(var(--secondary-accent-color));
+    --first-color: var(--primary-color);
+}
+
+
+*, ::before, ::after {
+    box-sizing: border-box
+}
+
+body {
+    font-family: var(--body-font);
+    font-size: var(--normal-font-size);
+    color: var(--secondary-text-color);
+    background-color: rgba(var(--bs-body-bg-rgb), 0.9);
+    -webkit-tap-highlight-color: rgba(var(--bs-black-rgb), 0);
+}
+
+a {
+    text-decoration: none
+}
+
 
 html, body, #mainBody {
     height: 100%;
@@ -11,8 +56,151 @@ html, body, #mainBody {
 
 body {
     font-family: 'Poppins', sans-serif;
-    background: var(--secondary-color);
+    background: var(--primary-accent-color);
+    color: var(--primary-accent-text-color);
 }
+
+input {
+    background-color: var(--primary-accent-color);
+}
+
+/* overrides for other elements with static colors */
+.btn-primary {
+    color: var(--primary-text-color);
+    background-color: var(--primary-color);
+    border-color: var(--bs-gray-400);
+}
+
+.btn-secondary, .nav-tabs .nav-link {
+    color: var(--primary-accent-text-color);
+    background-color: var(--secondary-accent-color);
+    border-color: var(--bs-gray-400);
+}
+
+.form-control {
+    color: var(--secondary-accent-text-color);
+    background-color: var(--secondary-accent-color);
+    border-color: var(--bs-gray-400);
+}
+
+.form-control:focus {
+    color: var(--secondary-accent-text-color);
+    background-color: var(--secondary-accent-color);
+    border-color: #86b7fe;
+    border-top-color: rgb(134, 183, 254);
+    border-right-color: rgb(134, 183, 254);
+    border-bottom-color: rgb(134, 183, 254);
+    border-left-color: rgb(134, 183, 254);
+}
+
+.table {
+    color: var(--secondary-text-color);
+}
+
+.table thead th {
+    background-color: var(--bs-gray-100);
+    border-bottom-color: var(--bs-gray-200);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--bs-gray-100);
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--bs-gray-200);
+}
+
+.card-header {
+    background-color: rgba(var(--bs-body-bg-rgb), 0.2);
+    color: var(--primary-text-color);
+    border-bottom: 1px solid var(--bs-gray-400);
+}
+
+.card {
+    background-color: var(--bs-body-bg-rgb);
+    border: 1px solid var(--bs-gray-400);
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    color: var(--bs-white);
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 8 8'%3e%3cpath d='M5.25 0L4 1.25 6.75 4l-2.75 2.75L5.25 8l4-4z'/%3e%3c/svg%3e");
+}
+
+.card-title,
+.card-subtitle,
+.card-text,
+.card-link,
+.card-header,
+.card-footer {
+    color: var(--secondary-accent-text-color);
+    background: var(--secondary-accent-color);
+}
+
+.list-group-item {
+    color: var(--secondary-accent-text-color);
+    background-color: var(--secondary-accent-color);
+    border-color: var(--bs-gray-400);
+}
+
+.list-group-item.active {
+    color: var(--secondary-accent-text-color);
+    background-color: var(--secondary-accent-color);
+    border-color: var(--secondary-accent-color);
+}
+
+.list-group-item-primary {
+    color: var(--primary-text-color);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.list-group-item-primary.active {
+    color: var(--primary-accent-text-color);
+    background-color: var(--primary-accent-color);
+    border-color: var(--primary-accent-color);
+}
+
+.alert {
+    color: var(--secondary-text-color);
+    background-color: var(--bs-white);
+    border-color: var(--bs-gray-400);
+}
+
+.alert-primary {
+    color: var(--primary-text-color);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.alert-secondary {
+    color: var(--secondary-text-color);
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.alert-success {
+    color: var(--bs-success);
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+.alert-info {
+    color: var(--bs-info);
+    background-color: var(--bs-info);
+    border-color: var(--bs-info);
+}
+
+.alert-warning {
+    color: var(--bs-warning);
+    background-color: var(--bs-warning);
+    border-color: var(--bs-warning);
+}
+
 
 .hide {
     display: none;
@@ -20,57 +208,21 @@ body {
     width: 0;
 }
 
-/*.module {*/
-/*    display: none !important;*/
-/*    padding: 1rem;*/
-/*}*/
-
-/*.module.activePane {*/
-/*    display: block !important;*/
-/*    width: 100% !important;*/
-/*    height: 100% !important;*/
-/*}*/
-
 .module {
     margin-left: var(--nav-width);
+    overflow-y: auto;
     position: fixed;
     padding: 1rem 1rem calc(var(--nav-width) - 1rem) 1rem;
     top: 0;
     left: -100%;
     width: calc(100% - var(--nav-width));
-    height: 100%;
-    background-color: #fff;
+    height: calc(100% - var(--footer-height));
+    background-color: var(--bs-body-bg-rgb);
     transition: left 0.5s ease-in-out;
 }
 
 .module.activePane {
-  left: 0;
-}
-
-@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap");
-:root {
-    --header-height: 3rem;
-    --footer-height: 1rem;
-    --nav-width: 66px;
-    --body-font: 'Nunito', sans-serif;
-    --normal-font-size: 1rem;
-    --z-fixed: 100
-}
-
-*, ::before, ::after {
-    box-sizing: border-box
-}
-
-body {
-    position: relative;
-    margin: var(--header-height) 0 0 0;
-    font-family: var(--body-font);
-    font-size: var(--normal-font-size);
-    transition: .5s
-}
-
-a {
-    text-decoration: none
+    left: 0;
 }
 
 
@@ -86,7 +238,7 @@ a {
     justify-content: space-between;
     padding: 0 1rem;
     background-color: var(--secondary-accent-color);
-    color: var(--secondary-accent-text-color);
+    color: var(--secondary-text-color);
     z-index: calc(var(--z-fixed) - 1);
     transition: .5s
 }
@@ -103,22 +255,27 @@ a {
 }
 
 #header-toggle {
-  transition: transform 0.5s ease-in-out;
+    transition: transform 0.5s ease-in-out;
 }
 
 #header-toggle.rotate {
     color: var(--primary-text-color);
-  transform: rotate(180deg) !important;
+    transform: rotate(180deg) !important;
 }
 
 #header-toggle.rotate:hover {
     color: var(--secondary-text-color);
-  transform: rotate(180deg) !important;
+    transform: rotate(180deg) !important;
 }
 
-.header-open {
-    padding-left: 210px;
-    background: transparent;
+.nav-link.active {
+    color: var(--primary-text-color) !important;
+    background-color: var(--primary-color) !important;
+    border-color: var(--secondary-color) !important;
+}
+
+.header-open, .header-open:hover {
+    padding-left: 23px;
 }
 
 .header_img {
@@ -155,7 +312,6 @@ a {
 }
 
 
-
 .nav_logo, .nav_link {
     display: grid;
     grid-template-columns: max-content max-content;
@@ -170,6 +326,84 @@ a {
 
 .nav_logo {
     margin-bottom: 2rem
+}
+
+#moduleSettings_link {
+    position: absolute;
+    width: 100%;
+    bottom: 50px;
+    overflow: hidden;
+}
+
+@media (max-width: 767.98px) {
+    .l-navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--header-height);
+        background-color: var(--primary-color);
+        padding: 0;
+        transition: .5s;
+        z-index: var(--z-fixed);
+        box-shadow: 0 10px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .header_toggle {
+        display: none;
+    }
+
+    #mainNav {
+        height: var(--header-height);
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        overflow: hidden
+    }
+
+    .nav_list {
+        flex-direction: row;
+        height: var(--header-height);
+    }
+
+    .nav_logo, .nav_link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 50px;
+        height: var(--header-height) !important;
+        padding: 0 10px;
+    }
+
+    .navWrap {
+        flex: 1;
+    }
+
+    .nav_icon, .nav_logo-icon {
+        padding-right: 5px;
+    }
+
+    .nav_logo {
+        display: none;
+    }
+
+    .nav_name {
+        display: none;
+    }
+
+    :root {
+        --nav-width: 0;
+        --footer-height: 2rem;
+    }
+
+    .module {
+        width: 100% !important;
+        position: fixed;
+        padding: 1rem;
+        top: var(--header-height);
+        left: -100%;
+        height: calc(100% - var(--header-height) - var(--footer-height));
+    }
 }
 
 .activeLink {
@@ -189,13 +423,14 @@ a {
 
 .nav_link {
     position: relative;
-    color: var(--secondary-color);
+    color: var(--primary-text-color);
     height: 50px;
     transition: .3s
 }
 
-.nav_link:hover, .header_toggle:hover {
-    color: var(--secondary-text-color)
+.nav_link:hover {
+    color: var(--primary-accent-color);
+    background: var(--primary-accent-text-color);
 }
 
 .nav_icon {
@@ -275,4 +510,16 @@ a {
 
 .align-items-stretch {
     align-items: stretch !important;
+}
+
+.prompt-text {
+  height: auto !important;
+  max-height: 3em;
+  overflow-y: hidden;
+  resize: none;
+}
+
+.prompt-text:focus {
+  max-height: 9em;
+  overflow-y: scroll;
 }

@@ -6,11 +6,17 @@
     <link rel="icon" href="{{ url_for('static', path='/images/favicon.ico') }}" sizes="32x32"/>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css">
+    <link href="{{ url_for('static', path='/css/base.css') }}" rel="stylesheet">
+
+    <!-- Module and theme CSS -->
+    {% for css in css_files %}
+    <link rel="stylesheet" href="{{ css }}">
+    {% endfor %}
 </head>
 <body class="bg-light">
 <div class="container">
     <div class="row justify-content-center mt-5">
-        <div class="col-md-4">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-6">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title text-center mb-4">Login</h5>

@@ -1,11 +1,13 @@
 import base64
 import logging
 import os
+import shutil
 from datetime import datetime
 from io import BytesIO, StringIO
 from typing import Dict, List, Tuple, Union
 
 from PIL import Image, features
+from PIL.ExifTags import TAGS
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -38,13 +40,14 @@ class FileHandler:
             socket_handler = SocketHandler()
             socket_handler.register("files", cls._instance.pass_dir_content)
             socket_handler.register("file", cls._instance.get_file)
+            socket_handler.register("handleFile", cls._instance.handle_file)
         if user_name is not None:
             if user_name in cls._instances:
                 return cls._instances[user_name]
             else:
-                dir_handler = DirectoryHandler(user_name=user_name)
                 user_instance = super(FileHandler, cls).__new__(cls)
                 user_instance.logger = logging.getLogger(f"{__name__}-{user_name}")
+                dir_handler = DirectoryHandler(user_name=user_name)
                 user_dir = dir_handler.get_directory(user_name)[0]
                 user_instance.logger.debug(f"USER DIR: {user_dir}")
                 user_instance.user_dir = user_dir
@@ -53,6 +56,7 @@ class FileHandler:
                 socket_handler = SocketHandler()
                 socket_handler.register("files", user_instance.pass_dir_content, user_name)
                 socket_handler.register("file", user_instance.get_file, user_name)
+                socket_handler.register("handleFile", user_instance.handle_file, user_name)
                 user_instance.user_name = user_name
                 cls._instances[user_name] = user_instance
                 return user_instance
@@ -72,6 +76,57 @@ class FileHandler:
             "separator": os.path.sep
         }
         return result
+
+    async def handle_file(self, request: Dict):
+        # This is the actual data from js
+        data = request["data"]
+        # This is the root in which our current path can be combined
+        base_dir = self.user_dir.rstrip(os.path.sep)
+        self.logger.debug(f"Base dir: {base_dir}")
+        method = data["method"]
+        files = data["files"]
+        directory = data["dir"].lstrip(os.path.sep)
+
+        # Combine the base dir with the directory to get the full path
+        full_path = os.path.join(base_dir, directory)
+        self.logger.debug(f"Full path is: {full_path}, method is {method}")
+
+        if method == "delete":
+            for file in files:
+                file_path = os.path.join(full_path, file)
+                try:
+                    if os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    else:
+                        os.remove(file_path)
+                except OSError:
+                    pass
+        elif method == "rename":
+            if len(files) != 1:
+                # Show error message that too many files are selected for rename
+                print("Error: too many files selected for rename.")
+            else:
+                old_file_path = os.path.join(full_path, files[0])
+                new_file_name = data["newName"]
+                if new_file_name:
+                    new_file_path = os.path.join(full_path, new_file_name)
+                    try:
+                        os.rename(old_file_path, new_file_path)
+                    except OSError:
+                        # Show
+                        # error message that file could not be renamed
+                        print("Error: file could not be renamed.")
+
+        elif method == "new":
+            for file in files:
+                file_path = os.path.join(full_path, file)
+                self.logger.debug(f"Making: {file_path}")
+
+                if not os.path.exists(file_path):
+                    os.makedirs(file_path)
+
+        data["status"] = "successful"
+        return data
 
     async def get_file(self, request: Dict):
         pil_features = list_features()
@@ -94,13 +149,36 @@ class FileHandler:
         if not files:
             return {"error": "File not found"}
 
+        def sizeof_fmt(num, suffix='B'):
+            for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+                if abs(num) < 1024.0:
+                    return f"{num:.1f} {unit}{suffix}"
+                num /= 1024.0
+            return f"{num:.1f} Yi{suffix}"
+
+        def get_file_size(path):
+            if os.path.isfile(path):
+                return os.path.getsize(path)
+            elif os.path.isdir(path):
+                size = 0
+                with os.scandir(path) as entries:
+                    for entry in entries:
+                        if entry.is_file():
+                            size += entry.stat().st_size
+                        elif entry.is_dir():
+                            size += get_file_size(entry.path)
+                return size
+            else:
+                return 0
+
         urls = []
         for filename in files:
+
             file_dict = {
                 "filename": os.path.basename(filename),
-                "date_created": datetime.fromtimestamp(os.path.getctime(filename)).isoformat(),
-                "date_modified": datetime.fromtimestamp(os.path.getmtime(filename)).isoformat(),
-                "size": os.path.getsize(filename)
+                "date_created": datetime.fromtimestamp(os.path.getctime(filename)).strftime("%Y-%m-%d %H:%M:%S"),
+                "date_modified": datetime.fromtimestamp(os.path.getmtime(filename)).strftime("%Y-%m-%d %H:%M:%S"),
+                "size": sizeof_fmt(get_file_size(filename))
             }
 
             # Retrieve relevant EXIF data
@@ -130,19 +208,38 @@ class FileHandler:
             # Encode image data in base64 if image can be opened with PIL
             if is_image(filename, pil_features):
                 try:
+                    tag_data = ""
                     with Image.open(filename) as img:
+                        if filename.endswith(".png"):
+                            png_info = img.info
+
+                            # Check if "parameters" field is set
+                            if "parameters" in png_info:
+                                # Extract generation parameters from text
+                                tag_data = png_info["parameters"]
                         with BytesIO() as output:
                             img.save(output, format="JPEG")
                             contents = output.getvalue()
                             file_dict["src"] = f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
 
                     txt_filename = os.path.splitext(filename)[0] + ".txt"
+                    txt_data = ""
                     if os.path.exists(txt_filename) and os.path.isfile(txt_filename):
                         try:
                             with open(txt_filename, "r") as f:
-                                file_dict["data"] = f.read()
+                                txt_data = f.read()
                         except:
                             pass
+                    data_data = ""
+                    if tag_data and txt_data:
+                        data_data = "\n\n".join([tag_data, txt_data])
+                    elif tag_data:
+                        data_data = tag_data
+                    elif txt_data:
+                        data_data = txt_data
+                    if data_data:
+                        file_dict["data"] = data_data
+
                 except:
                     pass
 
@@ -150,9 +247,25 @@ class FileHandler:
 
         return {"files": urls}
 
+    def save_file(self, dest_dir, file_name, file_contents):
+        self.logger.debug(f"User dir: {self.user_dir}")
+        dir_handler = DirectoryHandler(user_name=self.user_name)
+        self.user_dir = dir_handler.get_directory(self.user_name)[0]
+
+        # Normalize the dest_dir parameter before joining it with the user directory
+        dest_dir = os.path.normpath(dest_dir)
+        file_path = os.path.join(f"{self.user_dir}{dest_dir}", file_name)
+        self.logger.debug(f"We need to save a file from {dest_dir}: {file_path}")
+
+        # Open the file and write the contents to it
+        with open(file_path, "wb") as f:
+            f.write(file_contents)
+
     def get_dir_content(self, start_dir: str = None, include_files: bool = False, recursive: bool = False,
                         filter: Union[str, List[str]] = None) -> Dict[str, Tuple[str, int, str, Union[None, Dict]]]:
         if start_dir is not None:
+            start_dir = os.path.normpath(start_dir).strip(os.pathsep)
+            self.logger.debug(f"Trying to join {self.user_dir} and {start_dir}")
             start_dir = os.path.abspath(os.path.join(self.current_dir, start_dir))
             if not start_dir.startswith(self.user_dir):
                 self.logger.error(f"INVALID PATH SPECIFIED: {start_dir}")
@@ -171,7 +284,8 @@ class FileHandler:
                 elif isinstance(filter, list) and len(filter):
                     if not any(entry.name.endswith(ext) for ext in filter):
                         continue
-            entry_data = (entry.stat().st_mtime, entry.stat().st_size, os.path.splitext(entry.path)[1] if entry.is_file() else "directory",
+            entry_data = (entry.stat().st_mtime, entry.stat().st_size,
+                          os.path.splitext(entry.path)[1] if entry.is_file() else "directory",
                           None if not entry.is_dir() else self.get_dir_content(entry.path, include_files, recursive,
                                                                                filter) if recursive else None)
             if include_files or entry.is_dir():

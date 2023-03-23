@@ -74,7 +74,7 @@ class ImageHandler:
                 "Steps": prompt_data.steps,
                 "CFG scale": prompt_data.scale,
                 "Seed": prompt_data.seed,
-                "Size": f"{size[0]}x{size[1]}",
+                "Size": f"{size[1]}x{size[0]}",
                 "Model": f"{prompt_data.model.display_name}"
             }
 

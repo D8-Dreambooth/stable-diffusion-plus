@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     // Register the module with the UI. Icon is from boxicons by default.
-    registerModule("Files", "moduleFileBrowser", "folder-open", false);
+    registerModule("Files", "moduleFileBrowser", "folder-open", false, 3);
     let fc = new FileBrowser(
         document.getElementById("fileContainer"), {
             "listFiles": true,
@@ -8,7 +8,6 @@ document.addEventListener("DOMContentLoaded", function () {
             "placeholder": "",
             "dropdown": false,
             "showTitle": false,
-            "style": "width: 100%; height: 100%;",
             "showInfo": true
         });
 });

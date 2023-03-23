@@ -17,6 +17,7 @@ def load_diffusers(model_data: ModelData):
         try:
             pipeline = DiffusionPipeline.from_pretrained(model_path)
             pipeline.set_use_memory_efficient_attention_xformers(True)
+            pipeline.enable_attention_slicing()
             pipeline.scheduler = DEISMultistepScheduler.from_config(pipeline.scheduler.config)
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")

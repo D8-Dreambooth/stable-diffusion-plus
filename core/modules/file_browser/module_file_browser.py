@@ -1,9 +1,12 @@
 import logging
 import os
+from typing import List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, UploadFile, File, Form
 from starlette.responses import JSONResponse
 
+from app.auth_helpers import oauth2_scheme, User, get_current_active_user
+from core.handlers.file import FileHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 
@@ -22,7 +25,7 @@ class FileBrowserModule(BaseModule):
         # self._initialize_websocket(handler)
 
     def _initialize_api(self, app: FastAPI):
-        @app.get(f"/{self.name}/files")
+        @app.get(f"/{self.name.lower()}/files")
         async def list_files() -> JSONResponse:
             """
             Check the current state of Dreambooth processes.
@@ -30,5 +33,21 @@ class FileBrowserModule(BaseModule):
             @return:
             """
             return JSONResponse(content={"message": f"Job started."})
+
+        @app.post("/files/upload")
+        async def create_upload_files(
+                files: List[UploadFile] = File(...),
+                dir: str = Form(...),
+                current_user: User = Depends(get_current_active_user)
+        ):
+            logger.debug(f"Current user: {current_user}")
+            file_handler = FileHandler(user_name=current_user)
+
+            for file in files:
+                contents = await file.read()
+                file_handler.save_file(dir, file.filename, contents)
+            return {"message": "Files uploaded successfully"}
+
+
 
 

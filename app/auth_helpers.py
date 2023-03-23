@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime
+from typing import Dict, Union
 
 import jwt
 from fastapi import Depends, HTTPException
@@ -45,13 +46,14 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(username: str):
+def get_user(username: str) -> Union[Dict, None]:
     config_handler = ConfigHandler()
     return config_handler.get_item_protected(username, "users", None)
 
 
 def authenticate_user(username: str, password: str):
-    user_hash = get_user(username)
+    user = get_user(username)
+    user_hash = user.get("pass", None);
     if not user_hash:
         return False
     if not verify_password(password, user_hash):
@@ -103,7 +105,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = get_user(username=token_data.username)
     if user is None:
         raise credentials_exception
-    return username
+    return user
 
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):

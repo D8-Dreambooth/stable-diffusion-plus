@@ -1,3 +1,8 @@
+:root {
+    --file-btn-height: 45px;
+    --path-container-height: 42px;
+}
+
 .fileBrowser, .tree {
     width: 100%;
     height: 100%;
@@ -8,9 +13,23 @@
     border-radius: 5px;
 }
 
+.fileBrowserContainer {
+    height: 100%;
+}
+
 .fileTitle, .fileCurrent {
     display: block;
     width: 100%;
+}
+
+.buttonCol {
+    height: calc(var(--file-btn-height) - 10px);
+    margin: 5px;
+}
+
+.buttonCol i {
+    font-size: 20px;
+    padding-top: 5px;
 }
 
 .fileTitle {
@@ -18,8 +37,15 @@
     text-align: center;
 }
 
+
+.panelWrap {
+    width: 100%;
+}
+
 .fileCurrent {
-    padding-left: 10px;
+    padding-left: 11px;
+    font-size: 22px;
+    border-bottom: 1px solid var(--secondary-text-color);
 }
 
 li.fileLi {
@@ -42,30 +68,25 @@ li.fileLi * {
 
 }
 
-.dataPanel {
-    overflow-y: scroll;
-}
-
-.infoPanel {
-    transition: right 0.5s ease-in-out;
-}
-
-.infoPanel.closed {
-    right: -50%; /* initially hide the panel */
-}
-
-
 .tree-container {
     display: none;
+    background: var(--secondary-color);
+    padding: 10px;
+    border-radius: 3px;
+}
+
+.tree {
+    background: var(--secondary-accent-color);
 }
 
 .tree-container.full {
     display: block;
-    overflow-y: scroll;
+    height: 100%;
 }
 
-.tree-container.full.hasInfo {
-    width: 50% !important;
+.treeRoot {
+    overflow-y: auto;
+    height: calc(100% - var(--path-container-height));
 }
 
 .tree {
@@ -75,4 +96,171 @@ li.fileLi * {
 .file-buttons {
     padding: 0 25% !important;
     width: 100%;
+}
+
+.dataPanel {
+    overflow-y: auto; /* make the div scrollable */
+}
+
+@media (max-width: 767.98px) {
+    .infoPanel, .tree-container.full {
+        height: 50%;
+    }
+}
+
+.fileBtnRow, .fileBrowserContainer {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    margin: 0;
+}
+
+.fileBtnRow {
+    top: 0;
+    height: var(--file-btn-height);
+}
+
+.fileBrowserContainer {
+    top: var(--file-btn-height);
+    height: calc(100% - var(--file-btn-height));
+}
+
+.imgPanel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    overflow: auto;
+    background: black;
+    padding: 10px;
+}
+
+.img-info {
+    padding: 0.25rem;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.infoPanel {
+    transition: all 0.5s ease-in-out;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    background: var(--secondary-color);
+    color: var(--secondary-accent-text-color);
+    padding: 10px;
+}
+
+.col-12 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.fileTitleCol {
+    padding-top: 1px;
+}
+
+.infoPanel.closed {
+    width: 0;
+    flex: 0;
+    overflow: hidden;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out, width 0.5s ease-in-out 0.5s;
+}
+
+.dataPanel {
+    overflow: auto;
+}
+
+.infoBtn {
+    position: absolute;
+    font-size: 1.5rem;
+    color: #fff;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.infoBtn:hover {
+    transform: scale(1.1);
+    background-color: var(--secondary-text-color);
+}
+
+.tempDiv {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    pointer-events: none;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    display: none;
+}
+
+.tempDiv.show {
+    display: block;
+}
+
+
+.info-icon-left {
+    left: 10px;
+    top: 10px;
+}
+
+.info-icon-right {
+    right: 10px;
+    top: 10px;
+}
+
+.infoModal.show {
+    position: fixed;
+    z-index: 10000;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: black;
+}
+
+#infoModalImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.infoLeft {
+    position: fixed;
+    left: 20px;
+    top: 50%;
+}
+
+.infoRight {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+}
+
+.infoDownload {
+    position: fixed;
+    left: 20px;
+    top: 20px;
+}
+
+.infoFullscreen {
+    position: fixed;
+    right: 20px;
+    top: 20px;
 }

@@ -33,7 +33,7 @@ inferHeight.hide();
 // Wait till the doc is loaded
 document.addEventListener("DOMContentLoaded", function () {
     // Register the module with the UI. Icon is from boxicons by default.
-    registerModule("Inference", "moduleInfer", "images", true);
+    registerModule("Inference", "moduleInfer", "images", true, 1);
     registerSocketMethod("infer", "infer", inferResponse);
     keyListener.register("ctrl+Enter", "#inferSettings", startInference);
 

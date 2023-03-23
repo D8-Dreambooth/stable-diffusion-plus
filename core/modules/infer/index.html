@@ -13,7 +13,7 @@
             </div>
         </div>
         <div class="row ioRow">
-            <div class="col-md-6 col1">
+            <div class="col-sm-12 col-md-6">
                 <div class="card shadow">
                     <div class="card-header">
                         Output
@@ -25,7 +25,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 col2">
+            <div class="col-sm-12 col-md-6">
                 <div class="card shadow" id="inferSettings">
                     <div class="card-header">
                         Generation Parameters
@@ -42,11 +42,13 @@
                         <div class="form-group" id="infer_num_images"></div>
                         <div class="form-group">
                             <label for="infer_prompt">Prompt:</label>
-                            <input type="text" class="form-control" id="infer_prompt">
+                            <textarea class="form-control prompt-text" id="infer_prompt" rows="4"></textarea>
                         </div>
+
+
                         <div class="form-group">
                             <label for="infer_negative_prompt">Negative Prompt:</label>
-                            <input type="text" class="form-control" id="infer_negative_prompt">
+                            <textarea class="form-control prompt-text" id="infer_negative_prompt" rows="4"></textarea>
                         </div>
                         <!-- Gradio-esque slider elements, populated by JS -->
 

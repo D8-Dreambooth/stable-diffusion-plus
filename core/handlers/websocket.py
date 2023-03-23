@@ -138,7 +138,7 @@ class SocketHandler:
             response["data"] = f"Exception with socket callback: {e}"
             traceback.print_exc()
 
-        logger.debug(f"Sending response: {response}")
+        # logger.debug(f"Sending response: {response}")
         await self.manager.send_personal_message(response)
 
     async def callback_response(self, response):
@@ -190,6 +190,10 @@ class SocketHandler:
                             if "name" in message and "data" in message:
                                 logger.debug(f"Message is valid: {message}")
                                 name = message.pop("name")
+                                if name == "logout":
+                                    await websocket.send_json(message)
+                                    self.manager.disconnect(websocket)
+                                    break
                                 data = message["data"]
                                 await_msg = message.pop("await")
                                 message_id = message.pop("id")

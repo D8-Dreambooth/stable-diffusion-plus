@@ -32,6 +32,7 @@ class ConfigHandler:
         logger.debug(f"Set socket config: {data}")
 
     async def socket_get_config(self, data):
+        logger.debug(f"CFG Request: {data}")
         self._enumerate_configs()
         key = data["data"]["section_key"] if "section_key" in data["data"] else None
         logger.debug(f"Get socket config: {key}")
@@ -40,6 +41,7 @@ class ConfigHandler:
 
     async def socket_set_config_item(self, data):
         self._enumerate_configs()
+        logger.debug(f"CFG Request: {data}")
         section_key = data["section_key"] if "section_key" in data else None
         key = data["key"] if "key" in data else None
         value = data["value"] if "value" in data else None

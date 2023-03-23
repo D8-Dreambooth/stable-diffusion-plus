@@ -156,7 +156,7 @@ if sys.platform == "win32":
     activate = os.path.join(venv, "Scripts", "activate.bat")
     install_command = f"cmd /c {activate} & {python} -m pip install -r {requirements}"
     torch_command = f"cmd /c {activate} & {python} -m {torch_command}"
-    run_command = f"{activate} & uvicorn app.main:app --reload --port {listen_port}"
+    run_command = f"{activate} & uvicorn app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 else:
     activate = os.path.join(venv, "bin", "activate")
     install_command = f"source {activate} && {python} -m pip install -r {requirements}"

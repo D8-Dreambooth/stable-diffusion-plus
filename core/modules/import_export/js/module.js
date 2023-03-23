@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 });
 
 function loadModule() {
-    registerModule("Input/Output", "moduleImportExport", "import");
+    registerModule("Input/Output", "moduleImportExport", "import", false, -1);
     const modelSelect = document.getElementById("modelSelect");
     const modelExportSelect = document.getElementById("modelExportSelect");
 

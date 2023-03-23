@@ -1,5 +1,5 @@
 {
   "title": "Stable-Diffusion+",
   "show_settings": true,
-  "multi_user": false
+  "user_auth": true
 }

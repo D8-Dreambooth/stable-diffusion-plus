@@ -1,6 +1,6 @@
 let globalSocket = null;
 let socketMethods = {};
-let SOCKET_URL = "ws://localhost:8080/ws";
+
 const keyListener = new KeyListener();
 let messages = [];
 // region Initialization
@@ -55,7 +55,20 @@ function loadCoreSettings(data) {
     }
 
     const logoutButton = $("#signOutButton");
-    if (data["multi_user"]) {
+logoutButton.on("click", () => {
+  // Delete "Authorization" cookie
+  document.cookie = "Authorization=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+  // Send GET request to "/logout" endpoint
+  fetch("/logout", { method: "GET" })
+    .then(() => {
+      // Redirect user to home page
+      window.location.href = "/login";
+    });
+});
+
+
+    if (data["user_auth"]) {
         logoutButton.show();
     } else {
         logoutButton.hide();
@@ -197,6 +210,10 @@ function generateMessageId() {
 // Set up socket and it's event listeners
 function connectSocket() {
     if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
+        let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        let host = window.location.hostname;
+        let port = window.location.port;
+        let SOCKET_URL = `${protocol}//${host}:${port}/ws`;
         globalSocket = new WebSocket(SOCKET_URL);
         globalSocket.onopen = function () {
             clearError();

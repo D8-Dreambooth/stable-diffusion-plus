@@ -74,6 +74,7 @@ async def start_inference(inference_settings: InferSettings, user):
                     if initial_seed > 21474836147:
                         initial_seed = int(random.randrange(21474836147))
                     seed = initial_seed
+                inference_settings.seed = seed
                 generator = torch.manual_seed(int(seed))
                 loop = asyncio.get_event_loop()
                 # Here's the magic sauce
@@ -106,8 +107,7 @@ async def start_inference(inference_settings: InferSettings, user):
                     paths.append(img_path)
                 out_images.extend(paths)
                 out_prompts.extend(prompts)
-                status_handler.update(items={"images": out_images, "prompts": out_prompts,
-                                             "status": f"Generating {len(out_images) + 1}/{inference_settings.num_images} images."},
+                status_handler.update(items={"status": f"Generating {len(out_images) + 1}/{inference_settings.num_images} images."},
                                       send=True)
                 remaining = inference_settings.num_images - len(out_images)
                 if remaining <= inference_settings.batch_size:
