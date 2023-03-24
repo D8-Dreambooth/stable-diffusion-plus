@@ -1,0 +1,57 @@
+/* Styling for the form elements */
+.sysInput {
+  display: block;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  width: 100%;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #495057;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Styling for the tabs */
+.tab-container {
+  margin-top: 2rem;
+}
+
+.nav-tabs {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.nav-link {
+  color: #495057;
+}
+
+.nav-link:hover {
+  border-color: transparent;
+}
+
+.nav-link.active {
+  color: #007bff;
+  border-color: #007bff;
+  border-bottom-color: transparent;
+}
+
+.tab-content {
+  padding-top: 2rem;
+}
+
+.tab-pane {
+  display: none;
+}
+.tab-pane.active {
+  display: block;
+}
+.tab-pane .form-container:not(:first-child) {
+  margin-top: 20px;
+}
+
+.form-check.form-switch {
+    padding-left: 55px;
+    padding-right: 55px;
+}

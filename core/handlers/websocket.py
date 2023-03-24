@@ -168,10 +168,12 @@ class SocketHandler:
                         raise credentials_exception
                     token_data = TokenData(username=username)
                 except PyJWTError:
-                    raise credentials_exception
+                    await websocket.close(code=1000, reason="Could not validate credentials")
+                    return
                 user = get_user(username=token_data.username)
                 if user is None:
-                    raise credentials_exception
+                    await websocket.close(code=1000, reason="Could not validate credentials")
+                    return
 
                 await self.manager.register_session(websocket, username)
                 logger.debug("Really registered, connecting")

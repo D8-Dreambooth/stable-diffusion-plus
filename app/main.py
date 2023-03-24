@@ -52,7 +52,7 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
     html = []
     dict_idx = 0
 
-    theme = config_handler.get_item("theme", default="theme-default")
+    theme = config_handler.get_item_protected("theme", default="theme-default")
     system_css = os.path.join(app_path, "static", "css")
     user_css = dir_handler.get_directory("css")[0]
 

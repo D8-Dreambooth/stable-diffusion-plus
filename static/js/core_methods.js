@@ -9,7 +9,7 @@ const toggleNavbar = () => {
     const nav = document.getElementById('nav-bar'),
         bodypd = document.getElementById('body-pd'),
         toggleEl = document.getElementById('header_toggle'),
-    toggle = document.getElementById('header-toggle');
+        toggle = document.getElementById('header-toggle');
     toggle.classList.toggle('rotate');
 
     if (nav && bodypd) {
@@ -55,17 +55,17 @@ function loadCoreSettings(data) {
     }
 
     const logoutButton = $("#signOutButton");
-logoutButton.on("click", () => {
-  // Delete "Authorization" cookie
-  document.cookie = "Authorization=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    logoutButton.on("click", () => {
+        // Delete "Authorization" cookie
+        document.cookie = "Authorization=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
-  // Send GET request to "/logout" endpoint
-  fetch("/logout", { method: "GET" })
-    .then(() => {
-      // Redirect user to home page
-      window.location.href = "/login";
+        // Send GET request to "/logout" endpoint
+        fetch("/logout", {method: "GET"})
+            .then(() => {
+                // Redirect user to home page
+                window.location.href = "/login";
+            });
     });
-});
 
 
     if (data["user_auth"]) {
@@ -255,15 +255,20 @@ function connectSocket() {
                 console.log("WebSocket error: ", event);
             }
         };
-        globalSocket.onclose = function () {
-            console.log("WebSocket disconnected!");
+        globalSocket.onclose = function (event) {
+            console.log("WebSocket disconnected with code: ", event.code);
             showError("Websocket Disconnected, attempting reconnect...");
-            setTimeout(function () {
-                connectSocket();
-            }, 2000);
+            if (event.code === 1000) {
+                location.reload();
+            } else {
+                setTimeout(function () {
+                    connectSocket();
+                }, 2000);
+            }
         };
     }
 }
+
 
 // endregion
 

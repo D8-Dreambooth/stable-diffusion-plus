@@ -62,6 +62,7 @@ body {
 
 input {
     background-color: var(--primary-accent-color);
+    color: var(--primary-accent-text-color);
 }
 
 /* overrides for other elements with static colors */
