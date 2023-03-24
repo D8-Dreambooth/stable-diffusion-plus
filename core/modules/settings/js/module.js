@@ -162,53 +162,101 @@ function createUserForm(users) {
         passwordDiv.setAttribute("class", "password-div col-12");
         passwordDiv.style.display = "none";
 
-        const passwordLabel = document.createElement("label");
-        passwordLabel.innerText = "Password:";
-        passwordLabel.setAttribute("for", `users_${username}_password`);
-        passwordLabel.setAttribute("class", "form-label");
-
         const passwordInput = createInput(
             "",
-            `users_${username}_password`,
+            `Password:`,
             "password",
             "form-control"
         );
-
-        const confirmPasswordLabel = document.createElement("label");
-        confirmPasswordLabel.innerText = "Confirm password:";
-        confirmPasswordLabel.setAttribute(
-            "for",
-            `users_${username}_confirmPassword`
-        );
-        confirmPasswordLabel.setAttribute("class", "form-label");
 
         const confirmPasswordInput = createInput(
             "",
-            `users_${username}_confirmPassword`,
-            "password",
+            `Confirm Password:`,
+            "confirmPassword",
             "form-control"
         );
 
-        const adminCheckbox = createCheckbox(user.admin || false,"Admin User", "admin")
+        [...passwordInput.children].forEach(child => child.classList.remove("sysInput"));
+        [...confirmPasswordInput.children].forEach(child => child.classList.remove("sysInput"));
 
         const changePasswordButton = document.createElement("button");
         changePasswordButton.innerText = "Change password";
         changePasswordButton.setAttribute("class", "btn btn-primary mb-2");
-        changePasswordButton.addEventListener("click", () => {
+        changePasswordButton.addEventListener("click", (event) => {
+            event.preventDefault();
             passwordDiv.style.display = "block";
         });
 
         const updateButton = document.createElement("button");
+        updateButton.disabled = true;
         updateButton.innerText = "Update";
         updateButton.setAttribute("class", "btn btn-primary");
-        updateButton.addEventListener("click", () => {
-            // TODO: implement update logic
+        updateButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            const password = passwordInput.querySelector("input").value;
+            sendMessage("change_password", {"user": username, "password": password}).then((res)=>{
+                console.log("Response: ", res);
+                if (res.status === "Password updated successfully.") {
+                    cancelButton.click();
+                }
+            });
         });
+
+        // Delay in milliseconds before checking for password match
+        const delay = 100;
+
+        let timeoutId = null;
+
+        passwordInput.querySelector("input").addEventListener("input", () => {
+            // Clear any existing timeout
+            clearTimeout(timeoutId);
+
+            // Set a new timeout to check for password match after delay
+            timeoutId = setTimeout(() => {
+                const password = passwordInput.querySelector("input").value;
+                const confirmPassword = confirmPasswordInput.querySelector("input").value;
+                console.log("PW Change: ", password, confirmPassword);
+
+                if (password === confirmPassword && password !== "" && confirmPassword !== "") {
+                    // Passwords match
+                    confirmPasswordInput.style.borderColor = "";
+                    updateButton.disabled = false;
+                } else {
+                    // Passwords do not match or are blank
+                    confirmPasswordInput.style.borderColor = "red";
+                    updateButton.disabled = true;
+                }
+            }, delay);
+        });
+
+        confirmPasswordInput.querySelector("input").addEventListener("input", () => {
+            // Clear any existing timeout
+            clearTimeout(timeoutId);
+
+            // Set a new timeout to check for password match after delay
+            timeoutId = setTimeout(() => {
+                const password = passwordInput.querySelector("input").value;
+                const confirmPassword = confirmPasswordInput.querySelector("input").value;
+                console.log("PW Change: ", password, confirmPassword);
+
+                if (password === confirmPassword && password !== "" && confirmPassword !== "") {
+                    // Passwords match
+                    confirmPasswordInput.style.borderColor = "";
+                    updateButton.disabled = false;
+                } else {
+                    // Passwords do not match or are blank
+                    confirmPasswordInput.style.borderColor = "red";
+                    updateButton.disabled = true;
+                }
+            }, delay);
+        });
+
 
         const cancelButton = document.createElement("button");
         cancelButton.innerText = "Cancel";
         cancelButton.setAttribute("class", "btn btn-secondary mx-2");
-        cancelButton.addEventListener("click", () => {
+        cancelButton.addEventListener("click", (event) => {
+            event.preventDefault();
             passwordDiv.style.display = "none";
             passwordInput.value = "";
             confirmPasswordInput.value = "";
@@ -218,12 +266,15 @@ function createUserForm(users) {
         form.appendChild(document.createElement("div"));
         form.lastChild.setAttribute("class", "col-12");
         form.lastChild.appendChild(document.createTextNode(`User: ${username.toTitleCase()}`));
-        form.lastChild.appendChild(adminCheckbox);
+        let adminCheckbox = "";
+        if (user.hasOwnProperty("admin")) {
+            adminCheckbox = createCheckbox(user.admin, "Admin User", "admin");
+            form.lastChild.appendChild(adminCheckbox);
+        }
+
         form.appendChild(changePasswordButton);
         form.appendChild(passwordDiv);
-        passwordDiv.appendChild(passwordLabel);
         passwordDiv.appendChild(passwordInput);
-        passwordDiv.appendChild(confirmPasswordLabel);
         passwordDiv.appendChild(confirmPasswordInput);
         passwordDiv.appendChild(updateButton);
         passwordDiv.appendChild(cancelButton);

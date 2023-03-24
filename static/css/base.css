@@ -202,6 +202,21 @@ input {
     border-color: var(--bs-warning);
 }
 
+.borderSection {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 10px;
+    background-color: var(--secondary-accent-color);
+    border: 1px solid var(--secondary-accent-text-color);
+    color: var(--secondary-accent-text-color);
+}
+
+.sectionLabel {
+    width: 100%;
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
 
 .hide {
     display: none;

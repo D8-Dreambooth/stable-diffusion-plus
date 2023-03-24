@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List
+from typing import List, Dict
 
 from fastapi import FastAPI, Depends, UploadFile, File, Form
 from starlette.responses import JSONResponse
@@ -38,10 +38,13 @@ class FileBrowserModule(BaseModule):
         async def create_upload_files(
                 files: List[UploadFile] = File(...),
                 dir: str = Form(...),
-                current_user: User = Depends(get_current_active_user)
+                current_user: Dict = Depends(get_current_active_user)
         ):
             logger.debug(f"Current user: {current_user}")
-            file_handler = FileHandler(user_name=current_user)
+            user_name = None
+            if current_user:
+                user_name = current_user["name"]
+            file_handler = FileHandler(user_name=user_name)
 
             for file in files:
                 contents = await file.read()

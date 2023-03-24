@@ -27,6 +27,12 @@ class FileBrowser {
         this.expanded = options["expand"] || false;
         this.multiselect = options["multiselect"] || false;
         this.dropdown = options["dropdown"] !== undefined ? options["dropdown"] : false;
+        if (this.dropdown) {
+            this.parentElement.classList.add("dropdown");
+            this.treeParent.classList.add("dropdown");
+        }
+        if (this.showSelectButton) this.treeContainer.classList.add("selectSibling");
+
         this.showTitle = options["showTitle"] !== undefined ? options["showTitle"] : true;
         this.showInfo = options["showInfo"] !== undefined ? options["showInfo"] : true;
         this.style = options["style"] !== undefined ? options["style"] : "";
@@ -50,10 +56,14 @@ class FileBrowser {
                 selectButton.classList.add("btn", "btn-primary");
                 selectButton.textContent = "Select";
                 selectButton.addEventListener("click", () => {
+                    console.log("SELCLICK.");
+                    this.selectedLink = this.selectedLinks.length > 0 ? this.selectedLinks[0] : undefined;
                     if (this.selectedLink !== undefined) {
+                        console.log("Selected: ", this.selectedLink);
                         this.currentPath = this.selectedLink.dataset.path;
                         let base = this.currentParent === this.separator ? this.currentParent : this.currentParent + this.separator;
                         this.input.value = base + this.currentPath;
+                        console.log("SET: ", this.input.value);
                         this.toggleTree();
                     }
                 });
@@ -64,16 +74,19 @@ class FileBrowser {
                     this.toggleTree();
                 });
                 const btnGroup = document.createElement("div");
-                btnGroup.classList.add("btn-group", "file-buttons");
+                btnGroup.classList.add("btn-group", "file-buttons", "hide");
                 btnGroup.appendChild(selectButton);
                 btnGroup.appendChild(cancelButton);
-                this.treeParent.appendChild(btnGroup);
+                this.parentElement.appendChild(btnGroup);
 
             }
             this.parentElement.append(this.treeParent);
 
-            const fileButtons = this.buildFileButtons();
-            parentElement.append(fileButtons);
+            if (!this.dropdown) {
+                const fileButtons = this.buildFileButtons();
+                parentElement.append(fileButtons);
+            }
+
 
             if (this.showInfo) {
                 this.onClickCallbacks.push(this.showFileInfo);
@@ -289,26 +302,32 @@ class FileBrowser {
         }.bind(this));
 
 
-        let hideTimeout;
-
+        let dragCounter = 0;
+        let timeoutId = null;
+        const delay = 200; // Delay in milliseconds
 
         this.treeContainer.addEventListener('dragenter', (e) => {
-            const tempDiv = document.querySelector(".tempDiv");
-            console.log("ENTER");
             e.preventDefault();
+            console.log("ENTER");
+            const tempDiv = document.querySelector(".tempDiv");
             tempDiv.classList.add('show');
         });
 
         this.treeContainer.addEventListener('dragover', (e) => {
-            console.log("OVER");
             e.preventDefault();
+            clearTimeout(timeoutId);
         });
 
-        this.treeContainer.addEventListener('dragleave', () => {
+        this.treeContainer.addEventListener('dragleave', (e) => {
+            e.preventDefault();
             console.log("LEAVE!");
-            const tempDiv = document.querySelector(".tempDiv");
-            tempDiv.classList.remove('show');
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                const tempDiv = document.querySelector(".tempDiv");
+                tempDiv.classList.remove('show');
+            }, delay);
         });
+
 
         this.treeContainer.addEventListener('drop', async (e) => {
             e.preventDefault();
@@ -479,7 +498,7 @@ class FileBrowser {
 
     buildInput() {
         const inputGroup = document.createElement("div");
-        inputGroup.classList.add("input-group");
+        inputGroup.classList.add("input-group", "dropdownGroup");
         if (this.dropdown) {
             console.log("Dropdown enabled.");
         } else {
@@ -506,8 +525,12 @@ class FileBrowser {
     }
 
     toggleTree() {
+        const fileButtons = this.parentElement.querySelector(".file-buttons");
+        const inputRow = this.parentElement.querySelector(".dropdownGroup");
+        inputRow.classList.toggle("hide");
+        fileButtons.classList.toggle("hide");
         this.treeParent.classList.toggle("full");
-        this.infoPanel.classList.toggle("closed");
+        if (this.showInfo) this.infoPanel.classList.toggle("closed");
         this.expanded = this.treeParent.classList.contains("full");
         this.toggleButton.innerHTML = this.expanded ? `<i class="fas fa-chevron-up"></i>` : `<i class="fas fa-chevron-down"></i>`;
     }
@@ -535,7 +558,7 @@ class FileBrowser {
         let currentPath = document.createElement("div");
         currentPath.innerHTML = this.currentParent;
         currentPath.classList.add("card-header", "fileCurrent");
-
+        if (this.dropdown) currentPath.classList.add("dropdown");
         currentPathCol.appendChild(currentPath);
         currentPathContainer.appendChild(currentPathCol);
 
@@ -645,7 +668,7 @@ class FileBrowser {
                             };
                             selectFirstFileLi(this.treeContainer);
                         });
-                    } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type ===".jpeg") {
+                    } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type === ".jpeg") {
                         if (this.showInfo) {
                             let img = document.getElementById("infoModalImage");
                             let infoImg = document.querySelector(".img-info");
@@ -760,6 +783,7 @@ class FileBrowser {
     }
 
     showFileInfo(link, data1, data2) {
+        if (!this.showInfo) return;
         console.log("File info: ", link, data1, data2);
         if (data1 === "..") {
             this.infoPanel.classList.add("closed");

@@ -1,11 +1,20 @@
 :root {
     --file-btn-height: 45px;
     --path-container-height: 42px;
+    --select-btn-height: 38px;
 }
 
 .fileBrowser, .tree {
     width: 100%;
     height: 100%;
+}
+
+.tree.selectSibling {
+    height(calc(100% - var(--select-btn-height)));
+}
+
+.file-buttons {
+    height: var(--select-btn-height);
 }
 
 .fileBrowser {
@@ -48,6 +57,10 @@
     border-bottom: 1px solid var(--secondary-text-color);
 }
 
+.fileCurrent.dropdown {
+    font-size: 15px;
+}
+
 li.fileLi {
     list-style: none; /* remove default marker */
     pointer-events: all;
@@ -84,6 +97,11 @@ li.fileLi * {
     height: 100%;
 }
 
+.tree-container.dropdown.full {
+    display: block;
+    height: 250px;
+}
+
 .treeRoot {
     overflow-y: auto;
     height: calc(100% - var(--path-container-height));
@@ -94,8 +112,11 @@ li.fileLi * {
 }
 
 .file-buttons {
-    padding: 0 25% !important;
     width: 100%;
+}
+
+.file-buttons.hide, .dropdownGroup.hide {
+    display: none;
 }
 
 .dataPanel {
@@ -108,7 +129,7 @@ li.fileLi * {
     }
 }
 
-.fileBtnRow, .fileBrowserContainer {
+.fileBtnRow, .fileBrowserContainer:not(.dropdown) {
     position: absolute;
     left: 0;
     width: 100%;
@@ -120,7 +141,7 @@ li.fileLi * {
     height: var(--file-btn-height);
 }
 
-.fileBrowserContainer {
+.fileBrowserContainer:not(.dropdown) {
     top: var(--file-btn-height);
     height: calc(100% - var(--file-btn-height));
 }
@@ -157,7 +178,7 @@ li.fileLi * {
     padding: 10px;
 }
 
-.col-12 {
+.fileBrowserContainer.col-12 {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -203,7 +224,8 @@ li.fileLi * {
     height: 100%;
     z-index: 9999;
     pointer-events: none;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: var(--bs-body-bg-rgb);
+    color: var(--secondary-text-color);
     border: 2px dashed #ccc;
     border-radius: 5px;
     padding: 10px;
@@ -212,6 +234,7 @@ li.fileLi * {
 
 .tempDiv.show {
     display: block;
+    pointer-events: none !important;
 }
 
 

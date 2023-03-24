@@ -1,6 +1,7 @@
 import logging
 import os
 
+import bcrypt
 from fastapi import FastAPI
 
 from core.handlers.config import ConfigHandler
@@ -23,6 +24,7 @@ class SettingsModule(BaseModule):
         socket_handler = SocketHandler()
         socket_handler.register("get_settings", self.get_settings)
         socket_handler.register("set_settings", self.set_settings)
+        socket_handler.register("change_password", self.update_password)
 
     async def get_settings(self, req):
         logger.debug(f"Get settings request: {req}")
@@ -34,13 +36,22 @@ class SettingsModule(BaseModule):
         for user, ud in protected_config["users"].items():
             users.append(ud)
         logger.debug(f"Use data and user: {user_data} {user}")
-        pc = {"users": users}
+        pc = {"users": [user_data]}
         if user:
             if user_data:
-                logger.debug(f"USER: {user}")
-                if user_data["admin"]:
+                is_admin = user_data.get("admin", False)
+                logger.debug(f"USER: {user_data}")
+                if is_admin:
                     pc = protected_config
-        logger.debug(f"USER: {user}")
+                    sorted_users = sorted(users, key=lambda u: u.get("name") != user)
+                    pc["users"] = sorted_users
+                else:
+                    pc = {"users": []}
+                    for u in users:
+                        if u.get("name") == user:
+                            u.pop("admin", None)
+                            pc["users"].append(u)
+            logger.debug(f"USER: {user}")
         return {"status": "ACK ACK", "shared": shared_config, "protected": pc}
 
     async def set_settings(self, req):
@@ -64,6 +75,27 @@ class SettingsModule(BaseModule):
         status = {"status": "Updated" if updated else "Invalid key or section", "key": key, "value": value}
         return status
 
+    async def update_password(self, req):
+        user = req.get("user", None)
+        ch = ConfigHandler()
+        user_data = ch.get_item_protected(user, "users", None)
+        is_admin = False
+        logger.debug(f"Use data and user: {user_data} {user}")
+        pc = {"users": [user_data]}
+        if user:
+            if user_data:
+                is_admin = user_data.get("admin", False)
+
+            data = req["data"] if "data" in req else {}
+
+            update_user = data.get("user", None)
+            password = data.get("password", None)
+            if is_admin or update_user == user:
+                encrypted_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+                user_data["pass"] = encrypted_pass.decode()
+                ch.set_item_protected(user,user_data, "users")
+                return {"status": "Password updated successfully."}
+            return {"status": "Unable to update password."}
 
 
 
