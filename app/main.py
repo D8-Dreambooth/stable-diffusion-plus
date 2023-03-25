@@ -143,13 +143,14 @@ def initialize_app():
     image_handler = ImageHandler()
     cache_handler = CacheHandler()
 
-    for user in users.keys():
-        logger.debug(f"Creating handlers for user: {user}")
-        DirectoryHandler(user_name=user)
-        StatusHandler(user_name=user)
-        FileHandler(user_name=user)
-        ModelHandler(user_name=user)
-        ImageHandler(user_name=user)
+    if users:
+        for user in users.keys():
+            logger.debug(f"Creating handlers for user: {user}")
+            DirectoryHandler(user_name=user)
+            StatusHandler(user_name=user)
+            FileHandler(user_name=user)
+            ModelHandler(user_name=user)
+            ImageHandler(user_name=user)
 
     # Now that all the other handlers are alive, initialize modules and extensions
     module_handler = ModuleHandler(os.path.join(app_path, "core", "modules"))

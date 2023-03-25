@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 
+
 # Make safetensors faster
 os.environ["SAFETENSORS_FAST_GPU"] = "1"
 
@@ -15,15 +16,11 @@ logger = logging.getLogger(__name__)
 # Set base path
 base_path = os.path.abspath(os.path.dirname(__file__))
 logger.debug(f"Script path: {base_path}")
-from dreambooth import shared
 
-shared.script_path = base_path
-shared.load_vars(base_path)
-
-launch_settings_path = os.path.join(shared.script_path, "launch_settings.json")
+launch_settings_path = os.path.join(base_path, "launch_settings.json")
 
 if not os.path.exists(launch_settings_path):
-    conf_src = os.path.join(shared.script_path, "conf_src")
+    conf_src = os.path.join(base_path, "conf_src")
     shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
 
 # Check that we're on Python 3.10
@@ -76,7 +73,7 @@ venv = None
 python = sys.executable
 
 user_venv = None
-default_venv = os.path.join(shared.script_path, "venv")
+default_venv = os.path.join(base_path, "venv")
 
 if "venv" in launch_settings:
     user_venv = launch_settings["venv"]
@@ -135,7 +132,7 @@ else:
     # subprocess.run(pull_command, cwd=dreambooth_path, check=True)
 
 # NOW we install our requirements
-requirements = os.path.join(shared.script_path, "requirements.txt")
+requirements = os.path.join(base_path, "requirements.txt")
 
 # Check to make sure what's installed matches requirements
 do_install = False
@@ -164,10 +161,16 @@ else:
     run_command = f"uvicorn app.main:app --host 0.0.0.0 --reload --port {listen_port}"
     run_command = f"source {activate} && {run_command}"
 
-run(torch_command, "Checking torch versions...", "Unable to install torch.")
+# run(torch_command, "Checking torch versions...", "Unable to install torch.")
 
 if do_install:
     logger.info(f"Installing: {install_command}")
     run(install_command, "Installing requirements.", "Unable to install requirements.")
+
+from dreambooth import shared
+
+shared.script_path = base_path
+shared.load_vars(base_path)
+
 
 run(run_command, live=True)
