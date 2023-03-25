@@ -51,7 +51,7 @@ async def start_inference(inference_settings: InferSettings, user):
             prompts = [inference_settings.prompt] * inference_settings.batch_size
             negative_prompts = [inference_settings.negative_prompt] * inference_settings.batch_size
             status_handler.update(
-                items={"status": f"Generating {len(out_images) + 1}/{inference_settings.num_images} images."})
+                items={"status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{inference_settings.num_images} images."})
             initial_seed = inference_settings.seed
             pbar = tqdm(desc="Making images.", total=inference_settings.num_images)
 
@@ -105,9 +105,10 @@ async def start_inference(inference_settings: InferSettings, user):
                 for img in s_image:
                     img_path = image_handler.db_save_image(img, "testing", inference_settings, False)
                     paths.append(img_path)
+                    
                 out_images.extend(paths)
                 out_prompts.extend(prompts)
-                status_handler.update(items={"status": f"Generating {len(out_images) + 1}/{inference_settings.num_images} images."},
+                status_handler.update(items={"status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{inference_settings.num_images} images."},
                                       send=True)
                 remaining = inference_settings.num_images - len(out_images)
                 if remaining <= inference_settings.batch_size:

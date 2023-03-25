@@ -1,7 +1,7 @@
 import logging
 import os.path
 
-from diffusers import DiffusionPipeline, DEISMultistepScheduler
+from diffusers import DiffusionPipeline, DEISMultistepScheduler, UniPCMultistepScheduler
 
 from core.dataclasses.model_data import ModelData
 
@@ -18,7 +18,8 @@ def load_diffusers(model_data: ModelData):
             pipeline = DiffusionPipeline.from_pretrained(model_path)
             pipeline.set_use_memory_efficient_attention_xformers(True)
             pipeline.enable_attention_slicing()
-            pipeline.scheduler = DEISMultistepScheduler.from_config(pipeline.scheduler.config)
+            pipeline.scheduler.config["solver_type"] = "bh2"
+            pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
     return pipeline
