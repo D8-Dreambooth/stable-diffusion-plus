@@ -15,7 +15,6 @@ from core.handlers.config import ConfigHandler
 basic_auth = BasicAuth(auto_error=False)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 oauth2_scheme = OAuth2PasswordBearerCookie(token_url="/token")
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
@@ -91,6 +90,10 @@ async def get_current_socket_user(token: str = Depends(oauth2_scheme)):
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
+    config_handler = ConfigHandler()
+    user_auth = config_handler.get_item_protected("user_auth", "core", False)
+    if not user_auth:
+        return None
     credentials_exception = HTTPException(
         status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
     )
@@ -109,6 +112,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    config_handler = ConfigHandler()
+    user_auth = config_handler.get_item_protected("user_auth", "core", False)
+    if not user_auth:
+        return None
     return current_user
 
 

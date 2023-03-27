@@ -7,7 +7,6 @@ from io import BytesIO, StringIO
 from typing import Dict, List, Tuple, Union
 
 from PIL import Image, features
-from PIL.ExifTags import TAGS
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -135,16 +134,16 @@ class FileHandler:
         file = data["files"]
         files = []
         if isinstance(file, str):
-            fullfile = os.path.join(self.current_dir, file)
-            self.logger.debug(f"Full file: {fullfile}")
-            if os.path.exists(fullfile):
-                files.append(fullfile)
+            full_file = os.path.join(self.current_dir, file)
+            self.logger.debug(f"Full file: {full_file}")
+            if os.path.exists(full_file):
+                files.append(full_file)
         if isinstance(file, list):
             for check in file:
-                fullfile = os.path.join(self.current_dir, check)
-                self.logger.debug(f"Full file: {fullfile}")
-                if os.path.exists(fullfile):
-                    files.append(fullfile)
+                full_file = os.path.join(self.current_dir, check)
+                self.logger.debug(f"Full file: {full_file}")
+                if os.path.exists(full_file):
+                    files.append(full_file)
 
         if not files:
             return {"error": "File not found"}

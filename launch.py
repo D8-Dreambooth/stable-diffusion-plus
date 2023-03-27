@@ -23,6 +23,7 @@ if not os.path.exists(launch_settings_path):
     conf_src = os.path.join(base_path, "conf_src")
     shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
 
+
 # Check that we're on Python 3.10
 if sys.version_info < (3, 10):
     logger.debug("Please upgrade your python version to 3.10 or higher.")

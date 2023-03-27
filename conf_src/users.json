@@ -1,0 +1,7 @@
+{
+  "admin": {
+        "pass": "$2b$12$yqfj8qN0EK9fI1jS40aR/uGh/NxDBMvLdKpuO7dfFVHH.VFy49uJe",
+        "admin": true,
+        "name": "admin"
+    }
+}

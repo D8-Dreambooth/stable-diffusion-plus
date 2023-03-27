@@ -39,12 +39,13 @@ active_sessions = {}
 launch_settings = {}
 shared_config = ""
 protected_config = ""
+config_handler = None
 directory_handler = None
-user_auth = False
 logger = logging.getLogger(__name__)
 
 
 def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
+    config_handler = ConfigHandler()
     css_files = []
     js_files = []
     js_files_ext = []
@@ -94,7 +95,7 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
 
 
 def load_settings():
-    global launch_settings, user_auth, dirs, shared_config, protected_config, directory_handler
+    global launch_settings, user_auth, dirs, shared_config, protected_config, directory_handler, config_handler
     # Load our basic launch settings
     launch_settings_path = os.path.join(app_path, "launch_settings.json")
 
@@ -117,12 +118,15 @@ def load_settings():
         logging.basicConfig(level=logging.DEBUG)
         logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
 
-    user_auth = launch_settings.get("user_auth", True)
     directory_handler = DirectoryHandler(app_path, launch_settings)
+    config_handler = ConfigHandler()
+    user_auth = config_handler.get_item_protected("user_auth", "core", False)
+
 
 
 def initialize_app():
     global config_handler, active_modules, active_extensions
+    user_auth = config_handler.get_item("user_auth", "core", False)
     # Create master config handler
     config_handler = ConfigHandler()
     users = config_handler.get_config_protected("users")
@@ -226,11 +230,14 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, user_data: Dict = Depends(get_current_active_user)):
-    global user_auth
-    current_user = user_data.get("name", None)
+    config_handler = ConfigHandler()
+    user_auth = config_handler.get_item_protected("user_auth", "core", False)
+    current_user = user_data.get("name", None) if user_data else None
     logger.debug(f"Current user: {user_data}")
     dh = DirectoryHandler(current_user)
+    logger.debug(f"User auth: {user_auth}")
     if user_auth:
+
         if current_user:
             # User is logged in, show the usual home page
             css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, user_data["admin"])
