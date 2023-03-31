@@ -1,6 +1,7 @@
 import logging
 import os.path
 
+import torch
 from diffusers import DiffusionPipeline, DEISMultistepScheduler, UniPCMultistepScheduler
 
 from core.dataclasses.model_data import ModelData
@@ -15,9 +16,10 @@ def load_diffusers(model_data: ModelData):
         logger.debug(f"Unable to load model: {model_path}")
     else:
         try:
-            pipeline = DiffusionPipeline.from_pretrained(model_path)
-            pipeline.set_use_memory_efficient_attention_xformers(True)
-            pipeline.enable_attention_slicing()
+            pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+            pipeline = pipeline.to("cuda")
+            pipeline.enable_xformers_memory_efficient_attention()
+            pipeline.vae.enable_tiling()
             pipeline.scheduler.config["solver_type"] = "bh2"
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
         except Exception as e:
