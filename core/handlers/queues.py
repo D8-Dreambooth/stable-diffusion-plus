@@ -40,11 +40,14 @@ class QueueHandler:
         logger.debug(f"RES1: {message}")
         await method2(cls, message)
 
+    async def noop(self):
+        pass
+
     def worker_function(self):
         while True:
             try:
-                coro = self.job_queue.get()  # use parentheses to unpack the result
-                asyncio.run_coroutine_threadsafe(coro, self.loop)
+                coro = self.job_queue.get()
+                asyncio.run_coroutine_threadsafe(coro if coro else self.noop(), self.loop)
                 self.job_queue.task_done()
             except Exception as e:
                 logger.exception("Error in worker function", exc_info=e)

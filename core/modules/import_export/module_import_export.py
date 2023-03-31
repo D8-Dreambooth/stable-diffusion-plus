@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import os.path
 
 from fastapi import FastAPI, Query
@@ -5,6 +7,9 @@ from starlette.responses import JSONResponse
 
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class ImportExportModule(BaseModule):
@@ -32,9 +37,18 @@ class ImportExportModule(BaseModule):
 
     def _initialize_websocket(self, handler: SocketHandler):
         super()._initialize_websocket(handler)
-        handler.register("import_export", _import_model)
+        handler.register("extract_checkpoint", _import_model)
 
 
 async def _import_model(data):
-    websocket = data["socket"]
-    await websocket.send_text({"message": "ext received."})
+    msg_id = data["id"]
+    logger.debug(f"Model import: {data}")
+    model_data = data["data"] if "data" in data else None
+    if model_data:
+        from dreambooth.sd_to_diff import extract_checkpoint
+        model_name = model_data["name"]
+        model_path = model_data["path"]
+        is_512 = model_data["is_512"] if "is_512" in model_data else False
+        asyncio.create_task(extract_checkpoint(model_name, model_path, is_512=is_512, from_hub=False))
+    return {"name": "extraction_started", "message": "Extraction started.", "id": msg_id}
+

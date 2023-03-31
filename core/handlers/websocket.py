@@ -132,6 +132,7 @@ class SocketHandler:
                 if user and name in self.socket_callbacks.get(user, {}):
                     self.queue_handler.put_job(self.socket_callbacks[user][name](msg), self.callback_response, self, msg)
                 else:
+                    logger.debug(f"Putting job to queue: {name}")
                     self.queue_handler.put_job(self.socket_callbacks[name](msg), self.callback_response, self, msg)
                 response["data"] = "Message added to queue."
         except Exception as e:

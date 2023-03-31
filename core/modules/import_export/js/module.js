@@ -27,14 +27,20 @@ function loadModule() {
     const startCompile = document.getElementById("startCompile");
     startExtract.addEventListener("click", () => {
         console.log("startExtract button was clicked");
-        let modelInfo = selector.selectedModel();
+        let modelInfo = selector.getModel();
+        let is_512 = document.getElementById("convUse512").checked;
+        modelInfo["is_512"] = is_512;
+        sendMessage("extract_checkpoint", modelInfo,true).then((res)=>{
+            console.log("All done!", res);
+        });
+
         console.log("Current model info: ", modelInfo);
     });
 
     startCompile.addEventListener("click", () => {
         // Code to be executed when the "startCompile" button is clicked
         console.log("startCompile button was clicked");
-        let modelInfo = selectorEx.selectedModel();
+        let modelInfo = selectorEx.getModel();
         console.log("Current export model: ", modelInfo);
     });
 }

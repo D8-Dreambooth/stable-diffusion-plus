@@ -4,6 +4,7 @@ import importlib
 import logging
 import os
 import shutil
+import traceback
 from typing import List
 from urllib.parse import urlparse
 
@@ -81,7 +82,7 @@ class ModelHandler:
                 self.logger.debug(f"Using default model loader: {model_type}")
                 ext_include = None if "ext_include" not in data else data["ext_include"]
                 ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
-                model_list = self.load_models(data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
+                model_list = self.load_models(model_type=data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
 
             self.logger.debug(f"Got model_list: {model_list}")
             model_json = [model.serialize() for model in model_list]
@@ -150,6 +151,7 @@ class ModelHandler:
 
         """
         output = []
+        self.logger.debug(f"Request for mt: {model_type}")
 
         # Save these for later so when "refresh" is called, we can reload.
         self.load_params[model_type] = {
@@ -171,39 +173,43 @@ class ModelHandler:
             ext_include = []
 
         try:
-            model_path = os.path.join(self.models_path, model_type)
-            self.logger.debug(f"Checking: {model_path}")
-            if not os.path.exists(model_path):
-                os.makedirs(model_path)
+            self.logger.debug(f"MP: {self.models_path}")
+            for mp in self.models_path:
+                model_path = os.path.join(mp, model_type)
+                self.logger.debug(f"Checking: {model_path}")
+                if not os.path.exists(model_path):
+                    os.makedirs(model_path)
 
-            for file in glob.iglob(model_path + '**/**', recursive=True):
-                full_path = file
-                if os.path.isdir(full_path):
-                    continue
-                if os.path.islink(full_path) and not os.path.exists(full_path):
-                    self.logger.debug(f"Skipping broken symlink: {full_path}")
-                    continue
-                if ext_exclude is not None and any([full_path.endswith(x) for x in ext_exclude]):
-                    continue
-                if len(ext_include) != 0:
-                    model_type, extension = os.path.splitext(file)
-                    if extension not in ext_include:
-                        self.logger.debug(f"NO EXT: {extension}")
+                for file in glob.iglob(model_path + '**/**', recursive=True):
+                    full_path = file
+                    if os.path.isdir(full_path):
                         continue
-                model_data = ModelData(full_path)
-                if model_data not in output:
-                    output.append(model_data)
+                    if os.path.islink(full_path) and not os.path.exists(full_path):
+                        self.logger.debug(f"Skipping broken symlink: {full_path}")
+                        continue
+                    if ext_exclude is not None and any([full_path.endswith(x) for x in ext_exclude]):
+                        continue
+                    if len(ext_include) != 0:
+                        model_type, extension = os.path.splitext(file)
+                        if extension not in ext_include:
+                            self.logger.debug(f"NO EXT: {extension}")
+                            continue
+                    model_data = ModelData(full_path)
+                    if model_data not in output:
+                        output.append(model_data)
 
-            if model_url is not None and len(output) == 0:
-                if download_name is not None:
-                    dl = load_file_from_url(model_url, model_path, True, download_name)
-                    model_data = ModelData(dl)
-                    output.append(model_data)
-                else:
-                    model_data = ModelData(model_url)
-                    output.append(model_data)
+                if model_url is not None and len(output) == 0:
+                    if download_name is not None:
+                        dl = load_file_from_url(model_url, model_path, True, download_name)
+                        model_data = ModelData(dl)
+                        output.append(model_data)
+                    else:
+                        model_data = ModelData(model_url)
+                        output.append(model_data)
 
-        except Exception:
+        except Exception as e:
+            self.logger.warning(f"Fucking bullshit: {e}")
+            traceback.print_exc()
             pass
 
         return output

@@ -16,7 +16,10 @@ function parseObject(obj) {
     console.log("SYS: ", systemSection);
     const systemForm = createForm(systemSection, 'System');
     console.log("US: ", usersSection);
-    const usersForm = createUserForm(usersSection);
+    let usersForm;
+    if (usersSection !== undefined && usersSection[0] !== null) {
+        usersForm = createUserForm(usersSection);
+    }
     console.log("OS: ", otherSections);
     const otherForms = otherSections.map(([key, value]) => {
         console.log("MAP: ", key, value);
@@ -25,16 +28,19 @@ function parseObject(obj) {
         return {name: titleCaseKey, content: form};
     });
 
-    const tabs = [
+    let tabs = [
         {name: 'System', content: systemForm},
-        {name: 'Users', content: usersForm},
-        ...otherForms
     ];
+    if (usersForm !== undefined) {
+        tabs.push({name: 'Users', content: usersForm});
+    }
+    tabs = tabs.concat(otherForms);
 
     const tabContainer = document.getElementById('appSettingsContainer');
     tabContainer.innerHTML = '';
     createTabs(tabs, tabContainer);
 }
+
 
 function createForm(section, sectionName) {
     const form = document.createElement('form');
@@ -194,7 +200,7 @@ function createUserForm(users) {
         updateButton.addEventListener("click", (event) => {
             event.preventDefault();
             const password = passwordInput.querySelector("input").value;
-            sendMessage("change_password", {"user": username, "password": password}).then((res)=>{
+            sendMessage("change_password", {"user": username, "password": password}).then((res) => {
                 console.log("Response: ", res);
                 if (res.status === "Password updated successfully.") {
                     cancelButton.click();

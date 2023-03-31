@@ -33,8 +33,9 @@ class SettingsModule(BaseModule):
         shared_config, protected_config = ch.get_all_protected()
         user_data = ch.get_item_protected(user, "users", None)
         users = []
-        for user, ud in protected_config["users"].items():
-            users.append(ud)
+        if "users" in protected_config.keys():
+            for user, ud in protected_config["users"].items():
+                users.append(ud)
         logger.debug(f"Use data and user: {user_data} {user}")
         pc = {"users": [user_data]}
         if user:
