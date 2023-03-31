@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -115,22 +116,57 @@ frozen = run(run_command)
 # Install extensions first
 install_extensions()
 
+
+def find_git():
+    git_binary = shutil.which("git")
+    if git_binary:
+        return git_binary
+
+    common_git_paths = {
+        "Windows": [
+            "C:\\Program Files\\Git\\bin\\git.exe",
+            "C:\\Program Files (x86)\\Git\\bin\\git.exe",
+        ],
+        "Linux": [
+            "/usr/bin/git",
+            "/usr/local/bin/git",
+        ],
+        "Darwin": [
+            "/usr/bin/git",
+            "/usr/local/bin/git",
+        ],
+    }
+
+    for path in common_git_paths[platform.system()]:
+        if os.path.exists(path):
+            return path
+
+    return None
+
+
 # Define the dreambooth repository path
 dreambooth_path = os.path.join(base_path, "core", "modules", "dreambooth")
 
-# Check if the dreambooth repository exists
-if not os.path.exists(dreambooth_path):
-    logger.debug("Cloning dreambooth repository.")
-    # Clone dreambooth from GitHub
-    branch = launch_settings.get("dreambooth_branch", "dev")
-    clone_command = ["git", "clone", "-b", branch, "https://github.com/d8ahazard/sd_dreambooth_extension.git", dreambooth_path]
-    subprocess.run(clone_command, check=True)
+git_path = find_git()
+
+if git_path:
+    logger.debug(f"Got git git: {git_path}")
+    if not os.path.exists(dreambooth_path):
+        logger.debug("Adding dreambooth repository as submodule.")
+        # Add dreambooth as submodule
+        branch = launch_settings.get("dreambooth_branch", "dev")
+        submodule_command = [git_path, "submodule", "add", "-b", branch, "https://github.com/d8ahazard/sd_dreambooth_extension.git", dreambooth_path]
+        logger.debug(f"Sub command: {submodule_command}")
+        subprocess.run(submodule_command, check=True)
+    else:
+        logger.debug("Updating dreambooth repository.")
+        # Update dreambooth submodule
+        update_command = ["git", "submodule", "update", "--remote", "--merge"]
+        git_path = shutil.which('git')
+        subprocess.run([git_path] + update_command, cwd=dreambooth_path, check=True)
 else:
-    # Fetch and pull changes from GitHub
-    fetch_command = ["git", "fetch", "origin"]
-    pull_command = ["git", "pull", "origin", launch_settings.get("dreambooth_branch", "dev")]
-    # subprocess.run(fetch_command, cwd=dreambooth_path, check=True)
-    # subprocess.run(pull_command, cwd=dreambooth_path, check=True)
+    if not os.path.exists(dreambooth_path):
+        logger.warning("Unable to find git, and dreambooth is not installed. Training will not be available.")
 
 # NOW we install our requirements
 requirements = os.path.join(base_path, "requirements.txt")
