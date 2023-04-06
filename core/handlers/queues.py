@@ -1,7 +1,8 @@
-import asyncio
 import logging
-import threading
+from typing import Callable, Dict
 from queue import Queue
+from threading import Thread
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,57 +10,34 @@ logger = logging.getLogger(__name__)
 class QueueHandler:
     _instance = None
 
-    def __new__(cls, num_workers=None):
-        if cls._instance is None and num_workers is not None:
-            cls._instance = super().__new__(cls)
-            cls._instance.num_workers = num_workers
-            cls._instance.job_queue = Queue()
-            cls._instance.worker_threads = []
-            cls._instance.initialize_workers()
-            cls._instance.loop = asyncio.get_event_loop()
-            cls._instance.loop_thread = threading.Thread(target=cls._instance.run_loop, daemon=True)
-            cls._instance.loop_thread.start()
+    def __new__(cls, num_workers: int = 2):
+        if cls._instance is None:
+            cls._instance = super(QueueHandler, cls).__new__(cls)
+            cls._instance.jobs_queue = Queue()
+            cls._instance.workers = []
+            for i in range(num_workers):
+                logger = logging.getLogger(f"{__name__}.worker.{i}")
+                t = Thread(target=cls._instance.execute_jobs, args=(logger,))
+                cls._instance.workers.append(t)
+                t.start()
         return cls._instance
 
-    def initialize_workers(self):
-        for _ in range(self.num_workers):
-            logger.debug(f"Initializing worker: {_}")
-            worker = threading.Thread(target=self.worker_function, daemon=True)
-            worker.start()
-            self.worker_threads.append(worker)
+    def put_job(self, first_callable: Callable, second_callable: Callable, message: Dict):
+        """Method to put a job in the pub sub queue system"""
+        logger.debug(f"Job added: {message}")
+        self.jobs_queue.put((first_callable, second_callable, message))
 
-    def put_job(self, method1, method2, cls, message):
-        coro = self.coro_wrapper(method1, method2, self, message)
-        self.job_queue.put(coro)
-        num_jobs = self.job_queue.qsize() - 1  # subtract the current job
-        return num_jobs
-
-    async def coro_wrapper(self, method1, method2, cls, message):
-        result = await method1(message)
-        message["data"] = result
-        logger.debug(f"RES1: {message}")
-        await method2(cls, message)
-
-    async def noop(self):
-        pass
-
-    def worker_function(self):
+    async def execute_jobs(self, logger):
+        """Method executed by each worker thread to execute jobs in the pub sub queue system"""
         while True:
-            try:
-                coro = self.job_queue.get()
-                asyncio.run_coroutine_threadsafe(coro if coro else self.noop(), self.loop)
-                self.job_queue.task_done()
-            except Exception as e:
-                logger.exception("Error in worker function", exc_info=e)
-                self.job_queue.task_done()  # make sure to mark the job as done even if an error occurs
-
-    def run_loop(self):
-        asyncio.set_event_loop(self.loop)
-        if not self.loop.is_running():
-            self.loop.run_forever()
-
-    def subscribe_consume(self):
-
-        self.job_queue.join()
-        for worker in self.worker_threads:
-            worker.join()
+            logger.debug("EXECUTE")
+            job = self.jobs_queue.get()
+            logger.debug("Got job")
+            first_callable = job[0]
+            second_callable = job[1]
+            message = job[2]
+            logger.debug("Awaiting main method")
+            message["data"] = await first_callable(**message)  # await the first callable
+            logger.debug("Awaiting method callback")
+            await second_callable(**message)  # await the second callable
+            self.jobs_queue.task_done()

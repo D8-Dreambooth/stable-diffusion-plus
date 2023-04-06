@@ -129,6 +129,24 @@ li.fileLi * {
     }
 }
 
+.fileSortCol {
+    padding-top: 12px;
+    padding-right: 35px;
+}
+
+.fileSortIndicator {
+    width: 25px;
+    height: 25px;
+    padding-left: 5px;
+    padding-top: 1px;
+}
+
+.fileSortButton {
+    width: 25px;
+    height: 25px;
+    padding: 0;
+}
+
 .fileBtnRow, .fileBrowserContainer:not(.dropdown) {
     position: absolute;
     left: 0;

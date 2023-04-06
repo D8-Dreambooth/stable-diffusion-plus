@@ -77,7 +77,7 @@ class ModelHandler:
             model_type = data["model_type"]
             if model_type in self.model_finders:
                 self.logger.debug(f"Using finder: {model_type}")
-                model_list = self.model_finders[model_type](data)
+                model_list = self.model_finders[model_type](data, self)
             else:
                 self.logger.debug(f"Using default model loader: {model_type}")
                 ext_include = None if "ext_include" not in data else data["ext_include"]

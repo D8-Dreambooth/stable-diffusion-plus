@@ -108,7 +108,9 @@ class BootstrapSlider {
         this.container.style.display = "none";
     }
 
-
+    value() {
+        return this.value;
+    }
 }
 
 $.fn.BootstrapSlider = function () {

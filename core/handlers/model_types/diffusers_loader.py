@@ -3,6 +3,7 @@ import os.path
 
 import torch
 from diffusers import DiffusionPipeline, DEISMultistepScheduler, UniPCMultistepScheduler
+from diffusers.models.cross_attention import AttnProcessor2_0
 
 from core.dataclasses.model_data import ModelData
 
@@ -18,7 +19,9 @@ def load_diffusers(model_data: ModelData):
         try:
             pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
             pipeline = pipeline.to("cuda")
-            pipeline.enable_xformers_memory_efficient_attention()
+            pipeline.unet.set_attn_processor(AttnProcessor2_0())
+            pipeline.unet = torch.compile(pipeline.unet)
+            # pipeline.enable_xformers_memory_efficient_attention()
             pipeline.vae.enable_tiling()
             pipeline.scheduler.config["solver_type"] = "bh2"
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)

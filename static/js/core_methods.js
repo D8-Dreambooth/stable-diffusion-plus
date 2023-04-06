@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
     sendMessage("get_config", {"section_key": "core"}).then((data) => {
         loadCoreSettings(data);
     });
+    const $buttons = $('.cancelButton').cancelButton();
 });
 
 function loadCoreSettings(data) {

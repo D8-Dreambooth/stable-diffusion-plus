@@ -6,9 +6,9 @@ from core.handlers.models import ModelHandler
 mh = ModelHandler()
 
 
-def get_lora_models(data):
+def get_lora_models(data, handler: ModelHandler):
     output = []
-    for mdir in mh.models_path:
+    for mdir in handler.models_path:
         lora_dir = os.path.join(mdir, "loras")
         if os.path.exists(lora_dir):
             files = os.listdir(lora_dir)

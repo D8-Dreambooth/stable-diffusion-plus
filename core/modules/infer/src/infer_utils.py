@@ -67,6 +67,9 @@ async def start_inference(inference_settings: InferSettings, user):
                 status_handler.step(preview_steps)
 
             while len(out_images) < inference_settings.num_images:
+                if status_handler.status.canceled:
+                    logger.debug("Canceled!")
+                    break
                 if initial_seed == -1:
                     seed = int(random.randrange(21474836147))
                 else:

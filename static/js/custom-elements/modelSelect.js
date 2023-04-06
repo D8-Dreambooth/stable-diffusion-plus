@@ -1,6 +1,7 @@
 class ModelSelect {
 
     static modelSelectMap = new Map();
+
     constructor(container, options) {
         const existingInstance = ModelSelect.modelSelectMap.get(container);
         if (existingInstance) {
@@ -22,7 +23,7 @@ class ModelSelect {
         if (addClass !== "") {
             this.selectElement.classList.add(addClass);
         }
-        this.selectElement.id = "inferModelSelection";
+        this.selectElement.id = container.id + "_select";
         this.currentModel = options.value || "none";
         const wrapper = document.createElement("div");
         wrapper.classList.add("form-group");
@@ -40,7 +41,7 @@ class ModelSelect {
         this.setOnChangeHandler((selectedModel) => {
             this.currentModel = selectedModel;
         });
-        this.addOptions();
+        this.refresh();
         ModelSelect.modelSelectMap.set(container, this);
         return this;
     }
@@ -49,7 +50,7 @@ class ModelSelect {
         console.log("Model socket update:", data);
     }
 
-    async addOptions() {
+    async refresh() {
         let modelList = await sendMessage("models", {
             model_type: this.model_type,
             ext_include: this.ext_include,
@@ -61,11 +62,12 @@ class ModelSelect {
         let blankOption = document.createElement("option");
         blankOption.value = "none";
         const loaded = modelList["loaded"];
-        if (loaded !== undefined) {
-            this.selectedModel = loaded;
+        if (loaded !== undefined && loaded !== null) {
+            console.log("Loaded: ", loaded);
+            this.currentModel = loaded.hash;
         }
 
-        if (this.selectedModel === "none") {
+        if (this.currentModel === "none") {
             blankOption.selected = true;
         }
 
@@ -73,8 +75,8 @@ class ModelSelect {
         if (modelList.models) {
             modelList.models.forEach(model => {
                 let option = document.createElement("option");
-                option.value = model.hash;
-                if (this.selectedModel === option.value) {
+                option.value = (model.hasOwnProperty("hash") ? model.hash : "none");
+                if (this.currentModel.hash === option.value) {
                     option.selected = true;
                 }
                 option.textContent = model.display_name;
@@ -102,6 +104,7 @@ class ModelSelect {
             return undefined;
         }
 
+        console.log("Selected model: ", selectedModel);
         return selectedModel;
     }
 
@@ -143,13 +146,13 @@ class ModelSelect {
         };
     }
 
-    selectedModel() {
-        return this.currentModel;
-    }
 
-     static init(selector, options = {}) {
-        const elements = [];
+    static init(selector, options = {}) {
+        const elements = new Map();
         $(selector).each((index, element) => {
+            if (elements.has(element)) {
+                return elements.get(element);
+            }
             const data = $(element).data();
             const optionsWithDefault = {
                 model_type: data.model_type || options.model_type || "stable-diffusion",
@@ -161,9 +164,10 @@ class ModelSelect {
                 key: data.key || options.key || $(element.id),
                 addClass: data.add_class || options.addClass || ""
             };
-            elements.push(new ModelSelect(element, optionsWithDefault));
+            const modelSelect = new ModelSelect(element, optionsWithDefault);
+            elements.set(element, modelSelect);
         });
-        return elements;
+        return Array.from(elements.values());
     }
 
 

@@ -117,7 +117,7 @@ input {
     border-bottom: 1px solid var(--bs-gray-400);
 }
 
-.card {
+.card, .modal-body {
     background-color: var(--bs-body-bg-rgb);
     border: 1px solid var(--bs-gray-400);
 }
@@ -132,6 +132,8 @@ input {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 8 8'%3e%3cpath d='M5.25 0L4 1.25 6.75 4l-2.75 2.75L5.25 8l4-4z'/%3e%3c/svg%3e");
 }
 
+.modal-header,
+.modal-footer,
 .card-title,
 .card-subtitle,
 .card-text,
@@ -391,6 +393,14 @@ input {
         padding: 0 10px;
     }
 
+    #moduleSettings_link {
+        position: fixed;
+        width: 50px;
+        right: 35px;
+        overflow: hidden;
+        top: 0;
+    }
+
     .navWrap {
         flex: 1;
     }
@@ -529,13 +539,13 @@ input {
 }
 
 .prompt-text {
-  height: auto !important;
-  max-height: 3em;
-  overflow-y: hidden;
-  resize: none;
+    height: auto !important;
+    max-height: 3em;
+    overflow-y: hidden;
+    resize: none;
 }
 
 .prompt-text:focus {
-  max-height: 9em;
-  overflow-y: scroll;
+    max-height: 9em;
+    overflow-y: scroll;
 }

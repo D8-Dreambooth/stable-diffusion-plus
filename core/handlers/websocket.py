@@ -130,10 +130,13 @@ class SocketHandler:
                 response["data"] = data
             else:
                 if user and name in self.socket_callbacks.get(user, {}):
-                    self.queue_handler.put_job(self.socket_callbacks[user][name](msg), self.callback_response, self, msg)
+                    self.queue_handler.put_job(self.socket_callbacks[user][name](msg), self.callback_response, msg)
                 else:
-                    logger.debug(f"Putting job to queue: {name}")
-                    self.queue_handler.put_job(self.socket_callbacks[name](msg), self.callback_response, self, msg)
+                    if name in self.socket_callbacks:
+                        logger.debug(f"Putting job to queue: {name}")
+                        self.queue_handler.put_job(self.socket_callbacks[name](msg), self.callback_response, msg)
+                    else:
+                        logger.debug(f"No registered job for callback: {name}")
                 response["data"] = "Message added to queue."
         except Exception as e:
             response["data"] = f"Exception with socket callback: {e}"
