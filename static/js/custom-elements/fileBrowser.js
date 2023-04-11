@@ -11,8 +11,6 @@ class FileBrowser {
         parentElement.appendChild(wrapper);
         this.parentElement = wrapper;
         this.infoPanel = undefined;
-        this.endpoint = "files";
-        this.fileEndpoint = "file";
         this.currentPath = "";
         this.currentParent = "";
         this.selectedLink = undefined;
@@ -63,10 +61,11 @@ class FileBrowser {
                     this.selectedLink = this.selectedLinks.length > 0 ? this.selectedLinks[0] : undefined;
                     if (this.selectedLink !== undefined) {
                         console.log("Selected: ", this.selectedLink);
-                        this.currentPath = this.selectedLink.dataset.path;
-                        let base = this.currentParent === this.separator ? this.currentParent : this.currentParent + this.separator;
-                        this.input.value = base + this.currentPath;
+                        this.input.value = this.selectedLink.dataset.fullPath;
                         console.log("SET: ", this.input.value);
+                        for (let i = 0; i < this.onSelectCallbacks.length; i++) {
+                            this.onSelectCallbacks[i](this.input.value);
+                        }
                         this.toggleTree();
                     }
                 });
@@ -169,7 +168,7 @@ class FileBrowser {
         // populating files as described below.
         const selectedFiles = [];
         selected.forEach((item) => {
-            selectedFiles.push(item.dataset.path);
+            selectedFiles.push(item.dataset.fullPath);
         });
         switch (method) {
             case "refresh":
@@ -271,9 +270,6 @@ class FileBrowser {
         } else {
             const firstChild = this.treeContainer.querySelector(".fileLi");
             if (firstChild) {
-                // firstChild.classList.add("selected");
-                // console.log("Firstchild");
-                // firstChild.click();
                 this.handleLinkClick(firstChild, ctrl_pressed, shift_pressed);
             }
         }
@@ -281,15 +277,19 @@ class FileBrowser {
         console.log("NEXT!", direction);
         const images = document.querySelector(".img-info");
         const fullScreen = document.querySelector(".img-fullscreen");
-        fullScreen.src = images.src;
-        fullScreen.dataset["name"] = images.dataset["name"];
+        if (images) {
+            fullScreen.src = images.src;
+            fullScreen.dataset["name"] = images.dataset["name"];
+        }
+
     }
 
     addKeyboardListener() {
-        console.log("Adding keylistener.");
+        console.log("Adding key listener.");
         document.addEventListener("keydown", function (event) {
             const focusedElement = document.activeElement;
             if (this.treeContainer.contains(focusedElement)) {
+                console.log("FE: ", focusedElement, this.treeContainer);
                 if (event.key === "ArrowUp" || event.key === "ArrowDown") {
                     event.preventDefault();
                     const direction = event.key === "ArrowUp" ? -1 : 1;
@@ -297,10 +297,25 @@ class FileBrowser {
                 }
                 if (event.key === "Enter") {
                     event.preventDefault();
-                    if (event.srcElement.classList.contains("fileLi") && event.srcElement.classList.contains("selected")) {
-                        console.log("We got us a selected li: ", event.srcElement);
-                        event.srcElement.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+                    const selectedLi = focusedElement.closest(".fileLi.selected");
+                    if (selectedLi !== null && selectedLi.classList.contains("fileLi")) {
+                        console.log("We got us a selected li: ", selectedLi);
+                        selectedLi.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
                     }
+                }
+            }
+
+            const imageModal = document.getElementById("imageInfoModal");
+            if (imageModal.classList.contains("show")) {
+                if (event.key === "ArrowLeft") {
+                    // Left arrow key
+                    this.selectNextItem(-1);
+                } else if (event.key === "ArrowRight") {
+                    // Right arrow key
+                    this.selectNextItem(1);
+                } else if (event.key === "Escape") {
+                    // Escape key
+                    $("#imageInfoModal").removeClass("show");
                 }
             }
         }.bind(this));
@@ -476,19 +491,6 @@ class FileBrowser {
             $("#imageInfoModal").toggleClass("show");
         });
 
-        document.addEventListener("keydown", (event) => {
-            if (event.keyCode === 37) {
-                // Left arrow key
-                this.selectNextItem(-1);
-            } else if (event.keyCode === 39) {
-                // Right arrow key
-                this.selectNextItem(1);
-            } else if (event.keyCode === 27) {
-                // Escape key
-                $("#imageInfoModal").removeClass("show");
-            }
-        });
-
 
         const images = document.querySelectorAll(".img-info");
         images.forEach((image) => {
@@ -631,6 +633,7 @@ class FileBrowser {
     }
 
     generateTree(response) {
+        console.log("Gen Res: ", response);
         const root = document.createElement("ul");
         root.classList.add("treeRoot");
         const listItem = document.createElement("li");
@@ -639,55 +642,49 @@ class FileBrowser {
         listItem.appendChild(icon);
         listItem.classList.add("fileLi");
         const link = document.createElement("a");
+        let keys = Object.keys(response);
+        let index = keys.indexOf("..");
+        let parent = null;
         link.innerHTML = "..";
         listItem.dataset.path = "..";
         listItem.dataset.type = "directory";
+
+        if (index !== -1) {
+            parent = Object.assign({}, response[keys[index]]);
+            delete response[keys[index]];
+            listItem.dataset.fullPath = parent.path + this.separator + "..";
+
+        }
+
+
         listItem.appendChild(link);
         root.appendChild(listItem);
         for (const [path, details] of Object.entries(response)) {
-            const [dateModified, size, type, children] = details;
-            const splitPath = path.split(this.separator);
-
-            if (splitPath.length === 1) {
-                const listItem = document.createElement("li");
-                listItem.classList.add("fileLi");
-                listItem.dataset.path = path;
-                listItem.dataset.type = type;
-                listItem.dataset.date = dateModified;
-                listItem.dataset.size = size;
-
-                const icon = document.createElement("i");
-                const iconClass = this.getClass(type);
-                icon.classList.add("bx", iconClass, "fileIcon");
-                listItem.appendChild(icon);
-                const link = document.createElement("a");
-                link.innerHTML = splitPath[0];
-                listItem.appendChild(link);
-                if (children) {
-                    const childList = document.createElement("ul");
-                    listItem.appendChild(childList);
-                }
-                root.appendChild(listItem);
-            } else if (splitPath.length === 2) {
-                const parentPath = splitPath[0];
-                const currentPath = splitPath[1];
-                const parentElement = root.querySelector(
-                    `a[data-path="${parentPath}"]`
-                ).parentElement;
-                const listItem = document.createElement("li");
-                listItem.dataset.path = path;
-                listItem.dataset.type = type;
-                listItem.dataset.date = dateModified;
-                listItem.dataset.size = size;
-                const link = document.createElement("a");
-                link.innerHTML = currentPath;
-                listItem.appendChild(link);
-                if (children) {
-                    const childList = document.createElement("ul");
-                    listItem.appendChild(childList);
-                }
-                parentElement.querySelector("ul").appendChild(listItem);
+            const dateModified = details.time;
+            const size = details.size;
+            const type = details.type;
+            const children = details.data;
+            const fullPath = path;
+            const listItem = document.createElement("li");
+            listItem.classList.add("fileLi");
+            listItem.dataset.path = path;
+            listItem.dataset.fullPath = fullPath;
+            listItem.dataset.type = type;
+            listItem.dataset.date = dateModified;
+            listItem.dataset.size = size;
+            const shortPath = fullPath.split(this.separator).pop();
+            const icon = document.createElement("i");
+            const iconClass = this.getClass(type);
+            icon.classList.add("bx", iconClass, "fileIcon");
+            listItem.appendChild(icon);
+            const link = document.createElement("a");
+            link.innerHTML = shortPath;
+            listItem.appendChild(link);
+            if (children) {
+                const childList = document.createElement("ul");
+                listItem.appendChild(childList);
             }
+            root.appendChild(listItem);
         }
         return root;
     }
@@ -698,7 +695,8 @@ class FileBrowser {
             if (link.dataset.path) {
                 link.addEventListener("dblclick", () => {
                     if (link.dataset.type === "directory") {
-                        this.currentPath = link.dataset.path;
+                        this.currentPath = link.dataset.fullPath;
+
                         this.buildTree().then(() => {
                             const selectFirstFileLi = (element) => {
                                 if (element.classList && element.classList.contains("fileLi")) {
@@ -726,7 +724,7 @@ class FileBrowser {
                         }
                     }
                     this.onDoubleClickCallbacks.forEach((callback) =>
-                        callback(link.dataset.path, link.dataset.type)
+                        callback(link.dataset.fullPath, link.dataset.type)
                     );
                 });
                 link.addEventListener("click", (event) => {
@@ -854,7 +852,7 @@ class FileBrowser {
             link.classList.add("selected");
         }
         this.onClickCallbacks.forEach((callback) =>
-            callback.call(this, link, link.dataset.path, link.dataset.type)
+            callback.call(this, link, link.dataset.fullPath, link.dataset.type)
         );
     }
 
@@ -898,7 +896,7 @@ class FileBrowser {
             recursive: recursive,
             filter: filter
         };
-        const response = await sendMessage(this.endpoint, data);
+        const response = await sendMessage("files", data);
         console.log("Response received:", response);
         this.setCurrentPath(response["current"]);
         return response;
@@ -907,7 +905,7 @@ class FileBrowser {
     showFileInfo(link, data1, data2) {
         if (!this.showInfo) return;
         console.log("File info: ", link, data1, data2);
-        if (data1 === "..") {
+        if (data1.indexOf("..") !== -1) {
             this.infoPanel.classList.add("closed");
             return;
         }
@@ -946,7 +944,7 @@ class FileBrowser {
         const data = {
             files: file
         };
-        const response = await sendMessage(this.fileEndpoint, data);
+        const response = await sendMessage("file", data);
         console.log("Response received:", response);
         if (response.hasOwnProperty("files")) {
             return response.files;

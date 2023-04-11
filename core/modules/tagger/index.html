@@ -1,0 +1,45 @@
+<div class="module" id="moduleTagger">
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                Select Directory
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12" id="imageFileSelect"></div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-group mt-3">
+                            <label for="imageRecurse" class="form-check-label">Recurse</label>
+                            <input type="checkbox" id="imageRecurse" class="form-check-input" checked/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card" id="imageEditCard">
+            <div class="card-header">
+                Edit Tags
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <label for="autoSave" class="form-check-label">Auto-Save</label>
+                        <input type="checkbox" id="autoSave" class="form-check-input" checked/>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="imageCaption">
+                            Caption
+                        </label>
+                        <textarea class="form-control" id="imageCaption" rows="6"></textarea>
+                        <div class="fullImgWrap">
+                            <img id="fullImage"></img>
+                        </div>
+
+                    </div>
+                    <div class="col-12 col-md-6" id="imageBrowser"></div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

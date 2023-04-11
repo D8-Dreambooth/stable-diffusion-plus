@@ -6,6 +6,10 @@
     padding: 1px 6px;
 }
 
+.db-advanced {
+    display: none;
+}
+
 .btn-selected {
     background: var(--primary-color);
     color: var(--primary-text-color);
