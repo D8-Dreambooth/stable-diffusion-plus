@@ -285,12 +285,7 @@ async def handle_login(request: Request, response: Response, form_data: dict):
         response.set_cookie(key="access_token", value=access_token)
 
         # Get the URL for the home page
-        home_url = request.url_for("home")
-        redirect_url = URL(home_url)
-        home_url = redirect_url.__str__()
-        logger.debug(f"Redirecting to: {home_url}")
-
-        return JSONResponse({"url": home_url, "access_token": access_token})
+        return JSONResponse({"access_token": access_token})
 
     else:
         html = """

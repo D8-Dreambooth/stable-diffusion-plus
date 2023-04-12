@@ -52,7 +52,7 @@ def get_user(username: str) -> Union[Dict, None]:
 
 def authenticate_user(username: str, password: str):
     user = get_user(username)
-    user_hash = user.get("pass", None);
+    user_hash = user.get("pass", None)
     if not user_hash:
         return False
     if not verify_password(password, user_hash):
