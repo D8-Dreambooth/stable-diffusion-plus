@@ -170,6 +170,10 @@ else:
     if not os.path.exists(dreambooth_path):
         logger.warning("Unable to find git, and dreambooth is not installed. Training will not be available.")
 
+# Add the dreambooth dir to sys path
+module_dir = os.path.abspath(dreambooth_path)
+sys.path.insert(0, module_dir)
+
 # NOW we install our requirements
 requirements = os.path.join(base_path, "requirements.txt")
 

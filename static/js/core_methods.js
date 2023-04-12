@@ -249,9 +249,13 @@ function connectSocket() {
             }
         };
         globalSocket.onerror = function (event) {
-            if (event.status === 403) {
-                console.log("WebSocket error: 403 Forbidden");
-                location.reload();
+            if (event instanceof CloseEvent) {
+                if (event.code === 403) {
+                    console.log("WebSocket error: 403 Forbidden");
+                    location.reload();
+                } else {
+                    console.log("WebSocket error: ", event);
+                }
             } else {
                 console.log("WebSocket error: ", event);
             }
@@ -259,7 +263,7 @@ function connectSocket() {
         globalSocket.onclose = function (event) {
             console.log("WebSocket disconnected with code: ", event.code);
             showError("Websocket Disconnected, attempting reconnect...");
-            if (event.code === 1000) {
+            if (event.code === 1000 || event.code === 403) {
                 location.reload();
             } else {
                 setTimeout(function () {
@@ -267,6 +271,7 @@ function connectSocket() {
                 }, 2000);
             }
         };
+
     }
 }
 
