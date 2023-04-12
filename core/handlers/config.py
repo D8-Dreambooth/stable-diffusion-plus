@@ -68,10 +68,12 @@ class ConfigHandler:
     def _check_defaults(self, script_path):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
-        core_path = os.path.join(self._protected_dir, "core.json")
-        if not os.path.exists(core_path):
-            core_src = os.path.join(script_path, "conf_src", "core.json")
-            shutil.copy(core_src, core_path)
+        source_dir = os.path.join(script_path, "conf_src")
+        for file in [f for f in os.listdir(source_dir) if os.path.splitext(f)[1] == ".json"]:
+            src_path = os.path.join(source_dir, file)
+            dst_path = os.path.join(self._protected_dir, file)
+            if not os.path.exists(dst_path):
+                shutil.copy(src_path, dst_path)
 
     def _create_directories(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
