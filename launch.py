@@ -197,26 +197,26 @@ if "torch_command" in launch_settings:
 
 if sys.platform == "win32":
     activate = os.path.join(venv, "Scripts", "activate.bat")
-    install_command = f"cmd /c {activate} & {python} -m pip install -r {requirements}"
-    torch_command = f"cmd /c {activate} & {python} -m {torch_command}"
-    run_command = f"{activate} & uvicorn app.main:app --host 0.0.0.0 --reload --port {listen_port}"
+    uvicorn = os.path.join(venv, "Scripts", "uvicorn.exe")
 else:
     activate = os.path.join(venv, "bin", "activate")
-    install_command = f"source {activate} && {python} -m pip install -r {requirements}"
-    torch_command = f"source {activate} && {python} -m {torch_command}"
-    run_command = f"uvicorn app.main:app --host 0.0.0.0 --reload --port {listen_port}"
-    run_command = f"source {activate} && {run_command}"
+    uvicorn = os.path.join(venv, "bin", "uvicorn")
 
-# run(torch_command, "Checking torch versions...", "Unable to install torch.")
+# Define the dreambooth repository path
+dreambooth_path = os.path.join(base_path, "core", "modules", "dreambooth")
+
+# Create a new environment for the subprocess to run in
+env = os.environ.copy()
+env["PATH"] = os.path.join(venv, "bin") + os.pathsep + env["PATH"]
+env["VIRTUAL_ENV"] = venv
+env["PYTHONPATH"] = os.pathsep.join([dreambooth_path, os.path.dirname(os.path.abspath(__file__))])
+
+install_command = f"{activate} && {python} -m pip install -r {requirements}"
+torch_command = f"{activate} && {python} -m {torch_command}"
+run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
 if do_install:
     logger.info(f"Installing: {install_command}")
-    run(install_command, "Installing requirements.", "Unable to install requirements.")
+    subprocess.run(install_command, shell=True, env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-from dreambooth import shared
-
-shared.script_path = base_path
-shared.load_vars(base_path)
-
-
-run(run_command, live=True)
+subprocess.run(run_command, shell=True, env=env, check=True)
