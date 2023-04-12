@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 
+sys.path.append(os.getcwd())
 
 # Make safetensors faster
 os.environ["SAFETENSORS_FAST_GPU"] = "1"
@@ -102,6 +103,8 @@ else:
     python = default_python
 
 path = os.environ.get("PATH")
+
+sys.path.append(venv)
 
 freeze_command = "pip freeze"
 if sys.platform == "win32":
