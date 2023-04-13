@@ -1,3 +1,81 @@
+## Terminology and Concepts
+
+The overarching theme for this project is modularity and security. The goal is to create a framework that allows for easy creation of new functionality without having to write a ton of code from scratch, or go digging through the code to find where things are and what they do.
+
+The most basic concepts here are "Modules", "Extensions" and "Handlers".
+
+### Modules
+A module is a self-contained piece of functionality. It can be anything from a simple image captioning model, to a full-blown image editor. Modules are loaded on startup, and can be enabled or disabled at any time. These provide what would be considered "core" application functionality, and as such, have full access to all methods in the code.
+
+### Extensions
+An extension is very similar to a module, with the exception that it is restricted in what it can do with data and methods within the appliction.
+
+Specifically, extensions can only access data and methods that are explicitly exposed to them. Extensions are intended to be created and maintaned by other users, and as such, are not allowed to override core functionality or packages.  
+
+A lot of the security functionality here is still theoretical, and while I've tried to design things with this in the back of my mind, not everything is probably built right to really maintain this idea of a standard.
+
+### Handlers
+
+There are a number of handlers created for, well, handling common functionality so you don't have to hijack code or re-invent the wheel. 
+
+These include, but aren't limited to:
+
+Reading and writing configuration values
+
+Reading and writing files
+
+Handling images
+
+Queueing jobs
+
+Updating the status in the UI
+
+Sending and receiving messages over the websocket
+
+Handling image captions
+
+Loading and saving models
+
+
+All handlers are singletons, and can be accessed from anywhere in the code. For example, to get the config handler, you can do:
+
+```python
+from core.handlers.config_handler import ConfigHandler
+ch = ConfigHandler()
+some_data = ch.get_item("some_key", "some_section", "default_value")
+```
+
+The config handler also contains methods to get and set full sections, as well as set individual items.
+
+
+
+## Project Structure
+/app - Contains the main application code, with main.py being the entry point.
+
+This is where the FastAPI app is created, and handlers are initialized. It's also the location for module discovery and initialization.
+
+/conf_src - Contains default configuration files for core application functionality. Individual module/extension configs are NOT stored here.
+
+/core - Contains the core application code. This is where the bulk of the application logic is.
+
+/core/dataclasses - Contains the various dataclasses used throughout the application.
+
+/core/handlers - Contains the various handlers for common functionality. These are singletons, and can be accessed from anywhere in the code.
+
+/core/modules - Contains the core modules. These are the modules that are loaded by default, and are required for the application to function.
+
+/core/pipelines - A concept for stacking functionality, but I haven't found a use for it yet.
+
+/core/shared - Designed to contain functionality accessible to extensions...but haven't gotten around to fleshing out that idea yet.
+
+/data_protected and /data_shared - These are the "default" locations for data. The protected folder is for data that should be protected from non-admin users, and the shared folder is for data that should be accessible to everyone. These can be changed in the launch_settings.config file.
+
+/static - Contains files for the UI. This includes images, css, js, and html.
+
+/templates - Contains the base html templates for the UI. "base.html" is the primary page.
+
+/tests - We should use this...extensively. But, I suck, and haven't done anything with it yet.
+
 ## Creating a Module
 
 For starters, you should look at the existing modules. They're all pretty simple, and should give you a good idea of how to create your own.
@@ -51,37 +129,4 @@ document.addEventListener("DOMContentLoaded", function () {
 }
 ```
 
-
-## Handlers
-
-There are a number of handlers created for, well, handling common functionality so you don't have to hijack code or re-invent the wheel. 
-
-These include, but aren't limited to:
-
-Reading and writing configuration values
-
-Reading and writing files
-
-Handling images
-
-Queueing jobs
-
-Updating the status in the UI
-
-Sending and receiving messages over the websocket
-
-Handling image captions
-
-Loading and saving models
-
-
-All handlers are singletons, and can be accessed from anywhere in the code. For example, to get the config handler, you can do:
-
-```python
-from core.handlers.config_handler import ConfigHandler
-ch = ConfigHandler()
-some_data = ch.get_item("some_key", "some_section", "default_value")
-```
-
-The config handler also contains methods to get and set full sections, as well as set individual items.
 
