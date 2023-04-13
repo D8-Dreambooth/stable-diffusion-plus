@@ -155,15 +155,24 @@ class ModelSelect {
             }
             const data = $(element).data();
             const optionsWithDefault = {
-                model_type: data.model_type || options.model_type || "stable-diffusion",
-                ext_include: data.ext_include || options.ext_include || [".safetensors"],
-                ext_exclude: data.ext_exclude || options.ext_exclude || [],
-                load_on_select: data.load_on_select || options.load_on_select || false,
-                value: data.value || options.value || "none",
-                label: data.label || options.label || "",
-                key: data.key || options.key || $(element.id),
-                addClass: data.add_class || options.addClass || ""
+                model_type: (data && data.model_type) || (options && options.model_type) || "stable-diffusion",
+                ext_include: (data && (typeof data.ext_include === "string" ? [data.ext_include] : data.ext_include)) || (options && (typeof options.ext_include === "string" ? [options.ext_include] : options.ext_include)) || [],
+                ext_exclude: (data && (typeof data.ext_exclude === "string" ? [data.ext_exclude] : data.ext_exclude)) || (options && (typeof options.ext_exclude === "string" ? [options.ext_exclude] : options.ext_exclude)) || [],
+                load_on_select: (data && data.load_on_select) || (options && options.load_on_select) || false,
+                value: (data && data.value) || (options && options.value) || "none",
+                label: (data && data.label) || (options && options.label) || "",
+                key: (data && data.key) || (options && options.key) || $(element.id),
+                addClass: (data && data.add_class) || (options && options.addClass) || ""
             };
+
+            if (typeof optionsWithDefault.ext_include === "string") {
+                optionsWithDefault.ext_include = [optionsWithDefault.ext_include];
+            }
+            if (typeof optionsWithDefault.ext_exclude === "string") {
+                optionsWithDefault.ext_exclude = [optionsWithDefault.ext_exclude];
+            }
+
+
             const modelSelect = new ModelSelect(element, optionsWithDefault);
             elements.set(element, modelSelect);
         });

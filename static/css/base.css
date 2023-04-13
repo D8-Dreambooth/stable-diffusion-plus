@@ -111,17 +111,17 @@ input {
     background-color: var(--bs-gray-200);
 }
 
-.card-header {
+.card-header, .accordion-button {
     background-color: rgba(var(--bs-body-bg-rgb), 0.2);
     color: var(--primary-text-color);
     border-bottom: 1px solid var(--bs-gray-400);
 }
 
-.card {
+.card, .accordion {
     margin-bottom: 2em;
 }
 
-.card, .modal-body {
+.card, .modal-body, .accordion, .accordion-collapse {
     background-color: var(--bs-body-bg-rgb);
     border: 1px solid var(--bs-gray-400);
 }
@@ -136,6 +136,7 @@ input {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 8 8'%3e%3cpath d='M5.25 0L4 1.25 6.75 4l-2.75 2.75L5.25 8l4-4z'/%3e%3c/svg%3e");
 }
 
+.accordion-header,
 .modal-header,
 .modal-footer,
 .card-title,
@@ -143,6 +144,8 @@ input {
 .card-text,
 .card-link,
 .card-header,
+.accordion-button,
+.accordion-button:not(.collapsed),
 .card-footer {
     color: var(--secondary-accent-text-color);
     background: var(--secondary-accent-color);

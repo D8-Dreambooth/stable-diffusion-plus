@@ -28,7 +28,3 @@
   flex: 1 1 0;
   min-height: 100%;
 }
-
-#inferSettings {
-    height: calc(100% - 10px);
-}

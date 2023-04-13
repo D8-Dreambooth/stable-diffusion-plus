@@ -19,6 +19,8 @@ mediapipe-silicon; sys_platform == 'darwin'
 mediapipe; sys_platform != 'darwin'
 modelcards~=0.1.6
 omegaconf
+opencv-contrib-python
+controlnet-aux
 pandas
 passlib
 pillow

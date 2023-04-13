@@ -3,6 +3,7 @@ let moduleSelect;
 let inferProgress;
 let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
 let userConfig;
+let imageEditor;
 
 let inferSettings = {
     "prompt": "",
@@ -150,6 +151,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let submit = document.getElementById("startInfer");
     let cancel = document.getElementById("stopInfer");
+    let controlEditor = document.getElementById("controlnetEditor");
+    imageEditor = new ImageEditor("controlnetEditor", 512, 512);
 
     submit.addEventListener("click", function () {
         startInference().then(function (result) {
@@ -161,7 +164,21 @@ document.addEventListener("DOMContentLoaded", function () {
         loadSettings(data);
         console.log("Infer settings: ", userConfig);
     });
-
+    sendMessage("get_controlnets",{}, true).then((data) => {
+        console.log("Controlnets: ", data);
+        let controlnetSelect = document.getElementById("controlnetType");
+        let option = document.createElement("option");
+        option.value = "None";
+        option.text = "";
+        controlnetSelect.add(option);
+        data = data["nets"];
+        for (let i = 0; i < data.length; i++) {
+            let option = document.createElement("option");
+            option.value = data[i]["name"];
+            option.text = data[i]["name"];
+            controlnetSelect.add(option);
+        }
+    });
 });
 
 function loadSettings(data) {

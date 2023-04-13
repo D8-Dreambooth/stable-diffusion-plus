@@ -2,13 +2,13 @@ import asyncio
 import logging
 import os.path
 
-
 from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
+from core.modules.infer.src.controlnet_processors import model_data
 from core.modules.infer.src.infer_utils import start_inference
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,7 @@ class InferenceModule(BaseModule):
 
     def _initialize_websocket(self, handler: SocketHandler):
         handler.register("start_inference", _start_inference)
+        handler.register("get_controlnets", _get_controlnets)
 
 
 async def _start_inference(msg):
@@ -53,3 +54,9 @@ async def _start_inference(msg):
 
     # Immediately return a reply to the websocket
     return {"name": "inference_started", "message": "Inference started.", "id": msg_id}
+
+
+async def _get_controlnets(msg):
+    net_data = model_data
+    logger.debug("Listing controlnets!")
+    return {"nets": net_data}

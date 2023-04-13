@@ -7,7 +7,8 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <!-- Auto-populated "model-select" element. See JS -->
-                        <div class="inferModelSelect" id="inferModel" data-label="Model Selection" data-model_type="diffusers"></div>
+                        <div class="inferModelSelect" id="inferModel" data-label="Model Selection"
+                             data-model_type="diffusers"></div>
                     </div>
                 </div>
             </div>
@@ -34,7 +35,8 @@
                         <div class="form-group">
                             <div class="btn-group form-control">
                                 <button class="btn btn-primary" id="startInfer">Generate</button>
-                                <button class="btn btn-secondary btn-disabled cancelButton" id="stopInfer">Cancel</button>
+                                <button class="btn btn-secondary btn-disabled cancelButton" id="stopInfer">Cancel
+                                </button>
                             </div>
                         </div>
                         <div class="form-group" id="infer_ratios"></div>
@@ -63,6 +65,54 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+                <div class="accordion" id="controlnetSettings">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="cnHeading">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#cnCollapse" aria-expanded="true" aria-controls="cnCollapse">
+                                ControlNet
+                            </button>
+                        </h2>
+                        <div id="cnCollapse" class="accordion-collapse collapse show" aria-labelledby="cnHeading"
+                             data-bs-parent="#controlnetSettings">
+                            <div class="accordion-body">
+                                <div class="form-group">
+                                    <label for="enableControlNet">Enable:</label>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="enableControlNet" checked>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="controlnetType">Controlnet Type:</label>
+                                    <select class="form-control" id="controlnetType"></select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="inputImage">Input Image:</label>
+                                    <div class="imageEditor" id="controlnetEditor"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="autoLoadResolutionOn">Auto-load resolution:</label>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="autoLoadResolutionOn"
+                                               checked>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="bootstrapSlider" id="detectResolution"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="bootstrapSlider" id="imageResolution"></div>
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
             </div>

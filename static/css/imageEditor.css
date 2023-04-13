@@ -1,0 +1,90 @@
+.imageEditor {
+    border: 1px solid var(--primary-accent-text-color)
+}
+
+.image-editor-container {
+    position: relative;
+}
+
+.image-editor-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.editorButtons {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 25px;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid #ccc;
+  padding: 5px 0;
+}
+
+.editorCanvas {
+    width: 100%;
+    height: auto;
+}
+
+
+.image-editor-brush-size-dialog {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 10px;
+    z-index: 9999;
+    display: none;
+}
+
+.image-editor-brush-size-label {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.image-editor-brush-size-input {
+    display: inline-block;
+    width: 50px;
+}
+
+.image-editor-color-picker-dialog {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 10px;
+    z-index: 9999;
+    display: none;
+}
+
+.image-editor-color-picker {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid #333;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.image-editor-color-picker-label {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.image-editor-brush-size-preview {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid #333;
+    z-index: 9999;
+    display: none;
+}
