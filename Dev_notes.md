@@ -5,7 +5,7 @@ The overarching theme for this project is modularity and security. The goal is t
 The most basic concepts here are "Modules", "Extensions" and "Handlers".
 
 ### Modules
-A module is a self-contained piece of functionality. It can be anything from a simple image captioning model, to a full-blown image editor. Modules are loaded on startup, and can be enabled or disabled at any time. These provide what would be considered "core" application functionality, and as such, have full access to all methods in the code.
+A module is a self-contained piece of functionality exposed in the WebUI and/or API. It can be anything from a file browser and viewer to a full-blown image editor. Modules are loaded on startup, and can be enabled or disabled at any time. These provide what would be considered "core" application functionality, and as such, have full access to all methods in the code.
 
 ### Extensions
 An extension is very similar to a module, with the exception that it is restricted in what it can do with data and methods within the appliction.
