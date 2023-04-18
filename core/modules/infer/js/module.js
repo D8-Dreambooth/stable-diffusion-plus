@@ -14,7 +14,11 @@ let inferSettings = {
     "batch_size": 1,
     "width": 512,
     "height": 512,
-    "model": undefined
+    "model": undefined,
+    "mask": undefined,
+    "image": undefined,
+    "controlnet": false,
+    "controlnet_type": undefined
 }
 
 function inferResponse(data) {
@@ -233,7 +237,7 @@ function addRatioCards(max_resolution) {
 
 function setResolution(ratio) {
     const maxRes = userConfig["max_resolution"];
-    const [heightRatio, widthRatio] = ratio.split(":");
+    const [widthRatio, heightRatio] = ratio.split(":");
     const ratioValue = parseInt(widthRatio) / parseInt(heightRatio);
 
     let width = Math.round(Math.min(maxRes, ratioValue * maxRes));
@@ -243,6 +247,8 @@ function setResolution(ratio) {
     height = Math.floor(height / 64) * 64;
     inferSettings.width = width;
     inferSettings.height = height;
+    imageEditor.scaleCanvas(width, height);
+
     console.log("Updated infer settings: ", inferSettings);
     return {width, height};
 }
@@ -259,7 +265,10 @@ async function startInference() {
         let promptEl = document.getElementById("infer_prompt");
         let negEl = document.getElementById("infer_negative_prompt");
         let seedEl = document.getElementById("infer_seed");
-
+        let enableControlNet = document.getElementById("enableControlNet");
+        let controlnetType =  document.getElementById("controlnetType");
+        let mask = imageEditor.getMask();
+        let image = imageEditor.getImage();
         inferSettings.model = model;
         inferSettings.prompt = promptEl.value;
         inferSettings.negativePrompt = negEl.value;
@@ -268,6 +277,12 @@ async function startInference() {
         inferSettings.steps = parseInt(stepTest.value);
         inferSettings.num_images = parseInt(numImages.value);
         inferSettings.batch_size = parseInt(batchSize.value);
+        inferSettings.mask = mask;
+        inferSettings.image = image;
+        inferSettings.enable_controlnet = enableControlNet.checked;
+        inferSettings.controlnet_type = controlnetType.value;
+
+
         if (userConfig["show_aspect_ratios"]) {
             const selectedRatio = document.querySelector(".aspectButton.btn-selected");
             setResolution(selectedRatio.dataset.ratio);

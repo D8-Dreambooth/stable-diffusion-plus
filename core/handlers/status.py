@@ -48,7 +48,7 @@ class StatusHandler:
     async def _get_status(self, data):
         return {"status": self.status.dict()}
 
-    def start(self, total: int, desc: str):
+    def start(self, total: int = 0, desc: str = ""):
         self.status.start()
         self.status.progress_1_total = total
         self.status.status = desc

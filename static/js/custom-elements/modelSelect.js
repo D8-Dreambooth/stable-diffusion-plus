@@ -56,14 +56,12 @@ class ModelSelect {
             ext_include: this.ext_include,
             ext_exclude: this.ext_exclude
         });
-        console.log("Model list: ", modelList);
         this.modelList = modelList;
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");
         blankOption.value = "none";
         const loaded = modelList["loaded"];
         if (loaded !== undefined && loaded !== null) {
-            console.log("Loaded: ", loaded);
             this.currentModel = loaded.hash;
         }
 
@@ -76,8 +74,10 @@ class ModelSelect {
             modelList.models.forEach(model => {
                 let option = document.createElement("option");
                 option.value = (model.hasOwnProperty("hash") ? model.hash : "none");
+                if (this.currentModel !== "none" && this.currentModel !== undefined) {
                 if (this.currentModel.hash === option.value) {
                     option.selected = true;
+                }
                 }
                 option.textContent = model.display_name;
                 this.selectElement.appendChild(option);
@@ -89,7 +89,6 @@ class ModelSelect {
         const selectedOption = this.selectElement.options[this.selectElement.selectedIndex];
 
         if (selectedOption.value === "none") {
-            console.log("No model selected");
             return undefined;
         }
 
@@ -104,7 +103,6 @@ class ModelSelect {
             return undefined;
         }
 
-        console.log("Selected model: ", selectedModel);
         return selectedModel;
     }
 

@@ -54,28 +54,42 @@
                         </div>
                         <!-- Gradio-esque slider elements, populated by JS -->
 
-                        <div id="advancedInferSettings">
-                            <div class="form-group" id="infer_batch_size"></div>
-                            <div class="form-group" id="infer_height"></div>
-                            <div class="form-group" id="infer_steps"></div>
-                            <div class="form-group" id="infer_scale"></div>
-                            <div class="form-group">
-                                <label for="infer_seed">Seed</label>
-                                <input type="number" class="form-control" id="infer_seed" value="-1">
+                        <div class="accordion mt-2" id="advancedInferSettings">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="inferAdvHeading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#inferAdvSettings" aria-expanded="true"
+                                            aria-controls="inferAdvSettings">
+                                        Advanced
+                                    </button>
+                                </h2>
+                                <div id="inferAdvSettings" class="accordion-collapse collapse"
+                                     aria-labelledby="inferAdvHeading"
+                                     data-bs-parent="#advancedInferSettings">
+                                    <div class="accordion-body">
+                                        <div class="form-group" id="infer_batch_size"></div>
+                                        <div class="form-group" id="infer_height"></div>
+                                        <div class="form-group" id="infer_steps"></div>
+                                        <div class="form-group" id="infer_scale"></div>
+                                        <div class="form-group">
+                                            <label for="infer_seed">Seed</label>
+                                            <input type="number" class="form-control" id="infer_seed" value="-1">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
-                <div class="accordion" id="controlnetSettings">
+                <div class="accordion mt-3 shadow" id="controlnetSettings">
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="cnHeading">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#cnCollapse" aria-expanded="true" aria-controls="cnCollapse">
                                 ControlNet
                             </button>
                         </h2>
-                        <div id="cnCollapse" class="accordion-collapse collapse show" aria-labelledby="cnHeading"
+                        <div id="cnCollapse" class="accordion-collapse collapse" aria-labelledby="cnHeading"
                              data-bs-parent="#controlnetSettings">
                             <div class="accordion-body">
                                 <div class="form-group">
@@ -91,7 +105,7 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="inputImage">Input Image:</label>
+                                    <label for="controlnetEditor">Input Image:</label>
                                     <div class="imageEditor" id="controlnetEditor"></div>
                                 </div>
 

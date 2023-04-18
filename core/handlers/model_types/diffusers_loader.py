@@ -2,10 +2,12 @@ import logging
 import os.path
 
 import torch
-from diffusers import DiffusionPipeline, DEISMultistepScheduler, UniPCMultistepScheduler
+from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
+    StableDiffusionControlNetPipeline
 from diffusers.models.cross_attention import AttnProcessor2_0
 
 from core.dataclasses.model_data import ModelData
+from core.handlers.model_types.controlnet_processors import model_data as controlnet_data
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +20,61 @@ def load_diffusers(model_data: ModelData):
     else:
         try:
             pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
-            pipeline = pipeline.to("cuda")
+            pipeline.enable_model_cpu_offload()
             pipeline.unet.set_attn_processor(AttnProcessor2_0())
-            pipeline.unet = torch.compile(pipeline.unet)
-            # pipeline.enable_xformers_memory_efficient_attention()
+            if os.name != "nt":
+                pipeline.unet = torch.compile(pipeline.unet)
+            pipeline.enable_xformers_memory_efficient_attention()
             pipeline.vae.enable_tiling()
             pipeline.scheduler.config["solver_type"] = "bh2"
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
+
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
     return pipeline
 
 
+def load_diffusers_controlnet(model_data: ModelData):
+    model_path = model_data.path
+    pipeline = None
+    if not os.path.exists(model_path):
+        logger.debug(f"Unable to load model: {model_path}")
+        return pipeline
+
+    if "type" not in model_data.data:
+        logger.debug("No controlnet type specified.")
+        return pipeline
+
+    controlnet_type = model_data.data["type"]
+    controlnet_url = None
+    for md in controlnet_data:
+        if md["name"] == controlnet_type:
+            controlnet_url = md["model_url"]
+            break
+    if not controlnet_url:
+        logger.debug("No controlnet url found.")
+        return pipeline
+
+    try:
+        controlnet = ControlNetModel.from_pretrained(controlnet_url, torch_dtype=torch.float16)
+        # pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+        pipeline = StableDiffusionControlNetPipeline.from_pretrained(
+            model_path, controlnet=controlnet, torch_dtype=torch.float16
+        )
+        pipeline.enable_model_cpu_offload()
+        pipeline.unet.set_attn_processor(AttnProcessor2_0())
+        if os.name != "nt":
+            pipeline.unet = torch.compile(pipeline.unet)
+        pipeline.enable_xformers_memory_efficient_attention()
+        pipeline.vae.enable_tiling()
+        pipeline.scheduler.config["solver_type"] = "bh2"
+        pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
+
+    except Exception as e:
+        logger.warning(f"Exception loading pipeline: {e}")
+    return pipeline
+
+
 def register_function(model_handler):
     model_handler.register_loader("diffusers", load_diffusers)
+    model_handler.register_loader("diffusers_controlnet", load_diffusers_controlnet)

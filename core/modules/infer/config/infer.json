@@ -1,5 +1,6 @@
 {
   "basic_infer": false,
   "max_resolution": 768,
-  "show_aspect_ratios": false
+  "show_aspect_ratios": false,
+  "enable": true
 }

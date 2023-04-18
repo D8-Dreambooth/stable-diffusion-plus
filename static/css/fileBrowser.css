@@ -10,7 +10,7 @@
 }
 
 .tree.selectSibling {
-    height(calc(100% - var(--select-btn-height)));
+height(calc(100 % - var(--select-btn-height)));
 }
 
 .file-buttons {
@@ -26,9 +26,14 @@
     height: 100%;
 }
 
-.fileTitle, .fileCurrent {
+.fileCurrent {
     display: block;
     width: 100%;
+    direction: rtl;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
 }
 
 .buttonCol {
@@ -105,6 +110,7 @@ li.fileLi * {
 .treeRoot {
     overflow-y: auto;
     height: calc(100% - var(--path-container-height));
+    padding: 0 15px;
 }
 
 .tree {
@@ -124,8 +130,33 @@ li.fileLi * {
 }
 
 @media (max-width: 767.98px) {
-    .infoPanel, .tree-container.full {
-        height: 50%;
+    .tree-container.full {
+        height: 50% !important;
+    }
+
+    .tree-container.full.no-info {
+        height: 100% !important;
+    }
+
+    .infoPanel.closed {
+        width: 100% !important;
+        height: 0 !important;
+    }
+
+    .infoPanel {
+        height: auto !important;
+    }
+
+    .fileSortCol {
+        width: 150px !important;
+    }
+
+    .fileTitleCol {
+        width: calc(100% - 150px) !important;
+    }
+
+    .fileCurrent {
+        font-size: 18px !important;
     }
 }
 

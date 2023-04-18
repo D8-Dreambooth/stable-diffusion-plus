@@ -1,5 +1,6 @@
 .imageEditor {
-    border: 1px solid var(--primary-accent-text-color)
+    border: 1px solid var(--primary-accent-text-color);
+    position: relative;
 }
 
 .image-editor-container {
@@ -28,6 +29,10 @@
 .editorCanvas {
     width: 100%;
     height: auto;
+}
+
+.editCanvas {
+    position: absolute;
 }
 
 

@@ -1,11 +1,9 @@
 from typing import Optional
 
-from fastapi import HTTPException
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security import OAuth2
 from fastapi.security.utils import get_authorization_scheme_param
 from starlette.requests import Request
-from starlette.status import HTTP_403_FORBIDDEN
 
 
 class OAuth2PasswordBearerCookie(OAuth2):

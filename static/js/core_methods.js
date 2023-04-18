@@ -187,7 +187,6 @@ function sendMessage(name, data, await = true) {
                 if (index > -1) {
                     messages.splice(index, 1);
                 }
-                console.log("Resolving: ", response);
                 // This is the response we're waiting for
                 globalSocket.removeEventListener("message", handleResponse);
                 resolve(response.data);

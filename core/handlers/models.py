@@ -285,6 +285,8 @@ class ModelHandler:
                 if torch.has_cuda:
                     torch.cuda.empty_cache()
                 gc.collect()
+            else:
+                return model
         # Convert stable-diffusion/checkpoints to diffusers
         if model_type == "stable-diffusion":
             self.logger.debug("Convert sd model to diffusers.")

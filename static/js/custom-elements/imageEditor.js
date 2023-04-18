@@ -1,14 +1,29 @@
 class ImageEditor {
-    constructor(containerId) {
-// Create the canvas and add it to the container
+    constructor(containerId, width, height) {
+        // Create the canvas and add it to the container
+        this.canvasWrapper = document.createElement('div');
+        this.canvasWrapper.classList.add("canvasWrapper");
+        this.dropCanvas = document.createElement('canvas');
+        this.dropCanvas.classList.add("editorCanvas");
+        this.dropCanvas.style.cursor = 'none';
         this.canvas = document.createElement('canvas');
-        this.canvas.classList.add("editorCanvas");
+        this.canvas.classList.add("editorCanvas", "editCanvas");
         this.canvas.style.cursor = 'crosshair';
         this.container = document.getElementById(containerId);
-        this.container.appendChild(this.canvas);
+        this.container.appendChild(this.canvasWrapper);
+        this.canvasWrapper.appendChild(this.canvas);
+        this.canvasWrapper.appendChild(this.dropCanvas);
         this.buttonGroup = document.createElement("div");
         this.buttonGroup.classList.add("btn-group", "editorButtons");
         this.container.appendChild(this.buttonGroup);
+        this.imageSource = null;
+
+        // Store the original resolution of the image
+        this.originalResolution = {
+            width: width,
+            height: height
+        };
+
         // Initialize variables
         this.context = this.canvas.getContext('2d');
         this.isDrawing = false;
@@ -18,8 +33,7 @@ class ImageEditor {
         const ctx = this.canvas.getContext('2d');
         const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         // push 'draw' action to stack
-        console.log("Pushing state.");
-        this.undoStack.push({type: 'draw', state});
+        this.undoStack.push({type: 'draw', imageData: state});
         this.brushSize = 10;
         this.brushColor = 'black';
         this.updateCursorStyle();
@@ -28,12 +42,12 @@ class ImageEditor {
         this.maxScale = 10;
         this.translateX = 0;
         this.translateY = 0;
-
+        this.scaleCanvas(width, height);
         // Add event listeners for canvas interaction
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-        this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+        //this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
         this.canvas.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
         this.canvas.addEventListener('mouseenter', this.handleMouseEnter.bind(this));
         this.canvas.addEventListener('dragover', this.handleDragOver.bind(this));
@@ -47,9 +61,89 @@ class ImageEditor {
         this.addButton('Color', this.showColorPicker.bind(this));
     }
 
+    getImage() {
+        for (let i = 1; i < this.undoStack.length; i++) {
+            if (this.undoStack[i].type === 'drop') {
+                return this.dropCanvas.toDataURL('image/png');
+            }
+        }
+        return "";
+    }
+
+    getMask() {
+        for (let i = 1; i < this.undoStack.length; i++) {
+            if (this.undoStack[i].type === 'draw') {
+                return this.canvas.toDataURL('image/png');
+            }
+        }
+        return "";
+    }
+
+
+    scaleCanvas(width, height) {
+        // Get the current image data from the canvases
+        const imageData = {
+            main: this.canvas.getContext('2d').getImageData(0, 0, this.canvas.width, this.canvas.height)
+        };
+        this.undoStack = [];
+        // Resize the canvas elements to the new dimensions
+        this.dropCanvas.width = width;
+        this.dropCanvas.height = height;
+        let resizedState = this.getResizedImageData(imageData.main, this.canvas.width, this.canvas.height);
+        this.undoStack.push(resizedState);
+        if (null !== this.imageSource) {
+            const src_image = new Image();
+            src_image.src = this.imageSource;
+            const scale = Math.min(
+                this.dropCanvas.width / src_image.width,
+                this.dropCanvas.height / src_image.height
+            );
+            const width = src_image.width * scale;
+            const height = src_image.height * scale;
+            const x = (this.dropCanvas.width - width) / 2;
+            const y = (this.dropCanvas.height - height) / 2;
+            const ctx = this.dropCanvas.getContext('2d');
+            ctx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
+            const state = ctx.getImageData(0, 0, this.dropCanvas.width, this.dropCanvas.height);
+            this.undoStack.push(state);
+            ctx.drawImage(src_image, x, y, width, height);
+        }
+        this.canvas.width = width;
+        this.canvas.height = height;
+
+        // Redraw the image data onto the resized canvases
+        this.canvas.getContext('2d').putImageData(resizedState, 0, 0);
+    }
+
+    getResizedImageData(imageData, width, height) {
+        // Create a new canvas element to resize the image data
+        const canvas = document.createElement('canvas');
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
+
+        // Draw the image data onto the canvas
+        canvas.getContext('2d').putImageData(imageData, 0, 0);
+
+        // Create a new image object to hold the resized image data
+        const resizedImage = new ImageData(width, height);
+
+        // Draw the canvas onto the resized image object
+        const sourceX = (canvas.width - width) / 2;
+        const sourceY = (canvas.height - height) / 2;
+        const sourceWidth = width;
+        const sourceHeight = height;
+        const destX = 0;
+        const destY = 0;
+        const destWidth = width;
+        const destHeight = height;
+        resizedImage.data.set(canvas.getContext('2d').getImageData(sourceX, sourceY, sourceWidth, sourceHeight).data, 0);
+
+        // Return the resized image data
+        return resizedImage;
+    }
+
     // Add a button to the top-right corner of the container
     addButton(label, action) {
-        console.log("ADDING BUTTON: ", label);
         const button = document.createElement('button');
         button.innerHTML = label;
         button.style.float = 'right';
@@ -83,17 +177,23 @@ class ImageEditor {
 
     // Clear the canvas
     clear() {
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.undoStack = [];
-        const ctx = this.canvas.getContext('2d');
-        const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        let ctx = this.canvas.getContext('2d');
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        let state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        ctx = this.dropCanvas.getContext('2d');
+        ctx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
 
         // push 'draw' action to stack
-        console.log("Pushing state.");
-        this.undoStack.push({type: 'draw', state});
+        this.undoStack.push({type: 'draw', imageData: state});
+        const colorPickerDialog = document.querySelector('.color-picker-dialog');
+        if (colorPickerDialog) {
+            // if it is open, remove it from the document and return
+            document.body.removeChild(colorPickerDialog);
+        }
+        this.brushColor = "black";
+        this.brushSize = 10;
     }
-
-    // Undo the last action
 
     // Show a dialog to set the brush size
     showBrushSizeDialog(event) {
@@ -175,32 +275,6 @@ class ImageEditor {
     // Draw a line from the last position to the current position
 
 
-    clear() {
-        const ctx = this.canvas.getContext('2d');
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const colorPickerDialog = document.querySelector('.color-picker-dialog');
-        if (colorPickerDialog) {
-            // if it is open, remove it from the document and return
-            document.body.removeChild(colorPickerDialog);
-        }
-        this.brushColor = "black";
-        this.brushSize = 10;
-    }
-
-    undo() {
-        if (this.undoStack.length > 0) {
-            const lastAction = this.undoStack.pop();
-            console.log("UNDO:", lastAction);
-
-            const ctx = this.canvas.getContext('2d');
-
-            if (lastAction.type === 'draw') {
-                ctx.putImageData(lastAction.imageData, 0, 0);
-            }
-        }
-    }
-
-
     getCursorPosition(event) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
@@ -239,8 +313,7 @@ class ImageEditor {
         const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
         // push 'draw' action to stack
-        console.log("Pushing state.");
-        this.undoStack.push({type: 'draw', state});
+        this.undoStack.push({type: 'draw', imageData: state});
     }
 
     drawLine(x, y) {
@@ -260,11 +333,14 @@ class ImageEditor {
         const lastAction = this.undoStack.pop();
 
         if (lastAction.type === 'draw') {
-            this.context.putImageData(lastAction.state, 0, 0);
+            const ctx = this.canvas.getContext('2d');
+            ctx.putImageData(lastAction.imageData, 0, 0);
         } else if (lastAction.type === 'drop') {
-            this.clear();
+            const dropCtx = this.dropCanvas.getContext('2d');
+            dropCtx.putImageData(lastAction.imageData, 0, 0);
         }
     }
+
 
     handleContextMenu(event) {
         event.preventDefault();
@@ -324,19 +400,27 @@ class ImageEditor {
         reader.addEventListener('load', () => {
             const image = new Image();
             image.addEventListener('load', () => {
+                // Store the original resolution
+                this.originalResolution = {
+                    width: image.width,
+                    height: image.height
+                };
                 const scale = Math.min(
-                    this.canvas.width / image.width,
-                    this.canvas.height / image.height
+                    this.dropCanvas.width / image.width,
+                    this.dropCanvas.height / image.height
                 );
                 const width = image.width * scale;
                 const height = image.height * scale;
-                const x = (this.canvas.width - width) / 2;
-                const y = (this.canvas.height - height) / 2;
-                this.context.drawImage(image, x, y, width, height);
-                const state = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-                this.undoStack.push(state);
+                const x = (this.dropCanvas.width - width) / 2;
+                const y = (this.dropCanvas.height - height) / 2;
+                const ctx = this.dropCanvas.getContext('2d');
+                ctx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
+                const state = ctx.getImageData(0, 0, this.dropCanvas.width, this.dropCanvas.height);
+                ctx.drawImage(image, x, y, width, height);
+                this.undoStack.push({type: 'drop', imageData: state});
             });
             image.src = reader.result;
+            this.imageSource = image.src;
         });
 
         reader.readAsDataURL(file);

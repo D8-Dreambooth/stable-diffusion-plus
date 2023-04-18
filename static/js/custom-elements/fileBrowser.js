@@ -9,16 +9,38 @@ class FileBrowser {
         let wrapper = document.createElement("div");
         wrapper.classList.add("row", "fileBrowserContainer");
         parentElement.appendChild(wrapper);
+
         this.parentElement = wrapper;
         this.infoPanel = undefined;
         this.currentPath = "";
+        if (options["initialPath"] !== undefined) {
+            this.setCurrentPath(options["initialPath"]);
+        }
+
         this.currentParent = "";
+        this.value = "";
         this.selectedLink = undefined;
-        console.log("Options: ", options);
+
+        if (options["selectedElement"] !== undefined) {
+            const path = options["selectedElement"];
+            const lastSeparatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+            if (lastSeparatorIndex !== -1) {
+                const parentDirectory = path.slice(0, lastSeparatorIndex);
+                const directory = path.slice(lastSeparatorIndex + 1);
+                this.setCurrentPath(parentDirectory);
+                this.selectedLinks = [];
+                this.selected = directory;
+                this.value = path;
+            }
+        }
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
+
         this.treeParent = document.createElement("div");
         this.treeParent.classList.add("tree-container", "col");
+        if (!this.showInfo) {
+            this.treeParent.classList.add("no-info");
+        }
         this.placeholder = options["placeholder"] || "Select something...";
         this.showSelectButton = options["showSelectButton"] || false;
         this.listFiles = options["listFiles"] || false;
@@ -46,9 +68,9 @@ class FileBrowser {
 
         this.addKeyboardListener();
 
+        let inputGroup = this.buildInput();
 
         this.buildTree().then(() => {
-            let inputGroup = this.buildInput();
             this.parentElement.prepend(inputGroup);
             this.treeParent.appendChild(this.treeContainer);
 
@@ -57,12 +79,11 @@ class FileBrowser {
                 selectButton.classList.add("btn", "btn-primary");
                 selectButton.textContent = "Select";
                 selectButton.addEventListener("click", () => {
-                    console.log("SELCLICK.");
                     this.selectedLink = this.selectedLinks.length > 0 ? this.selectedLinks[0] : undefined;
                     if (this.selectedLink !== undefined) {
-                        console.log("Selected: ", this.selectedLink);
                         this.input.value = this.selectedLink.dataset.fullPath;
-                        console.log("SET: ", this.input.value);
+                        this.value = this.selectedLink.dataset.fullPath;
+                        this.parentElement.dataset.fileBrowser = JSON.stringify(this);
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
                             this.onSelectCallbacks[i](this.input.value);
                         }
@@ -72,9 +93,11 @@ class FileBrowser {
                 const cancelButton = document.createElement("button");
                 cancelButton.classList.add("btn", "btn-secondary");
                 cancelButton.textContent = "Cancel  ";
-                cancelButton.addEventListener("click", () => {
+                cancelButton.addEventListener("click", (event) => {
+                    event.preventDefault();
                     this.toggleTree();
                 });
+
                 const btnGroup = document.createElement("div");
                 btnGroup.classList.add("btn-group", "file-buttons", "hide");
                 btnGroup.appendChild(selectButton);
@@ -99,9 +122,34 @@ class FileBrowser {
             }
             this.attachEventHandlers();
         });
-
-
+        parentElement.dataset.fileBrowser = JSON.stringify(this);
     }
+
+    async refresh() {
+        await this.buildTree();
+        this.parentElement.dataset.fileBrowser = JSON.stringify(this);
+    }
+
+    setCurrentPath(path) {
+        this.currentPath = path;
+    }
+
+    addOnDoubleClick(callback) {
+        this.onDoubleClickCallbacks.push(callback);
+    }
+
+    addOnClick(callback) {
+        this.onClickCallbacks.push(callback);
+    }
+
+    addOnSelect(callback) {
+        this.onSelectCallbacks.push(callback);
+    }
+
+    addOnCancel(callback) {
+        this.onCancelCallbacks.push(callback);
+    }
+
 
     buildFileButtons() {
         let buttonCol = document.createElement("div");
@@ -144,6 +192,7 @@ class FileBrowser {
         buttonGroup.querySelectorAll("button").forEach(button => {
             button.addEventListener("click", () => {
                 this.handleFileMethod(button.dataset.function);
+                this.parentElement.dataset.fileBrowser = JSON.stringify(this);
             });
         });
 
@@ -231,7 +280,6 @@ class FileBrowser {
                         body: formData,
                     });
                     const data = await response.json();
-                    console.log(data);
                     await this.refresh();
                 });
 
@@ -261,10 +309,6 @@ class FileBrowser {
             const sibling = direction === -1 ?
                 selected.previousElementSibling : selected.nextElementSibling;
             if (sibling) {
-                console.log("Found sibling.");
-                // if (multi === false) selected.classList.remove("selected");
-                // sibling.classList.add("selected");
-                // sibling.click();
                 this.handleLinkClick(sibling, ctrl_pressed, shift_pressed);
             }
         } else {
@@ -274,7 +318,6 @@ class FileBrowser {
             }
         }
 
-        console.log("NEXT!", direction);
         const images = document.querySelector(".img-info");
         const fullScreen = document.querySelector(".img-fullscreen");
         if (images) {
@@ -285,11 +328,9 @@ class FileBrowser {
     }
 
     addKeyboardListener() {
-        console.log("Adding key listener.");
         document.addEventListener("keydown", function (event) {
             const focusedElement = document.activeElement;
             if (this.treeContainer.contains(focusedElement)) {
-                console.log("FE: ", focusedElement, this.treeContainer);
                 if (event.key === "ArrowUp" || event.key === "ArrowDown") {
                     event.preventDefault();
                     const direction = event.key === "ArrowUp" ? -1 : 1;
@@ -299,7 +340,6 @@ class FileBrowser {
                     event.preventDefault();
                     const selectedLi = focusedElement.closest(".fileLi.selected");
                     if (selectedLi !== null && selectedLi.classList.contains("fileLi")) {
-                        console.log("We got us a selected li: ", selectedLi);
                         selectedLi.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
                     }
                 }
@@ -327,7 +367,6 @@ class FileBrowser {
 
         this.treeContainer.addEventListener('dragenter', (e) => {
             e.preventDefault();
-            console.log("ENTER");
             const tempDiv = document.querySelector(".tempDiv");
             tempDiv.classList.add('show');
         });
@@ -339,7 +378,6 @@ class FileBrowser {
 
         this.treeContainer.addEventListener('dragleave', (e) => {
             e.preventDefault();
-            console.log("LEAVE!");
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 const tempDiv = document.querySelector(".tempDiv");
@@ -364,40 +402,14 @@ class FileBrowser {
                 body: formData,
             });
             const data = await response.json();
-            console.log(data);
             await this.refresh();
         });
     }
 
 
     buildInfoPanel(fileInfo) {
-        console.log("Building: ", fileInfo);
         const panelContainer = document.createElement("div");
         panelContainer.classList.add("row");
-
-        // File info panel
-        const infoPanel = document.createElement("div");
-        infoPanel.classList.add("panelWrap");
-        const infoList = document.createElement("ul");
-        infoList.classList.add("list-group", "list-group-flush");
-        const filename = document.createElement("li");
-        filename.classList.add("list-group-item", "active");
-        filename.textContent = fileInfo.filename;
-        infoList.appendChild(filename);
-        const created = document.createElement("li");
-        created.classList.add("list-group-item");
-        created.textContent = `Created: ${fileInfo.date_created}`;
-        infoList.appendChild(created);
-        const modified = document.createElement("li");
-        modified.classList.add("list-group-item");
-        modified.textContent = `Modified: ${fileInfo.date_modified}`;
-        infoList.appendChild(modified);
-        const size = document.createElement("li");
-        size.classList.add("list-group-item");
-        size.textContent = `Size: ${fileInfo.size}`;
-        infoList.appendChild(size);
-        infoPanel.appendChild(infoList);
-        panelContainer.appendChild(infoPanel);
 
         // Image panel
         if (fileInfo.src) {
@@ -437,6 +449,31 @@ class FileBrowser {
                 panelContainer.appendChild(dataWrapper);
             }
         }
+
+        // File info panel
+        const infoPanel = document.createElement("div");
+        infoPanel.classList.add("panelWrap");
+        const infoList = document.createElement("ul");
+        infoList.classList.add("list-group", "list-group-flush");
+        const filename = document.createElement("li");
+        filename.classList.add("list-group-item", "active");
+        filename.textContent = fileInfo.filename;
+        infoList.appendChild(filename);
+        const created = document.createElement("li");
+        created.classList.add("list-group-item");
+        created.textContent = `Created: ${fileInfo.date_created}`;
+        infoList.appendChild(created);
+        const modified = document.createElement("li");
+        modified.classList.add("list-group-item");
+        modified.textContent = `Modified: ${fileInfo.date_modified}`;
+        infoList.appendChild(modified);
+        const size = document.createElement("li");
+        size.classList.add("list-group-item");
+        size.textContent = `Size: ${fileInfo.size}`;
+        infoList.appendChild(size);
+        infoPanel.appendChild(infoList);
+        panelContainer.appendChild(infoPanel);
+
 
         return panelContainer;
     }
@@ -505,10 +542,7 @@ class FileBrowser {
     buildInput() {
         const inputGroup = document.createElement("div");
         inputGroup.classList.add("input-group", "dropdownGroup");
-        if (this.dropdown) {
-            console.log("Dropdown enabled.");
-        } else {
-            console.log("Hide dropdown.")
+        if (!this.dropdown) {
             inputGroup.classList.add("hide");
         }
         const input = document.createElement("input");
@@ -523,7 +557,8 @@ class FileBrowser {
 
         toggleButton.innerHTML = this.expanded ? `<i class="fas fa-chevron-up"></i>` : `<i class="fas fa-chevron-down"></i>`;
         inputGroup.appendChild(toggleButton);
-        toggleButton.addEventListener("click", () => {
+        toggleButton.addEventListener("click", (event) => {
+            event.preventDefault();
             this.toggleTree();
         });
         this.toggleButton = toggleButton;
@@ -543,7 +578,6 @@ class FileBrowser {
 
     async buildTree() {
         const response = await this.fetchFileTreeData(this.currentPath);
-        console.log("FTD: ", response);
         let items = response["items"] || [];
         this.currentParent = response["current"] || "";
         this.separator = response["separator"] || "\\";
@@ -574,28 +608,28 @@ class FileBrowser {
         let sortButtonsRow = document.createElement("div");
         sortButtonsRow.classList.add("row", "fileSortRow");
 
-// Sort by name button
+        // Sort by name button
         let sortByNameButton = document.createElement("button");
         sortByNameButton.innerHTML = '<i class="bx bx-sort-a-z"></i>';
         sortByNameButton.dataset["type"] = "name";
         sortByNameButton.classList.add("btn", "btn-outline-primary", "fileSortButton", "active");
         sortButtonsRow.appendChild(sortByNameButton);
 
-// Sort by size button
+        // Sort by size button
         let sortBySizeButton = document.createElement("button");
         sortBySizeButton.innerHTML = '<i class="bx bxs-hdd"></i>';
         sortBySizeButton.dataset["type"] = "size";
         sortBySizeButton.classList.add("btn", "btn-outline-primary", "fileSortButton");
         sortButtonsRow.appendChild(sortBySizeButton);
 
-// Sort by date button
+        // Sort by date button
         let sortByDateButton = document.createElement("button");
         sortByDateButton.innerHTML = '<i class="bx bx-calendar"></i>';
         sortByDateButton.dataset["type"] = "date";
         sortByDateButton.classList.add("btn", "btn-outline-primary", "fileSortButton");
         sortButtonsRow.appendChild(sortByDateButton);
 
-// Sort by type button
+        // Sort by type button
         let sortByTypeButton = document.createElement("button");
         sortByTypeButton.innerHTML = '<i class="bx bxs-file-blank"></i>';
         sortByTypeButton.dataset["type"] = "type";
@@ -633,7 +667,6 @@ class FileBrowser {
     }
 
     generateTree(response) {
-        console.log("Gen Res: ", response);
         const root = document.createElement("ul");
         root.classList.add("treeRoot");
         const listItem = document.createElement("li");
@@ -653,12 +686,13 @@ class FileBrowser {
             parent = Object.assign({}, response[keys[index]]);
             delete response[keys[index]];
             listItem.dataset.fullPath = parent.path + this.separator + "..";
-
         }
 
-
-        listItem.appendChild(link);
-        root.appendChild(listItem);
+        if (this.currentParent !== "") {
+            listItem.appendChild(link);
+            root.appendChild(listItem);
+        }
+        
         for (const [path, details] of Object.entries(response)) {
             const dateModified = details.time;
             const size = details.size;
@@ -685,6 +719,16 @@ class FileBrowser {
                 listItem.appendChild(childList);
             }
             root.appendChild(listItem);
+            if (this.selected && this.selected === shortPath) {
+                listItem.classList.add("selected");
+                this.selected = "";
+                this.selectedLink = listItem;
+                this.selectedLinks.push(listItem);
+                this.input.value = listItem.dataset.path;
+                this.value = this.input.value;
+                this.parentElement.dataset.fileBrowser = JSON.stringify(this);
+            }
+
         }
         return root;
     }
@@ -692,41 +736,27 @@ class FileBrowser {
     attachEventHandlers() {
         const allLinks = this.treeContainer.querySelectorAll(".fileLi");
         allLinks.forEach((link) => {
+            let lastTouchTime = 0;
             if (link.dataset.path) {
                 link.addEventListener("dblclick", () => {
-                    if (link.dataset.type === "directory") {
-                        this.currentPath = link.dataset.fullPath;
-
-                        this.buildTree().then(() => {
-                            const selectFirstFileLi = (element) => {
-                                if (element.classList && element.classList.contains("fileLi")) {
-                                    element.classList.add("selected");
-                                    element.click();
-                                    return true;
-                                }
-                                for (let i = 0; i < element.children.length; i++) {
-                                    const child = element.children[i];
-                                    if (selectFirstFileLi(child)) {
-                                        return true;
-                                    }
-                                }
-                                return false;
-                            };
-                            selectFirstFileLi(this.treeContainer);
-                        });
-                    } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type === ".jpeg") {
-                        if (this.showInfo) {
-                            let img = document.getElementById("infoModalImage");
-                            let infoImg = document.querySelector(".img-info");
-                            img.src = infoImg.src;
-                            img.dataset["name"] = infoImg.dataset["name"];
-                            $("#imageInfoModal").addClass("show");
-                        }
-                    }
-                    this.onDoubleClickCallbacks.forEach((callback) =>
-                        callback(link.dataset.fullPath, link.dataset.type)
-                    );
+                    this.handleLinkDblClick(link);
                 });
+
+                link.addEventListener('touchstart', (event) => {
+                    if (event.touches.length > 1) {
+                        return;
+                    }
+
+                    const touchTime = new Date().getTime();
+
+                    if (touchTime - lastTouchTime < 500) {
+                        event.preventDefault();
+                        this.handleLinkDblClick(link);
+                    }
+
+                    lastTouchTime = touchTime;
+                });
+
                 link.addEventListener("click", (event) => {
                     event.preventDefault();
                     const ctrlKeyPressed = event.ctrlKey;
@@ -760,23 +790,54 @@ class FileBrowser {
                     this.currentSort.type = type;
                     this.currentSort.order = "asc";
                 }
-                console.log("SORTCLICK: ", this.currentSort);
                 this.sortTree();
             });
         });
     }
 
+    handleLinkDblClick(link) {
+        if (link.dataset.type === "directory") {
+                        this.currentPath = link.dataset.fullPath;
+
+                        this.buildTree().then(() => {
+                            const selectFirstFileLi = (element) => {
+                                if (element.classList && element.classList.contains("fileLi")) {
+                                    element.classList.add("selected");
+                                    element.click();
+                                    return true;
+                                }
+                                for (let i = 0; i < element.children.length; i++) {
+                                    const child = element.children[i];
+                                    if (selectFirstFileLi(child)) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            };
+                            selectFirstFileLi(this.treeContainer);
+                        });
+                    } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type === ".jpeg") {
+                        if (this.showInfo) {
+                            let img = document.getElementById("infoModalImage");
+                            let infoImg = document.querySelector(".img-info");
+                            img.src = infoImg.src;
+                            img.dataset["name"] = infoImg.dataset["name"];
+                            $("#imageInfoModal").addClass("show");
+                        }
+                    }
+                    this.onDoubleClickCallbacks.forEach((callback) =>
+                        callback(link.dataset.fullPath, link.dataset.type)
+                    )
+    }
     // Define sortTree function
     sortTree() {
         let treeRoot = this.treeContainer.querySelector(".treeRoot");
-        console.log("TR: ", treeRoot);
         let treeItems = Array.from(treeRoot.children);
         // Pop the first element and store it
         let firstElement = treeItems.shift();
 
         // Sort the remaining items
         treeItems.sort((a, b) => {
-            console.log("ITEM: ", a, b, this.currentSort);
             let aVal = a.dataset[this.currentSort.type];
             let bVal = b.dataset[this.currentSort.type];
             if (this.currentSort.type === "name") {
@@ -789,7 +850,6 @@ class FileBrowser {
                 aVal = parseFloat(aVal);
                 bVal = parseFloat(bVal);
             }
-            console.log("AB: ", aVal, bVal);
             if (this.currentSort.type === "size" || this.currentSort.type === "date") {
                 if (this.currentSort.order === "asc") {
                     return (aVal < bVal) ? -1 : (aVal > bVal) ? 1 : 0;
@@ -897,22 +957,18 @@ class FileBrowser {
             filter: filter
         };
         const response = await sendMessage("files", data);
-        console.log("Response received:", response);
         this.setCurrentPath(response["current"]);
         return response;
     }
 
     showFileInfo(link, data1, data2) {
         if (!this.showInfo) return;
-        console.log("File info: ", link, data1, data2);
         if (data1.indexOf("..") !== -1) {
             this.infoPanel.classList.add("closed");
             return;
         }
         this.fetchFileData(data1).then((data) => {
-            console.log("SHOW: ", data);
             let panel = this.buildInfoPanel(data[0]);
-            console.log("PANEL: ", panel);
             this.infoPanel.innerHTML = panel.innerHTML;
             if (this.infoPanel.classList.contains("closed")) {
                 this.infoPanel.classList.remove("closed");
@@ -922,13 +978,11 @@ class FileBrowser {
             let rightIcon = document.querySelector(".info-icon-right");
             if (leftIcon) {
                 leftIcon.addEventListener("click", () => {
-                    console.log("DOWNLOAD IMAGE");
                     this.downloadImage(data[0].src, data[0].filename);
                 });
             }
             if (rightIcon) {
                 rightIcon.addEventListener("click", () => {
-                    console.log("SHOW MODAL");
                     let img = document.getElementById("infoModalImage");
                     img.src = data[0].src;
                     img.dataset["name"] = data[0].filename;
@@ -940,41 +994,32 @@ class FileBrowser {
     }
 
     async fetchFileData(file) {
-        console.log("FFD: ", file);
         const data = {
             files: file
         };
         const response = await sendMessage("file", data);
-        console.log("Response received:", response);
         if (response.hasOwnProperty("files")) {
             return response.files;
         }
         return response;
     }
 
-    async refresh() {
-        await this.buildTree();
+    val() {
+        return this.input.value;
     }
-
-    setCurrentPath(path) {
-        this.currentPath = path;
-        console.log("Current path set:", path);
-    }
-
-    addOnDoubleClick(callback) {
-        this.onDoubleClickCallbacks.push(callback);
-    }
-
-    addOnClick(callback) {
-        this.onClickCallbacks.push(callback);
-    }
-
-    addOnSelect(callback) {
-        this.onSelectCallbacks.push(callback);
-    }
-
-    addOnCancel(callback) {
-        this.onCancelCallbacks.push(callback);
-    }
-
 }
+
+$.fn.FileBrowser = function(options = {}) {
+    const fileBrowsers = [];
+    this.each(function() {
+        const element = $(this);
+        let fileBrowser = element.data('fileBrowser');
+        if (!fileBrowser) {
+            fileBrowser = new FileBrowser(this, options);
+            element.data('fileBrowser', fileBrowser);
+        }
+        fileBrowsers.push(fileBrowser);
+    });
+    return fileBrowsers.length === 1 ? fileBrowsers[0] : fileBrowsers;
+};
+

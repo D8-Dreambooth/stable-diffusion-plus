@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
-from core.modules.infer.src.controlnet_processors import model_data
+from core.handlers.model_types.controlnet_processors import model_data
 from core.modules.infer.src.infer_utils import start_inference
 
 logger = logging.getLogger(__name__)

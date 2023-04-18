@@ -31,9 +31,12 @@ class ModuleHandler:
                         module_file = os.path.join(module_path, file)
                         module_dir = os.path.basename(os.path.dirname(module_file))
                         module_name = file[:-3]
+
                         if module_name == "module_base":
                             continue
                         if "install" in file:
+                            continue
+                        if not module_name.startswith("module_"):
                             continue
                         try:
                             module_str = f"core.modules.{module_dir}.{module_name}"

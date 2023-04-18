@@ -117,13 +117,21 @@ input {
     border-bottom: 1px solid var(--bs-gray-400);
 }
 
-.card, .accordion {
-    margin-bottom: 2em;
+.card-header, .accordion-header, .accordion-button {
+    height: 40px;
 }
 
 .card, .modal-body, .accordion, .accordion-collapse {
     background-color: var(--bs-body-bg-rgb);
     border: 1px solid var(--bs-gray-400);
+}
+
+.accordion-item {
+    border: none !important;
+}
+
+.accordion-header:first-child {
+    border-radius: calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0;
 }
 
 .carousel-control-prev,
@@ -220,8 +228,13 @@ input {
     color: var(--secondary-accent-text-color);
 }
 
-.sectionLabel {
+.sectionLabel:not([class*="col-"]) {
     width: 100%;
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.sectionLabel {
     font-size: 20px;
     margin-bottom: 5px;
 }
@@ -530,16 +543,34 @@ input {
 }
 
 
-.card.shadow {
+.card.shadow, .accordion.shadow {
     margin: 5px 0;
     box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
     transition: box-shadow .3s, transform .3s;
 }
 
-.card.shadow:hover {
+.card.shadow:hover, .accordion.shadow:hover {
     box-shadow: 0 .7rem 1.2rem rgba(0, 0, 0, .1) !important;
     transform: scale(1.01);
 }
+
+.accordion-button::after {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: auto;
+    content: "";
+    background-image: url(data:image/svg+xml,%3csvg xmlns= 'http://www.w3.org/2000/svg' viewBox= '0 0 16 16' fill= '%23212529' %3e%3cpath fill-rule= 'evenodd' d= 'M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z' /%3e%3c/svg%3e);
+    background-repeat: no-repeat;
+    background-size: 1.25rem;
+    transition: transform .2s ease-in-out;
+}
+
+.accordion-button:not(.collapsed)::after {
+    background-image: url(data:image/svg+xml,%3csvg xmlns= 'http://www.w3.org/2000/svg' viewBox= '0 0 16 16' fill= '%230C63E4' %3e%3cpath fill-rule= 'evenodd' d= 'M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z' /%3e%3c/svg%3e);
+    transform: rotate(-180deg);
+}
+
 
 .align-items-stretch {
     align-items: stretch !important;

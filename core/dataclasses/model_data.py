@@ -14,11 +14,13 @@ class ModelData:
     hash: str
     is_url: bool
     loader: any
+    data: Dict
     display_name: ""
 
     def __init__(self, model_path, loader=None):
         self.path = model_path
         self.loader = loader
+        self.data = {}
         if not os.path.exists(model_path):
             if "http" not in model_path:
                 raise Exception("File does not exist at the specified path")
@@ -39,7 +41,8 @@ class ModelData:
             "hash": self.hash,
             "is_url": self.is_url,
             "loader": self.loader,
-            "display_name": self.display_name
+            "display_name": self.display_name,
+            "data": self.data
         }
 
     def get_hash(self, model_path):

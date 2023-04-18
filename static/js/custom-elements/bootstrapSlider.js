@@ -51,7 +51,7 @@ class BootstrapSlider {
         this.rangeInput = document.createElement("input");
         this.rangeInput.type = "range";
         this.rangeInput.id = "range_id_0";
-        this.rangeInput.name = "cowbell";
+        this.rangeInput.name = "wtf";
         this.rangeInput.classList.add("w-full", "disabled:cursor-not-allowed");
         this.rangeInput.min = this.min;
         this.rangeInput.max = this.max;
@@ -76,12 +76,14 @@ class BootstrapSlider {
         this.numberInput.value = this.value;
         this.rangeInput.value = this.value;
         if (this.onChangeCallback) {
+            console.log("Callback?")
             this.onChangeCallback(this.value);
         }
     }
 
 
     setOnChange(callback) {
+        console.log("Callback set...")
         this.onChangeCallback = callback;
         this.rangeInput.addEventListener("input", (event) => {
             const value = parseInt(event.target.value, 10);
