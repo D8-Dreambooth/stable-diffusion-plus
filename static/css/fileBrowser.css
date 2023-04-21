@@ -111,6 +111,7 @@ li.fileLi * {
     overflow-y: auto;
     height: calc(100% - var(--path-container-height));
     padding: 0 15px;
+    border-top: 1px solid var(--primary-text-color);
 }
 
 .tree {
@@ -161,7 +162,7 @@ li.fileLi * {
 }
 
 .fileSortCol {
-    padding-top: 12px;
+    padding-top: 8px;
     padding-right: 35px;
 }
 
@@ -236,6 +237,11 @@ li.fileLi * {
 
 .fileTitleCol {
     padding-top: 1px;
+}
+
+.fileTitleCol, .fileCurrent {
+    border: none !important;
+    padding: 2px 15px;
 }
 
 .infoPanel.closed {

@@ -4,13 +4,14 @@
 
     --first-color-light: #282828;
     --primary-accent-color: #333;
-    --secondary-accent-color: #565656;
-    --primary-text-color: #000;
+    --secondary-accent-color: rgb(65, 70, 73);
+    --primary-text-color: rgb(232, 230, 227);
     --primary-accent-text-color: #FFF;
     --secondary-text-color: #FFF;
     --secondary-accent-text-color: #FFF;
-    --bs-body-bg-rgb: rgb(44, 44, 44);
-    --bs-body-bg-module: rgb(62, 62, 62);
+    --bs-body-bg-rgb: rgb(36, 36, 37);
+    --bs-border-dark: #7c7366;
+    --bs-body-bg-module: #2f3335;
     --bs-gray: #6c757d;
     --bs-gray-dark: #343a40;
     --bs-gray-100: #282828;
@@ -23,7 +24,7 @@
     --bs-gray-800: #c3c3c3;
     --bs-gray-900: #e6e6e6;
 
-    --primary-color: #4723D9;
-    --secondary-color: #8a8a93;
+    --primary-color: #391cae;
+    --secondary-color: #585f62;
 
 }

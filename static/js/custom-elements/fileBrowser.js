@@ -38,9 +38,9 @@ class FileBrowser {
 
         this.treeParent = document.createElement("div");
         this.treeParent.classList.add("tree-container", "col");
-        if (!this.showInfo) {
-            this.treeParent.classList.add("no-info");
-        }
+        this.showTitle = options["showTitle"] !== undefined ? options["showTitle"] : true;
+        this.showInfo = options["showInfo"] !== undefined ? options["showInfo"] : true;
+        this.style = options["style"] !== undefined ? options["style"] : "";
         this.placeholder = options["placeholder"] || "Select something...";
         this.showSelectButton = options["showSelectButton"] || false;
         this.listFiles = options["listFiles"] || false;
@@ -56,9 +56,11 @@ class FileBrowser {
             type: "name",
             order: "asc"
         };
-        this.showTitle = options["showTitle"] !== undefined ? options["showTitle"] : true;
-        this.showInfo = options["showInfo"] !== undefined ? options["showInfo"] : true;
-        this.style = options["style"] !== undefined ? options["style"] : "";
+
+        if (!this.showInfo) {
+            this.treeParent.classList.add("no-info");
+        }
+
         if (this.expanded) {
             this.treeParent.classList.add("full");
         }
@@ -81,8 +83,14 @@ class FileBrowser {
                 selectButton.addEventListener("click", () => {
                     this.selectedLink = this.selectedLinks.length > 0 ? this.selectedLinks[0] : undefined;
                     if (this.selectedLink !== undefined) {
-                        this.input.value = this.selectedLink.dataset.fullPath;
-                        this.value = this.selectedLink.dataset.fullPath;
+                        if (this.selectedLink.dataset.path === '..') {
+                            this.input.value = this.currentParent;
+                            this.value = this.currentParent;
+                        } else {
+                            this.input.value = this.selectedLink.dataset.fullPath;
+                            this.value = this.selectedLink.dataset.fullPath;
+                        }
+
                         this.parentElement.dataset.fileBrowser = JSON.stringify(this);
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
                             this.onSelectCallbacks[i](this.input.value);
@@ -598,7 +606,7 @@ class FileBrowser {
 
         let currentPath = document.createElement("div");
         currentPath.innerHTML = this.currentParent;
-        currentPath.classList.add("card-header", "fileCurrent");
+        currentPath.classList.add("card-header", "fileCurrent", "fit");
         if (this.dropdown) currentPath.classList.add("dropdown");
         currentPathCol.appendChild(currentPath);
 
@@ -692,7 +700,7 @@ class FileBrowser {
             listItem.appendChild(link);
             root.appendChild(listItem);
         }
-        
+
         for (const [path, details] of Object.entries(response)) {
             const dateModified = details.time;
             const size = details.size;
@@ -998,6 +1006,7 @@ class FileBrowser {
             files: file
         };
         const response = await sendMessage("file", data);
+        console.log("Response: ", response);
         if (response.hasOwnProperty("files")) {
             return response.files;
         }

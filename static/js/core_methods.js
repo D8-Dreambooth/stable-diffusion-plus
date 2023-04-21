@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
         loadCoreSettings(data);
     });
     const $buttons = $('.cancelButton').cancelButton();
+    $(".fit").fit();
 });
 
 function loadCoreSettings(data) {
@@ -209,6 +210,17 @@ function generateMessageId() {
 
 // Set up socket and it's event listeners
 function connectSocket() {
+    const authCookie = document.cookie.split(';')
+        .map(cookie => cookie.trim())
+        .find(cookie => cookie.startsWith('auth='));
+    const isAuthExpired = authCookie && (new Date(authCookie.split('=')[1]) < new Date());
+
+    // Reload the page if the auth cookie has expired
+    if (isAuthExpired) {
+        location.reload();
+        return;
+    }
+
     if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
         let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let host = window.location.hostname;

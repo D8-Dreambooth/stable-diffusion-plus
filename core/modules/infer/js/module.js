@@ -4,6 +4,7 @@ let inferProgress;
 let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
 let userConfig;
 let imageEditor;
+let controlnetFileBrowser;
 
 let inferSettings = {
     "prompt": "",
@@ -18,7 +19,13 @@ let inferSettings = {
     "mask": undefined,
     "image": undefined,
     "controlnet": false,
-    "controlnet_type": undefined
+    "controlnet_type": undefined,
+    "controlnet_preprocess": true,
+    "controlnet_batch": false,
+    "controlnet_batch_dir": "",
+    "controlnet_batch_find": "",
+    "controlnet_batch_replace": "",
+    "controlnet_batch_use_prompt": false
 }
 
 function inferResponse(data) {
@@ -124,6 +131,16 @@ document.addEventListener("DOMContentLoaded", function () {
         model: undefined
     });
 
+    controlnetFileBrowser = new FileBrowser(document.getElementById("controlnetBatchFileSelect"), {
+        "file_type": "image",
+        "showSelectButton": true,
+        "listFiles": false,
+        "showTitle": false,
+        "showInfo": false,
+        "multiselect": false,
+        "dropdown": true
+    });
+
     promptEl.addEventListener("change", function () {
         inferSettings["prompt"] = promptEl.value;
     });
@@ -134,6 +151,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     seedEl.addEventListener("change", function () {
         inferSettings["seed"] = parseInt(seedEl.value);
+    });
+
+    $("#controlnetBatchInput").on("change", function () {
+        let singleDivs = $(".controlnetSingle");
+        let batchDivs = $(".controlnetBatch");
+        if ($(this).is(":checked")) {
+            singleDivs.hide();
+            batchDivs.show();
+        } else {
+            singleDivs.show();
+            batchDivs.hide();
+        }
     });
 
     scaleTest.setOnChange(function (value) {
@@ -168,7 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
         loadSettings(data);
         console.log("Infer settings: ", userConfig);
     });
-    sendMessage("get_controlnets",{}, true).then((data) => {
+    sendMessage("get_controlnets", {}, true).then((data) => {
         console.log("Controlnets: ", data);
         let controlnetSelect = document.getElementById("controlnetType");
         let option = document.createElement("option");
@@ -266,9 +295,10 @@ async function startInference() {
         let negEl = document.getElementById("infer_negative_prompt");
         let seedEl = document.getElementById("infer_seed");
         let enableControlNet = document.getElementById("enableControlNet");
-        let controlnetType =  document.getElementById("controlnetType");
+        let controlnetType = document.getElementById("controlnetType");
+        let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
         let mask = imageEditor.getMask();
-        let image = imageEditor.getImage();
+        let image = imageEditor.getDropped();
         inferSettings.model = model;
         inferSettings.prompt = promptEl.value;
         inferSettings.negativePrompt = negEl.value;
@@ -281,16 +311,25 @@ async function startInference() {
         inferSettings.image = image;
         inferSettings.enable_controlnet = enableControlNet.checked;
         inferSettings.controlnet_type = controlnetType.value;
+        inferSettings.controlnet_preprocess = document.getElementById("controlnetPreProcess").checked;
+        inferSettings.controlnet_batch = document.getElementById("controlnetBatchInput").checked;
+        inferSettings.controlnet_batch_dir = controlnetFileBrowser.value;
+        inferSettings.controlnet_batch_find = document.getElementById("controlnetBatchFind").value;
+        inferSettings.controlnet_batch_replace = document.getElementById("controlnetBatchReplace").value;
+        inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnetBatchUsePrompt").checked;
 
-
-        if (userConfig["show_aspect_ratios"]) {
-            const selectedRatio = document.querySelector(".aspectButton.btn-selected");
-            setResolution(selectedRatio.dataset.ratio);
+        if (enableControlNet.checked && autoLoadResolution.checked && inferSettings.image !== undefined) {
+            inferSettings.width = inferSettings.image.width;
+            inferSettings.height = inferSettings.image.height;
         } else {
-            inferSettings.width = parseInt(widthSlider.value);
-            inferSettings.height = parseInt(heightSlider.value);
+            if (userConfig["show_aspect_ratios"]) {
+                const selectedRatio = document.querySelector(".aspectButton.btn-selected");
+                setResolution(selectedRatio.dataset.ratio);
+            } else {
+                inferSettings.width = parseInt(widthSlider.value);
+                inferSettings.height = parseInt(heightSlider.value);
+            }
         }
-
         return sendMessage("start_inference", inferSettings, true);
     }
 }

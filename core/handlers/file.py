@@ -2,6 +2,7 @@ import base64
 import logging
 import os
 import shutil
+import traceback
 from datetime import datetime
 from io import BytesIO, StringIO
 from typing import Dict, List, Tuple, Union
@@ -77,6 +78,7 @@ class FileHandler:
                 full_path = os.path.join(self.user_dir, item_path)
                 self.logger.debug(f"Checking if {full_path} is an image")
                 if is_image(full_path, feats):
+                    self.logger.debug("It is an image")
                     value["thumb"], value["tag"] = await self.get_thumbnail(full_path, thumb_size)
                 new_res[item_path] = value
             res = new_res
@@ -145,6 +147,7 @@ class FileHandler:
         file = data["files"]
         thumbs = data["thumbs"] if "thumbs" in data else False
         thumb_size = data["thumb_size"] if "thumb_size" in data else 128
+        return_pil = data["return_pil"] if "return_pil" in data else False
         files = []
         if isinstance(file, str):
             file = [file]
@@ -203,19 +206,22 @@ class FileHandler:
 
             # Encode image data in base64 if image can be opened with PIL
             if is_image(filename, pil_features):
+                self.logger.debug(f"Encoding image: {filename}")
                 try:
                     tag_data = ""
                     with Image.open(filename) as img:
-                        if filename.endswith(".png"):
-                            png_info = img.info
-
-                            # Check if "parameters" field is set
-                            if "parameters" in png_info:
-                                # Extract generation parameters from text
-                                tag_data = png_info["parameters"]
+                        img = img.convert("RGB")
                         if thumbs:
                             # Scale the image while preserving aspect ratio
-                            img.thumbnail((thumb_size, thumb_size))
+                            width, height = img.size
+                            aspect_ratio = width / height
+                            if aspect_ratio >= 1:
+                                new_width = thumb_size
+                                new_height = round(thumb_size / aspect_ratio)
+                            else:
+                                new_width = round(thumb_size * aspect_ratio)
+                                new_height = thumb_size
+                            img = img.resize((new_width, new_height))
 
                             # Crop the image to a square with dimensions of thumb_size x thumb_size
                             width, height = img.size
@@ -224,10 +230,23 @@ class FileHandler:
                             right = (width + thumb_size) / 2
                             bottom = (height + thumb_size) / 2
                             img = img.crop((left, top, right, bottom))
-                        with BytesIO() as output:
-                            img.save(output, format="JPEG")
-                            contents = output.getvalue()
-                            file_dict["src"] = f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+                            self.logger.debug(f"Image size: {img.size} (thumb_size: {thumb_size})")
+
+                        if return_pil:
+                            file_dict["image"] = img
+                        else:
+                            with BytesIO() as output:
+                                img.save(output, format="JPEG")
+                                contents = output.getvalue()
+                                file_dict["src"] = f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+
+                            if filename.endswith(".png"):
+                                png_info = img.info
+
+                                # Check if "parameters" field is set
+                                if "parameters" in png_info:
+                                    # Extract generation parameters from text
+                                    tag_data = png_info["parameters"]
 
                     txt_filename = os.path.splitext(filename)[0] + ".txt"
                     txt_data = ""
@@ -247,7 +266,9 @@ class FileHandler:
                     if data_data:
                         file_dict["data"] = data_data
 
-                except:
+                except Exception as e:
+                    self.logger.debug(f"Unable to fetch png info: {e}")
+                    traceback.print_exc()
                     pass
 
             urls.append(file_dict)
@@ -273,7 +294,7 @@ class FileHandler:
         img_src = ""
         try:
             with Image.open(filename) as img:
-                img.mode = "RGB"
+                img = img.convert("RGB")
                 if filename.endswith(".png"):
                     png_info = img.info
 
@@ -387,4 +408,11 @@ def is_image(path: str, feats=None):
     if not len(feats):
         feats = list_features()
     is_img = os.path.isfile(path) and os.path.splitext(path)[1].lower() in feats
+    if not is_img:
+        try:
+            with Image.open(path) as img:
+                is_img = True
+        except Exception as e:
+            logging.getLogger(__name__).debug(f"Failed to open image: {path} ({e})")
+            pass
     return is_img

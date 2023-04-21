@@ -13,17 +13,16 @@
     <link rel="icon" href="{{ url_for('static', path='/images/favicon.ico') }}" sizes="32x32"/>
 
     <!-- Bootstrap 5 CSS CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link href="{{ url_for('static', path='/css/lib/bootstrap.min.css') }}" rel="stylesheet">
 
     <!-- Scrollbar Custom CSS -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.min.css">
+    <link href="{{ url_for('static', path='/css/lib/jquery.mCustomScrollbar.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/lib/boxicons.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/lib/font-awesome.min.css') }}" rel="stylesheet">
 
-    <link href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <!-- Base CSS -->
-    <link  href="https://cdnjs.cloudflare.com/ajax/libs/fotorama/4.6.4/fotorama.css" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/lib/fotorama.min.css') }}" rel="stylesheet">
+
     <link href="{{ url_for('static', path='/css/imageEditor.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', path='/css/inlineGallery.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', path='/css/bootstrapSlider.css') }}" rel="stylesheet">
@@ -80,7 +79,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="errorModalLabel">Error Encountered</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="btn close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -93,25 +92,21 @@
 <!--End Modals -->
 
 {% block scripts %}
-<script src="https://kit.fontawesome.com/543c4560e5.js" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/font-awesome.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/jquery-3.6.4.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/fitty.min.js"></script>
+
 <!-- Popper.JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"
-        integrity="sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ"
-        crossorigin="anonymous"></script>
+<script type="text/javascript" src="/static/js/lib/popper.min.js"></script>
+
 <!-- Bootstrap 5 JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
-        crossorigin="anonymous"></script>
+<script type="text/javascript" src="/static/js/lib/bootstrap.bundle.min.js"></script>
+
 <!-- jQuery Custom Scroller CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/jquery.mCustomScrollbar.concat.min.js"></script>
 
 <!-- LightGallery + Plugins. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fotorama/4.6.4/fotorama.js"></script>
-<script type="text/javascript" src="/static/js/lg-plugins/fullscreen/lg-fullscreen.min.js"></script>
-<script type="text/javascript" src="/static/js/lg-plugins/relativeCaption/lg-relative-caption.min.js"></script>
-<script type="text/javascript" src="/static/js/lg-plugins/thumbnail/lg-thumbnail.min.js"></script>
-<script type="text/javascript" src="/static/js/lg-plugins/zoom/lg-zoom.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/fotorama.js"></script>
 <script type="text/javascript" src="/static/js/custom-elements/cancelButton.js"></script>
 <script type="text/javascript" src="/static/js/custom-elements/imageEditor.js"></script>
 <script type="text/javascript" src="/static/js/custom-elements/inlineGallery.js"></script>

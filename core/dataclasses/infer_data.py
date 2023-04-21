@@ -26,6 +26,12 @@ class InferSettings:
     image = None
     enable_controlnet = False
     controlnet_type = None
+    controlnet_preprocess = True
+    controlnet_batch = False
+    controlnet_batch_dir = None
+    controlnet_batch_find = ""
+    controlnet_batch_replace = ""
+    controlnet_batch_use_prompt = ""
 
     def __init__(self, data: Dict):
         for key, value in data.items():

@@ -9,7 +9,6 @@ from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.datastructures import URL
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
 
@@ -24,9 +23,9 @@ from core.handlers.modules import ModuleHandler
 from core.handlers.queues import QueueHandler
 from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
-from .auth_helpers import User, get_current_active_user, authenticate_user, create_access_token
+from app.auth.auth_helpers import User, get_current_active_user, authenticate_user, create_access_token
 from .library.helpers import *
-from .oauth2_password_bearer import OAuth2PasswordBearerCookie
+from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 
@@ -258,7 +257,6 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
             return RedirectResponse(url="/login")
     else:
         logger.debug("Noauth required.")
-        fh = FileHandler()
 
         # Authentication not required, show the usual home page
         css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, True)
@@ -326,4 +324,5 @@ async def whoami(current_user: User = Depends(get_current_active_user)):
 @app.get("/logout")
 async def del_session(response: Response):
     response.delete_cookie("Authorization")
+    response.delete_cookie("access_token")
     return RedirectResponse(url="/login")

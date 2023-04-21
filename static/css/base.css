@@ -65,6 +65,15 @@ input {
     color: var(--primary-accent-text-color);
 }
 
+.fit {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.bg-light {
+    background-color: var(--bs-body-bg-rgb) !important;
+}
+
 /* overrides for other elements with static colors */
 .btn-primary {
     color: var(--primary-text-color);
@@ -75,13 +84,13 @@ input {
 .btn-secondary, .nav-tabs .nav-link {
     color: var(--primary-accent-text-color);
     background-color: var(--secondary-accent-color);
-    border-color: var(--bs-gray-400);
+    border-color: var(--bs-border-dark);
 }
 
 .form-control {
     color: var(--secondary-accent-text-color);
     background-color: var(--secondary-accent-color);
-    border-color: var(--bs-gray-400);
+    border-color: var(--bs-border-dark);
 }
 
 .form-control:focus {
@@ -117,13 +126,17 @@ input {
     border-bottom: 1px solid var(--bs-gray-400);
 }
 
-.card-header, .accordion-header, .accordion-button {
+.card-header, .accordion-header, .accordion-button, .modal-header {
     height: 40px;
+}
+
+.modal-header {
+    border-radius: calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0;
 }
 
 .card, .modal-body, .accordion, .accordion-collapse {
     background-color: var(--bs-body-bg-rgb);
-    border: 1px solid var(--bs-gray-400);
+    border: 1px solid var(--bs-border-dark);
 }
 
 .accordion-item {
@@ -496,7 +509,7 @@ input {
 }
 
 @media screen and (min-width: 768px) {
-    body {
+    body:not(.loginBody) {
         margin: 0 0 var(--footer-height) 0;
         padding-left: var(--nav-width);
     }

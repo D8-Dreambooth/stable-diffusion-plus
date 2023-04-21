@@ -72,6 +72,7 @@ class StatusData:
                         elif isinstance(img, Image.Image):
                             # If the item is a PIL image, convert it to bytes and encode as base64
                             with io.BytesIO() as output:
+                                img = img.convert('RGB')
                                 img.save(output, format='JPEG')
                                 image_data = base64.b64encode(output.getvalue()).decode('utf-8')
                             images.append(image_data)

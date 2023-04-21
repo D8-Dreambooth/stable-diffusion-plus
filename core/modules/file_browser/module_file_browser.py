@@ -5,7 +5,7 @@ from typing import List, Dict
 from fastapi import FastAPI, Depends, UploadFile, File, Form
 from starlette.responses import JSONResponse
 
-from app.auth_helpers import oauth2_scheme, User, get_current_active_user
+from app.auth.auth_helpers import get_current_active_user
 from core.handlers.file import FileHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule

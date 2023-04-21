@@ -29,8 +29,6 @@ class BaseModule:
         self._set_defaults()
 
     def get_files(self):
-        foo = "foo"
-
         return self.css_files, self.js_files, self.custom_files, self.source
 
     def _enum_files(self):

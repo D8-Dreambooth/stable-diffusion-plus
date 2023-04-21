@@ -61,7 +61,7 @@ class ImageEditor {
         this.addButton('Color', this.showColorPicker.bind(this));
     }
 
-    getImage() {
+    getDropped() {
         for (let i = 1; i < this.undoStack.length; i++) {
             if (this.undoStack[i].type === 'drop') {
                 return this.dropCanvas.toDataURL('image/png');

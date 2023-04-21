@@ -9,8 +9,8 @@ from jwt import PyJWTError
 from starlette.status import HTTP_403_FORBIDDEN
 from starlette.websockets import WebSocketDisconnect
 
-from app.auth_helpers import get_user, TokenData, SECRET_KEY, ALGORITHM
-from app.oauth2_password_bearer import OAuth2PasswordBearerCookie
+from app.auth.auth_helpers import get_user, TokenData, SECRET_KEY, ALGORITHM
+from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 from core.handlers.queues import QueueHandler
 
 logger = logging.getLogger(__name__)
