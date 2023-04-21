@@ -112,7 +112,7 @@ if sys.platform == "win32":
     run_command = f"cmd /c {activate} & {freeze_command}"
 else:
     activate = os.path.join(venv, "bin", "activate")
-    run_command = f"source {activate} && {freeze_command}"
+    run_command = f". {activate} && {freeze_command}"
 
 frozen = run(run_command)
 
