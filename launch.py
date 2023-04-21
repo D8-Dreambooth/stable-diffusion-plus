@@ -66,6 +66,8 @@ with open(os.path.join(base_path, "launch_settings.json"), "r") as ls:
 listen_port = 8080
 if "listen_port" in launch_settings:
     listen_port = int(launch_settings["listen_port"])
+if os.environ.get("PORT", None):
+    listen_port = int(os.environ.get("PORT"))
 
 # Set our venv
 venv = None
