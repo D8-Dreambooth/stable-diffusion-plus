@@ -186,7 +186,7 @@ with open(requirements, "r") as req_file:
     reqs = set(req_file.read().splitlines())
 frozen = set(frozen.splitlines())
 
-if reqs.difference(frozen):
+if reqs.difference(frozen) and not os.path.exists("workspace/stable-diffusion-plus"):
     do_install = True
 
 
