@@ -50,15 +50,11 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True,
                                     env=custom_env or os.environ, check=True)
             return result.stdout.decode(encoding='utf8', errors='ignore')
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         message = f"{errdesc or 'Error running command'}. Command: {command} Error code: {e.returncode}\n"
         message += f"stdout: {e.stdout.decode(encoding='utf8', errors='ignore') or '<empty>'}\n"
         message += f"stderr: {e.stderr.decode(encoding='utf8', errors='ignore') or '<empty>'}\n"
         logger.error(message)
-        return ""
-    except Exception as e:
-        message = f"Unexpected error running command: {command}\n"
-        logger.exception(message)
         return ""
 
 
