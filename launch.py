@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -24,7 +25,6 @@ launch_settings_path = os.path.join(base_path, "launch_settings.json")
 if not os.path.exists(launch_settings_path):
     conf_src = os.path.join(base_path, "conf_src")
     shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
-
 
 # Check that we're on Python 3.10
 if sys.version_info < (3, 10):
@@ -61,7 +61,6 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
 # Load launch settings
 with open(os.path.join(base_path, "launch_settings.json"), "r") as ls:
     launch_settings = json.load(ls)
-
 
 # Set port
 listen_port = 8080
@@ -155,7 +154,8 @@ if git_path:
         logger.debug("Cloning dreambooth repository.")
         # Clone dreambooth repository
         branch = launch_settings.get("dreambooth_branch", "dev")
-        clone_command = [git_path, "clone", "-b", branch, "https://github.com/d8ahazard/sd_dreambooth_extension.git", dreambooth_path]
+        clone_command = [git_path, "clone", "-b", branch, "https://github.com/d8ahazard/sd_dreambooth_extension.git",
+                         dreambooth_path]
         logger.debug(f"Clone command: {clone_command}")
         subprocess.run(clone_command, check=True)
     else:
@@ -186,7 +186,6 @@ frozen = set(frozen.splitlines())
 if reqs.difference(frozen) and not os.path.exists("workspace/stable-diffusion-plus"):
     do_install = True
 
-
 # Install torch stuff
 torch_command = None
 if "torch_command" in launch_settings:
@@ -212,7 +211,20 @@ install_command = f"{activate} && {python} -m pip install -r {requirements}"
 torch_command = f"{activate} && {python} -m {torch_command}"
 run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
-do_install = not bool(int(os.environ.get('DOCKER', 0)))
+
+def is_docker():
+    path = "/proc/self/cgroup"
+    if not os.path.isfile(path):
+        return False
+    with open(path) as f:
+        for line in f:
+            if re.match("\d+:[\w=]+:/docker(-[ce]e)?/\w+", line):
+                return True
+    return False
+
+
+if is_docker():
+    do_install = False
 
 if do_install:
     logger.info(f"Installing: {install_command}")
