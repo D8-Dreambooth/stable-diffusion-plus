@@ -75,7 +75,6 @@ python = sys.executable
 
 user_venv = None
 default_venv = os.path.join(base_path, "venv")
-
 if "venv" in launch_settings:
     user_venv = launch_settings["venv"]
     if os.path.isdir(user_venv):
