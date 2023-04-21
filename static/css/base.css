@@ -463,6 +463,19 @@ input {
         left: -100%;
         height: calc(100% - var(--header-height) - var(--footer-height));
     }
+
+    .loginCard {
+        width: 90%;
+        margin: 0 auto;
+    }
+
+    .loginCard .card-title {
+        font-size: 1.5rem;
+    }
+
+    .form-group label {
+        font-size: 1.2rem;
+    }
 }
 
 .activeLink {
