@@ -99,8 +99,8 @@ else:
     venv = default_venv
     if not os.path.isfile(default_python):
         logger.warning("Unable to find python executable!")
-        sys.exit()
-    python = default_python
+    else:
+        python = default_python
 
 path = os.environ.get("PATH")
 
