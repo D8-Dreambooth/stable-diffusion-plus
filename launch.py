@@ -211,23 +211,11 @@ install_command = f"{activate} && {python} -m pip install -r {requirements}"
 torch_command = f"{activate} && {python} -m {torch_command}"
 run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
-
-def is_docker():
-    path = "/proc/self/cgroup"
-    if not os.path.isfile(path):
-        return False
-    with open(path) as f:
-        for line in f:
-            if re.match("\d+:[\w=]+:/docker(-[ce]e)?/\w+", line):
-                return True
-    return False
-
-
-if is_docker():
+if os.environ.get("SKIP_INSTALL", "false").lower() == "true":
     do_install = False
 
 if do_install:
     logger.info(f"Installing the things: {install_command}")
-    subprocess.run(install_command, shell=True, env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    run(install_command, "Installing the things.")
 
 subprocess.run(run_command, shell=True, env=env, check=True)
