@@ -44,21 +44,25 @@ class ImageEditor {
         this.translateY = 0;
         this.scaleCanvas(width, height);
         // Add event listeners for canvas interaction
+        this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
+        this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
+        this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-        //this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
         this.canvas.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
         this.canvas.addEventListener('mouseenter', this.handleMouseEnter.bind(this));
         this.canvas.addEventListener('dragover', this.handleDragOver.bind(this));
         this.canvas.addEventListener('drop', this.handleDrop.bind(this));
-        this.canvas.addEventListener('contextmenu', this.handleContextMenu.bind(this));
+        //this.canvas.addEventListener('contextmenu', this.handleContextMenu.bind(this));
+        //this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+
 
         // Add buttons for clear, undo, brush size, and color
-        this.addButton('Clear', this.clear.bind(this));
-        this.addButton('Undo', this.undo.bind(this));
-        this.addButton('Brush Size', this.showBrushSizeDialog.bind(this));
-        this.addButton('Color', this.showColorPicker.bind(this));
+        this.addButton('x', this.clear.bind(this));
+        this.addButton('undo', this.undo.bind(this));
+        this.addButton('brush', this.showBrushSizeDialog.bind(this));
+        this.addButton('palette', this.showColorPicker.bind(this));
     }
 
     getDropped() {
@@ -143,14 +147,18 @@ class ImageEditor {
     }
 
     // Add a button to the top-right corner of the container
-    addButton(label, action) {
+    addButton(iconName, action) {
         const button = document.createElement('button');
-        button.innerHTML = label;
-        button.style.float = 'right';
-        button.style.marginRight = '10px';
+        const icon = document.createElement('i');
+        icon.classList.add('bx', `bx-${iconName}`);
+        button.appendChild(icon);
+        //button.style.float = 'right';
+        //button.style.marginRight = '10px';
+        button.classList.add('btn', 'btn-secondary', 'btn-sm');
         button.addEventListener('click', action);
         this.buttonGroup.appendChild(button);
     }
+
 
     // Set the brush size
     setBrushSize(size) {
@@ -232,6 +240,16 @@ class ImageEditor {
 
         // add the brush size dialog to the document body
         document.body.appendChild(newBrushSizeDialog);
+
+        // add a listener to the document for any click that is not on the newBrushSizeDialog element
+        const onDocumentClick = (n_event) => {
+            if (!newBrushSizeDialog.contains(n_event.target) && n_event !== event) {
+                console.log("Hiding brush dialog.", n_event, event);
+                document.removeEventListener('click', onDocumentClick);
+                document.body.removeChild(newBrushSizeDialog);
+            }
+        };
+        document.addEventListener('click', onDocumentClick);
     }
 
 
@@ -269,6 +287,18 @@ class ImageEditor {
 
         // add the color picker dialog to the document body
         document.body.appendChild(newColorPickerDialog);
+
+        // add a listener to the document for any click that is not on the newColorPickerDialog element
+        const onDocumentClick = (n_event) => {
+            if (!newColorPickerDialog.contains(n_event.target) && n_event !== event) {
+                console.log("Closing color picker.");
+                document.removeEventListener('click', onDocumentClick);
+                if (newColorPickerDialog) {
+                    document.body.removeChild(newColorPickerDialog);
+                }
+            }
+        };
+        document.addEventListener('click', onDocumentClick);
     }
 
 
@@ -316,6 +346,35 @@ class ImageEditor {
         this.undoStack.push({type: 'draw', imageData: state});
     }
 
+    handleTouchStart(event) {
+        this.isDrawing = true;
+        const [x, y] = this.getCursorPosition(event.touches[0]);
+        this.lastX = x;
+        this.lastY = y;
+
+        const ctx = this.canvas.getContext('2d');
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    handleTouchMove(event) {
+        if (!this.isDrawing) return;
+        const [x, y] = this.getCursorPosition(event.touches[0]);
+        this.drawLine(x, y);
+        this.lastX = x;
+        this.lastY = y;
+    }
+
+    handleTouchEnd() {
+        if (!this.isDrawing) return;
+        this.isDrawing = false;
+        const ctx = this.canvas.getContext('2d');
+        const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+
+        // push 'draw' action to stack
+        this.undoStack.push({type: 'draw', imageData: state});
+    }
+
     drawLine(x, y) {
         const ctx = this.canvas.getContext('2d');
         ctx.lineWidth = this.brushSize;
@@ -350,15 +409,15 @@ class ImageEditor {
         window.addEventListener('mouseup', this.handleContextMenuMouseUp);
     }
 
-    handleContextMenuMouseMove = (event) => {
-        const dx = event.clientX - this.panStartX;
-        const dy = event.clientY - this.panStartY;
-        this.panStartX = event.clientX;
-        this.panStartY = event.clientY;
-        this.translateX += dx / this.scale;
-        this.translateY += dy / this.scale;
-        this.updateCanvas();
-    }
+    // handleContextMenuMouseMove = (event) => {
+    //     const dx = event.clientX - this.panStartX;
+    //     const dy = event.clientY - this.panStartY;
+    //     this.panStartX = event.clientX;
+    //     this.panStartY = event.clientY;
+    //     this.translateX += dx / this.scale;
+    //     this.translateY += dy / this.scale;
+    //     this.updateCanvas();
+    // }
 
     handleWheel = (event) => {
         const delta = event.wheelDelta ? event.wheelDelta / 40 : event.deltaY ? event.deltaY : 0;
