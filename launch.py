@@ -227,7 +227,7 @@ if is_docker():
     do_install = False
 
 if do_install:
-    logger.info(f"Installing: {install_command}")
+    logger.info(f"Installing the things: {install_command}")
     subprocess.run(install_command, shell=True, env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 subprocess.run(run_command, shell=True, env=env, check=True)
