@@ -215,7 +215,7 @@ install_command = f"{activate} && {python} -m pip install -r {requirements}"
 torch_command = f"{activate} && {python} -m {torch_command}"
 run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
-do_install = True if os.environ.get('DOCKER') is None else False
+do_install = not bool(int(os.environ.get('DOCKER', 0)))
 
 if do_install:
     logger.info(f"Installing: {install_command}")
