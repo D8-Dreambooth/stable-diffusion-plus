@@ -10,25 +10,25 @@
     <meta name="author" content="D8ahazard">
 
     <title>{% block title %}{% endblock %} Stable-Diffusion+</title>
-    <link rel="icon" href="{{ request.url_for('static', path='/images/favicon.ico') }}" sizes="32x32"/>
+    <link rel="icon" href="/static/images/favicon.ico" sizes="32x32"/>
 
     <!-- Bootstrap 5 CSS CDN -->
-    <link href="{{ request.url_for('static', path='/css/lib/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="/static/css/lib/bootstrap.min.css" rel="stylesheet">
 
     <!-- Scrollbar Custom CSS -->
-    <link href="{{ request.url_for('static', path='/css/lib/jquery.mCustomScrollbar.min.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/lib/boxicons.min.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/lib/font-awesome.min.css') }}" rel="stylesheet">
+    <link href="/static/css/lib/jquery.mCustomScrollbar.min.css" rel="stylesheet">
+    <link href="/static/css/lib/boxicons.min.css" rel="stylesheet">
+    <link href="/static/css/lib/font-awesome.min.css" rel="stylesheet">
 
     <!-- Base CSS -->
-    <link href="{{ request.url_for('static', path='/css/lib/fotorama.min.css') }}" rel="stylesheet">
+    <link href="/static/css/lib/fotorama.min.css" rel="stylesheet">
 
-    <link href="{{ request.url_for('static', path='/css/imageEditor.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/inlineGallery.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/bootstrapSlider.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/fileBrowser.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/progressGroup.css') }}" rel="stylesheet">
-    <link href="{{ request.url_for('static', path='/css/base.css') }}" rel="stylesheet">
+    <link href="/static/css/imageEditor.css" rel="stylesheet">
+    <link href="/static/css/inlineGallery.css" rel="stylesheet">
+    <link href="/static/css/bootstrapSlider.css" rel="stylesheet">
+    <link href="/static/css/fileBrowser.css" rel="stylesheet">
+    <link href="/static/css/progressGroup.css" rel="stylesheet">
+    <link href="/static/css/base.css" rel="stylesheet">
 
     <!-- Module and theme CSS -->
     {% for css in css_files %}
