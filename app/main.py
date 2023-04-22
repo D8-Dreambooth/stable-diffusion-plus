@@ -30,7 +30,7 @@ from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 # If running linux, disable torch2 dynamo
 if os.name == "posix":
     # For now disable Torch2 Dynamo
-    os.environ["TORCHDYNAMO_DISABLE"] = 1
+    os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 
