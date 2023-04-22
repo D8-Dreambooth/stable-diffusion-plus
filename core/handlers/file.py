@@ -8,6 +8,7 @@ from io import BytesIO, StringIO
 from typing import Dict, List, Tuple, Union
 
 from PIL import Image, features
+from fastapi import UploadFile, File, Request
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -40,6 +41,7 @@ class FileHandler:
             socket_handler.register("files", cls._instance.pass_dir_content)
             socket_handler.register("file", cls._instance.get_file)
             socket_handler.register("handleFile", cls._instance.handle_file)
+
         if user_name is not None:
             if user_name in cls._instances:
                 return cls._instances[user_name]
@@ -105,13 +107,14 @@ class FileHandler:
 
         if method == "delete":
             for file in files:
-                file_path = os.path.join(full_path, file)
+                file_path = os.path.join(self.user_dir, file)
                 try:
                     if os.path.isdir(file_path):
                         shutil.rmtree(file_path)
                     else:
                         os.remove(file_path)
-                except OSError:
+                except OSError as e:
+                    print("Exception deleting: ", e)
                     pass
         elif method == "rename":
             if len(files) != 1:
@@ -408,11 +411,4 @@ def is_image(path: str, feats=None):
     if not len(feats):
         feats = list_features()
     is_img = os.path.isfile(path) and os.path.splitext(path)[1].lower() in feats
-    if not is_img:
-        try:
-            with Image.open(path) as img:
-                is_img = True
-        except Exception as e:
-            logging.getLogger(__name__).debug(f"Failed to open image: {path} ({e})")
-            pass
     return is_img

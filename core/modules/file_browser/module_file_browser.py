@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import List, Dict
@@ -37,7 +38,7 @@ class FileBrowserModule(BaseModule):
         @app.post("/files/upload")
         async def create_upload_files(
                 files: List[UploadFile] = File(...),
-                dir: str = Form(...),
+                file_data: str = Form(...),
                 current_user: Dict = Depends(get_current_active_user)
         ):
             logger.debug(f"Current user: {current_user}")
@@ -45,12 +46,16 @@ class FileBrowserModule(BaseModule):
             if current_user:
                 user_name = current_user["name"]
             file_handler = FileHandler(user_name=user_name)
+            user_dir = file_handler.user_dir
 
-            for file in files:
+            for data in json.loads(file_data):
+                dest_dir = os.path.abspath(os.path.join(user_dir, data["dest"]))
+                if not os.path.exists(dest_dir):
+                    os.makedirs(dest_dir)
+
+            # Save files
+            for i, file in enumerate(files):
                 contents = await file.read()
-                file_handler.save_file(dir, file.filename, contents)
+                data = json.loads(file_data)[i]
+                file_handler.save_file(data["dest"], data["name"], contents)
             return {"message": "Files uploaded successfully"}
-
-
-
-

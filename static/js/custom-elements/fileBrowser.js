@@ -279,17 +279,24 @@ class FileBrowser {
                 input.addEventListener("change", async () => {
                     const files = Array.from(input.files);
                     const formData = new FormData();
-                    formData.append("dir", fileCurrent.innerText);
+                    const fileData = [];
                     files.forEach((file) => {
+                        fileData.push({name: file.name, dest: fileCurrent.innerText + "/" + file.name});
                         formData.append("files", file);
                     });
+                    formData.append("dir", fileCurrent.innerText);
+                    formData.append("file_data", JSON.stringify(fileData));
+                    let upDiv = $(".upDiv");
+                    upDiv.show();
                     const response = await fetch("/files/upload", {
                         method: "POST",
                         body: formData,
                     });
                     const data = await response.json();
+                    upDiv.hide();
                     await this.refresh();
                 });
+
 
                 input.click();
                 break;
@@ -394,23 +401,83 @@ class FileBrowser {
         });
 
 
-        this.treeContainer.addEventListener('drop', async (e) => {
+        this.treeContainer.addEventListener("drop", async (e) => {
             e.preventDefault();
             const tempDiv = document.querySelector(".tempDiv");
-            tempDiv.classList.remove('show');
+            tempDiv.classList.remove("show");
             const fileCurrent = this.treeContainer.querySelector(".fileCurrent");
-            const files = Array.from(e.dataTransfer.files);
+            const items = Array.from(e.dataTransfer.items);
             const formData = new FormData();
-            formData.append('dir', fileCurrent.innerText);
+            const fileData = [];
+            formData["is_dir"] = false;
+            const files = [];
+            for (let i = 0; i < items.length; i++) {
+                const entry = items[i].webkitGetAsEntry();
+                if (entry.isDirectory) {
+                    await this.handleDirectoryEntry(entry, fileCurrent.innerText, fileData, files, true);
+                } else {
+                    const file = items[i].getAsFile();
+                    files.push(file);
+                    fileData.push({name: file.name, dest: fileCurrent.innerText});
+                }
+            }
+
+            formData.append("dir", fileCurrent.innerText);
+            formData.append("file_data", JSON.stringify(fileData));
             files.forEach((file) => {
-                formData.append('files', file);
+                formData.append("files", file);
             });
-            const response = await fetch('/files/upload', {
-                method: 'POST',
+            let upDiv = $(".upDiv");
+            upDiv.show();
+            const response = await fetch("/files/upload", {
+                method: "POST",
                 body: formData,
             });
             const data = await response.json();
+            upDiv.hide();
             await this.refresh();
+        });
+    }
+
+    async handleDirectoryEntry(directory, parentPath, fileData, files, root=false) {
+        const dirReader = directory.createReader();
+        const entries = await this.readEntries(dirReader);
+
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            if (entry.isDirectory) {
+                const dirPath = parentPath + this.separator + directory.name + this.separator + entry.name;
+                await this.handleDirectoryEntry(entry, dirPath, fileData, files);
+            } else {
+                let dirPath = parentPath;
+                if (root) {
+                    dirPath = parentPath + this.separator + directory.name + this.separator + entry.name;
+                }
+                const file = await this.getFile(entry);
+                files.push(file);
+                console.log("Setting dest to:", dirPath, file.name);
+                fileData.push({name: file.name, dest: dirPath});
+            }
+        }
+    }
+
+    async readEntries(dirReader) {
+        return new Promise((resolve, reject) => {
+            dirReader.readEntries((entries) => {
+                resolve(entries);
+            }, (error) => {
+                reject(error);
+            });
+        });
+    }
+
+    async getFile(entry) {
+        return new Promise((resolve, reject) => {
+            entry.file((file) => {
+                resolve(file);
+            }, (error) => {
+                reject(error);
+            });
         });
     }
 
@@ -671,6 +738,11 @@ class FileBrowser {
         tempDiv.className = 'tempDiv';
         this.treeContainer.appendChild(tempDiv);
 
+        const upDiv = document.createElement('div');
+        upDiv.textContent = 'Uploading...';
+        upDiv.className = 'upDiv';
+        this.treeContainer.appendChild(upDiv);
+
         this.attachEventHandlers();
     }
 
@@ -805,38 +877,39 @@ class FileBrowser {
 
     handleLinkDblClick(link) {
         if (link.dataset.type === "directory") {
-                        this.currentPath = link.dataset.fullPath;
+            this.currentPath = link.dataset.fullPath;
 
-                        this.buildTree().then(() => {
-                            const selectFirstFileLi = (element) => {
-                                if (element.classList && element.classList.contains("fileLi")) {
-                                    element.classList.add("selected");
-                                    element.click();
-                                    return true;
-                                }
-                                for (let i = 0; i < element.children.length; i++) {
-                                    const child = element.children[i];
-                                    if (selectFirstFileLi(child)) {
-                                        return true;
-                                    }
-                                }
-                                return false;
-                            };
-                            selectFirstFileLi(this.treeContainer);
-                        });
-                    } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type === ".jpeg") {
-                        if (this.showInfo) {
-                            let img = document.getElementById("infoModalImage");
-                            let infoImg = document.querySelector(".img-info");
-                            img.src = infoImg.src;
-                            img.dataset["name"] = infoImg.dataset["name"];
-                            $("#imageInfoModal").addClass("show");
+            this.buildTree().then(() => {
+                const selectFirstFileLi = (element) => {
+                    if (element.classList && element.classList.contains("fileLi")) {
+                        element.classList.add("selected");
+                        element.click();
+                        return true;
+                    }
+                    for (let i = 0; i < element.children.length; i++) {
+                        const child = element.children[i];
+                        if (selectFirstFileLi(child)) {
+                            return true;
                         }
                     }
-                    this.onDoubleClickCallbacks.forEach((callback) =>
-                        callback(link.dataset.fullPath, link.dataset.type)
-                    )
+                    return false;
+                };
+                selectFirstFileLi(this.treeContainer);
+            });
+        } else if (link.dataset.type === ".jpg" || link.dataset.type === ".png" || link.dataset.type === ".jpeg") {
+            if (this.showInfo) {
+                let img = document.getElementById("infoModalImage");
+                let infoImg = document.querySelector(".img-info");
+                img.src = infoImg.src;
+                img.dataset["name"] = infoImg.dataset["name"];
+                $("#imageInfoModal").addClass("show");
+            }
+        }
+        this.onDoubleClickCallbacks.forEach((callback) =>
+            callback(link.dataset.fullPath, link.dataset.type)
+        )
     }
+
     // Define sortTree function
     sortTree() {
         let treeRoot = this.treeContainer.querySelector(".treeRoot");
@@ -1018,9 +1091,9 @@ class FileBrowser {
     }
 }
 
-$.fn.FileBrowser = function(options = {}) {
+$.fn.FileBrowser = function (options = {}) {
     const fileBrowsers = [];
-    this.each(function() {
+    this.each(function () {
         const element = $(this);
         let fileBrowser = element.data('fileBrowser');
         if (!fileBrowser) {
