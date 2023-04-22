@@ -27,6 +27,11 @@ from app.auth.auth_helpers import User, get_current_active_user, authenticate_us
 from .library.helpers import *
 from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 
+# If running linux, disable torch2 dynamo
+if os.name == "posix":
+    # For now disable Torch2 Dynamo
+    os.environ["TORCHDYNAMO_DISABLE"] = 1
+
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 
 # I think some of these can go away.

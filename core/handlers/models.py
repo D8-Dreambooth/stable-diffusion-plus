@@ -10,11 +10,14 @@ from urllib.parse import urlparse
 
 import torch
 from basicsr.utils.download_util import load_file_from_url
+from huggingface_hub import hf_hub_download, snapshot_download
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.directories import DirectoryHandler
 from core.handlers.websocket import SocketHandler
 from dreambooth.sd_to_diff import extract_checkpoint
+
+logger = logging.getLogger(__name__)
 
 
 class ModelHandler:
@@ -73,7 +76,6 @@ class ModelHandler:
             self.logger.debug(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
-            model_list = []
             model_type = data["model_type"]
             if model_type in self.model_finders:
                 self.logger.debug(f"Using finder: {model_type}")
@@ -262,6 +264,17 @@ class ModelHandler:
         for md in model_directories:
             if md not in output:
                 output.append(md)
+
+        if len(output) == 0:
+            dest_folder = os.path.join(self.models_path[0], "diffusers", "stable-diffusion-2-1")
+            self.logger.debug("No diffusion models found. Downloading default.")
+            repo_id = "stabilityai/stable-diffusion-2-1"
+            exclude_files = ["v2-1_768-ema-pruned.ckpt", "v2-1_768-ema-pruned.safetensors",
+                             "v2-1_768-nonema-pruned.ckpt",
+                             "v2-1_768-nonema-pruned.safetensors", "README.md", ".gitattributes"]
+            snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
+                              local_dir_use_symlinks="auto", ignore_patterns=exclude_files)
+            output.append(dest_folder)
         return output
 
     def register_loader(self, model_type, callback):
