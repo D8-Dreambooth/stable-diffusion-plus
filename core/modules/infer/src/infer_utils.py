@@ -196,7 +196,7 @@ async def start_inference(inference_settings: InferSettings, user):
             if preview_steps > inference_settings.steps:
                 preview_steps = inference_settings.steps
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                kwargs = {"input_prompts": batch_prompts,
+                kwargs = {"prompt": batch_prompts,
                           "num_inference_steps": inference_settings.steps,
                           "guidance_scale": inference_settings.scale,
                           "negative_prompt": batch_negative,
@@ -214,8 +214,7 @@ async def start_inference(inference_settings: InferSettings, user):
                 if gen_width:
                     kwargs["width"] = gen_width
 
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
+                s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
 
             pbar.update(len(s_image))
             paths = []

@@ -273,7 +273,7 @@ class ModelHandler:
                              "v2-1_768-nonema-pruned.ckpt",
                              "v2-1_768-nonema-pruned.safetensors", "README.md", ".gitattributes"]
             snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
-                              local_dir_use_symlinks="auto", ignore_patterns=exclude_files)
+                              local_dir_use_symlinks=False, ignore_patterns=exclude_files)
             output.append(dest_folder)
         return output
 
