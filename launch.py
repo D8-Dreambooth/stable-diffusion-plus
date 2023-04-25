@@ -208,7 +208,6 @@ env["VIRTUAL_ENV"] = venv
 env["PYTHONPATH"] = os.pathsep.join([dreambooth_path, os.path.dirname(os.path.abspath(__file__))])
 
 install_command = f"{activate} && {python} -m pip install -r {requirements}"
-detectron_command = f"{python} -m pip install git+https://github.com/facebookresearch/detectron2.git"
 torch_command = f"{activate} && {python} -m {torch_command}"
 run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
@@ -218,9 +217,5 @@ if os.environ.get("SKIP_INSTALL", "false").lower() == "true":
 if do_install:
     logger.info(f"Installing the things: {install_command}")
     run(install_command, "Installing the things.")
-    try:
-        import detectron2
-    except ImportError:
-        run(detectron_command, "Installing detectron2.")
-
+    
 subprocess.run(run_command, shell=True, env=env, check=True)
