@@ -319,8 +319,9 @@ async function startInference() {
         inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnetBatchUsePrompt").checked;
 
         if (enableControlNet.checked && autoLoadResolution.checked && inferSettings.image !== undefined) {
-            inferSettings.width = inferSettings.image.width;
-            inferSettings.height = inferSettings.image.height;
+            inferSettings.width = imageEditor.originalResolution.width;
+            inferSettings.height = imageEditor.originalResolution.height
+            inferSettings.image = imageEditor.imageSource;
         } else {
             if (userConfig["show_aspect_ratios"]) {
                 const selectedRatio = document.querySelector(".aspectButton.btn-selected");

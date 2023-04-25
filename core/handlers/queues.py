@@ -1,11 +1,10 @@
+import asyncio
 import logging
-from typing import Callable, Dict
 from queue import Queue
 from threading import Thread
-
+from typing import Callable, Dict
 
 logger = logging.getLogger(__name__)
-
 
 class QueueHandler:
     _instance = None
@@ -15,12 +14,21 @@ class QueueHandler:
             cls._instance = super(QueueHandler, cls).__new__(cls)
             cls._instance.jobs_queue = Queue()
             cls._instance.workers = []
+
             for i in range(num_workers):
-                logger = logging.getLogger(f"{__name__}.worker.{i}")
-                t = Thread(target=cls._instance.execute_jobs, args=(logger,))
+                thread_logger = logging.getLogger(f"{__name__}.worker.{i}")
+                t = Thread(target=cls._instance.run_coroutine, args=(cls._instance.execute_jobs, thread_logger))
                 cls._instance.workers.append(t)
                 t.start()
+
         return cls._instance
+
+    def run_coroutine(self, coro, logger):
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(coro(logger))
+        finally:
+            loop.close()
 
     def put_job(self, first_callable: Callable, second_callable: Callable, message: Dict):
         """Method to put a job in the pub sub queue system"""

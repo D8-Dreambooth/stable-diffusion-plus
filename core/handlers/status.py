@@ -1,6 +1,7 @@
 import logging
 
 from core.dataclasses.status_data import StatusData
+from dreambooth import shared
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class StatusHandler:
 
     def cancel(self, data):
         self.status.canceled = True
+        shared.status.interrupted = True
         message = {"name": "status", "status": self.status.dict()}
         self.send()
 

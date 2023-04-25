@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os.path
+import sys
 import traceback
 from typing import Dict
 
@@ -45,7 +46,9 @@ shared_config = ""
 protected_config = ""
 config_handler = None
 directory_handler = None
-logger = logging.getLogger(__name__)
+user_auth = True
+dirs = {}
+logger = logging.getLogger("MAIN")
 
 
 def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
@@ -99,33 +102,41 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
 
 
 def load_settings():
-    global launch_settings, user_auth, dirs, shared_config, protected_config, directory_handler, config_handler
+    global launch_settings, user_auth, directory_handler, config_handler
     # Load our basic launch settings
     launch_settings_path = os.path.join(app_path, "launch_settings.json")
 
     with open(launch_settings_path, "r") as ls:
         launch_settings = json.load(ls)
-
+    logger.debug(f"Launch settings: {launch_settings}")
     # Set the global debugging level
     debug_level = launch_settings.get("debug_level", "debug")
     if debug_level == "debug":
-        logging.basicConfig(level=logging.DEBUG)
+        level = logging.DEBUG
     elif debug_level == "info":
-        logging.basicConfig(level=logging.INFO)
+        level = logging.INFO
     elif debug_level == "warning":
-        logging.basicConfig(level=logging.WARNING)
+        level = logging.WARNING
     elif debug_level == "error":
-        logging.basicConfig(level=logging.ERROR)
+        level = logging.ERROR
     elif debug_level == "critical":
-        logging.basicConfig(level=logging.CRITICAL)
+        level = logging.CRITICAL
     else:
-        logging.basicConfig(level=logging.DEBUG)
+        level = logging.DEBUG
         logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
-
+    print(f"Debug level: {debug_level}")
     directory_handler = DirectoryHandler(app_path, launch_settings)
+    log_dir = os.path.join(directory_handler.protected_path, "logs")
+    log_file = os.path.join(log_dir, "app.log")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    handlers = [
+        #logging.FileHandler(log_file, mode="a", encoding="utf-8", delay=False),
+        logging.StreamHandler(sys.stdout)
+    ]
+    logging.basicConfig(level=level, handlers=handlers, format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', force=True)
     config_handler = ConfigHandler()
     user_auth = config_handler.get_item_protected("user_auth", "core", False)
-
 
 
 def initialize_app():
@@ -181,9 +192,9 @@ def initialize_app():
 
 # Determine our absolute path
 app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
+logger.debug("App path: " + app_path)
 load_settings()
-
+logger.info("Settings loaded...")
 oauth2_scheme = OAuth2PasswordBearerCookie(token_url="/token")
 
 # Create our base webserver
@@ -203,8 +214,8 @@ app = FastAPI(
 )
 
 app.message_queue = asyncio.Queue()
-
 session_secret = launch_settings.get("session_secret")
+
 if session_secret is None:
     session_secret = "123ABC"
 
@@ -214,7 +225,9 @@ templates = Jinja2Templates(directory="templates")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+logger.debug("Initializing app...")
 initialize_app()
+logger.debug("Application initialized.")
 
 
 def get_session(request: Request):

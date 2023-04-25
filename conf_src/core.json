@@ -1,5 +1,6 @@
 {
   "title": "Stable-Diffusion+",
   "show_settings": true,
-  "user_auth": true
+  "user_auth": true,
+  "theme": "theme-dark"
 }

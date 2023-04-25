@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -14,7 +13,7 @@ os.environ["SAFETENSORS_FAST_GPU"] = "1"
 
 # Set up logging
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("launch")
 
 # Set base path
 base_path = os.path.abspath(os.path.dirname(__file__))
@@ -146,7 +145,7 @@ def find_git():
 
 # Define the dreambooth repository path
 dreambooth_path = os.path.join(base_path, "core", "modules", "dreambooth")
-
+annotators_path = os.path.join(base_path, "core", "modules", "infer", "src", "annotators")
 git_path = find_git()
 
 if git_path:
@@ -209,6 +208,7 @@ env["VIRTUAL_ENV"] = venv
 env["PYTHONPATH"] = os.pathsep.join([dreambooth_path, os.path.dirname(os.path.abspath(__file__))])
 
 install_command = f"{activate} && {python} -m pip install -r {requirements}"
+detectron_command = f"{python} -m pip install git+https://github.com/facebookresearch/detectron2.git"
 torch_command = f"{activate} && {python} -m {torch_command}"
 run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
@@ -218,5 +218,9 @@ if os.environ.get("SKIP_INSTALL", "false").lower() == "true":
 if do_install:
     logger.info(f"Installing the things: {install_command}")
     run(install_command, "Installing the things.")
+    try:
+        import detectron2
+    except ImportError:
+        run(detectron_command, "Installing detectron2.")
 
 subprocess.run(run_command, shell=True, env=env, check=True)

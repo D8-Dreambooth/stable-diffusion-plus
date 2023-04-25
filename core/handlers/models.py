@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 import torch
 from basicsr.utils.download_util import load_file_from_url
-from huggingface_hub import hf_hub_download, snapshot_download
+from huggingface_hub import snapshot_download
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.directories import DirectoryHandler
@@ -275,6 +275,7 @@ class ModelHandler:
             snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
                               local_dir_use_symlinks=False, ignore_patterns=exclude_files)
             output.append(dest_folder)
+            self.refresh("diffusers")
         return output
 
     def register_loader(self, model_type, callback):

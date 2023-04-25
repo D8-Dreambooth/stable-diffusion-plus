@@ -134,7 +134,7 @@ input {
     border-radius: calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0;
 }
 
-.card, .modal-body, .accordion, .accordion-collapse {
+.card, .modal-content, .accordion, .accordion-collapse {
     background-color: var(--bs-body-bg-rgb);
     border: 1px solid var(--bs-border-dark);
 }
@@ -586,14 +586,14 @@ input {
     height: 1.25rem;
     margin-left: auto;
     content: "";
-    background-image: url(data:image/svg+xml,%3csvg xmlns= 'http://www.w3.org/2000/svg' viewBox= '0 0 16 16' fill= '%23212529' %3e%3cpath fill-rule= 'evenodd' d= 'M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z' /%3e%3c/svg%3e);
+    background-image: url('data:image/svg+xml,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="%23212529"%3e%3cpath fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z" /%3e%3c/svg%3e');
     background-repeat: no-repeat;
     background-size: 1.25rem;
     transition: transform .2s ease-in-out;
 }
 
 .accordion-button:not(.collapsed)::after {
-    background-image: url(data:image/svg+xml,%3csvg xmlns= 'http://www.w3.org/2000/svg' viewBox= '0 0 16 16' fill= '%230C63E4' %3e%3cpath fill-rule= 'evenodd' d= 'M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z' /%3e%3c/svg%3e);
+    background-image: url('data:image/svg+xml,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="%230C63E4"%3e%3cpath fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z" /%3e%3c/svg%3e');
     transform: rotate(-180deg);
 }
 

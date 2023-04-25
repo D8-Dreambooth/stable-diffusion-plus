@@ -115,21 +115,21 @@ class SocketHandler:
 
     async def handle_socket_callback(self, msg):
         await_response = msg["await"]
-        websocket = msg["socket"]
         name = msg["name"]
         response = msg
         user = msg.get("user", None)
         try:
             if await_response:
                 if user and name in self.socket_callbacks.get(user, {}):
-                    logger.debug(f"Awaiting user callback: {user}")
+                    logger.debug(f"Awaiting user callback: {name}")
                     data = await self.socket_callbacks[user][name](msg)
                 else:
-                    logger.debug("Awaiting shared callback")
+                    logger.debug(f"Awaiting shared callback: {name}")
                     data = await self.socket_callbacks[name](msg)
                 response["data"] = data
             else:
                 if user and name in self.socket_callbacks.get(user, {}):
+                    logger.debug(f"Putting user job to queue: {name}")
                     self.queue_handler.put_job(self.socket_callbacks[user][name](msg), self.callback_response, msg)
                 else:
                     if name in self.socket_callbacks:
@@ -185,6 +185,7 @@ class SocketHandler:
             await self.manager.connect(websocket)
             logger.debug(f"Socket connected: {username}")
             while True:
+                await asyncio.sleep(0)
                 try:
                     data = await websocket.receive_json()
                     response = {"name": "Received"}
@@ -194,7 +195,6 @@ class SocketHandler:
                         try:
                             message = data
                             if "name" in message and "data" in message:
-                                logger.debug(f"Message is valid: {message}")
                                 name = message.pop("name")
                                 if name == "logout":
                                     await websocket.send_json(message)
@@ -214,9 +214,7 @@ class SocketHandler:
                                     if username is not None:
                                         logger.debug(f"Definitely setting username: {username}")
                                         msg["user"] = username
-
-                                    # asyncio.create_task(self.handle_socket_callback(name, msg, websocket))
-                                    await self.handle_socket_callback(msg)
+                                    asyncio.create_task(self.handle_socket_callback(msg))
                                 else:
                                     logger.debug(f"Undefined message: {message}")
                             else:
@@ -226,14 +224,12 @@ class SocketHandler:
                             traceback.print_exc()
                 except WebSocketDisconnect as d:
                     logger.debug("Socket disconnected.")
-                    if websocket in self.clients:
-                        self.clients.remove(websocket)
+                    self.manager.disconnect(websocket)
                     break
                 except Exception as f:
                     logger.warning(f"SOCKET EXCEPTION: {f}")
                     traceback.print_exc()
-                    if websocket in self.clients:
-                        self.clients.remove(websocket)
+                    self.manager.disconnect(websocket)
                     break
             self.manager.disconnect(websocket)
 
@@ -254,7 +250,7 @@ class SocketHandler:
             if user in self.socket_callbacks:
                 if name in self.socket_callbacks[user]:
                     del self.socket_callbacks[user][name]
-                if  not len(self.socket_callbacks[user]):
+                if not len(self.socket_callbacks[user]):
                     del self.socket_callbacks[user]
         else:
             if name in self.socket_callbacks:

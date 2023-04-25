@@ -46,9 +46,7 @@ async def _start_inference(msg):
     data = msg["data"]
     msg_id = msg["id"]
     user = msg["user"] if "user" in msg else None
-    logger.debug(f"Raw data: {data}")
     infer_data = InferSettings(data)
-    logger.debug(f"Inference data: {infer_data}")
     # Call start_inference() in a separate thread using asyncio.create_task()
     asyncio.create_task(start_inference(infer_data, user))
 

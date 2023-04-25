@@ -12,8 +12,8 @@ from core.dataclasses.model_data import ModelData
 
 @dataclass
 class InferSettings:
-    prompt: str = "foo"
-    negative_prompt: str = "foo"
+    prompt: str = ""
+    negative_prompt: str = ""
     steps: int = 20
     scale: float = 7.5
     num_images: int = 1

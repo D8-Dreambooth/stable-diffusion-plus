@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 from PIL import Image
 
+from dreambooth import shared
+
 
 @dataclass
 class StatusData:
@@ -34,6 +36,7 @@ class StatusData:
         self.descriptions = []
 
     def start(self):
+        shared.status.interrupted = False
         self.status = ""
         self.status_2 = ""
         self.progress_1_total = 0

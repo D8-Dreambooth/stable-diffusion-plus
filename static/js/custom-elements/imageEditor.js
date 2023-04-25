@@ -66,6 +66,7 @@ class ImageEditor {
     }
 
     getDropped() {
+        console.log("Finding dropped: ", this.undoStack);
         for (let i = 1; i < this.undoStack.length; i++) {
             if (this.undoStack[i].type === 'drop') {
                 return this.dropCanvas.toDataURL('image/png');
@@ -75,6 +76,7 @@ class ImageEditor {
     }
 
     getMask() {
+        console.log("Finding mask: ", this.undoStack);
         for (let i = 1; i < this.undoStack.length; i++) {
             if (this.undoStack[i].type === 'draw') {
                 return this.canvas.toDataURL('image/png');
@@ -94,7 +96,7 @@ class ImageEditor {
         this.dropCanvas.width = width;
         this.dropCanvas.height = height;
         let resizedState = this.getResizedImageData(imageData.main, this.canvas.width, this.canvas.height);
-        this.undoStack.push(resizedState);
+        this.undoStack.push({imageData: resizedState, type: "draw"});
         if (null !== this.imageSource) {
             const src_image = new Image();
             src_image.src = this.imageSource;
@@ -109,7 +111,7 @@ class ImageEditor {
             const ctx = this.dropCanvas.getContext('2d');
             ctx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
             const state = ctx.getImageData(0, 0, this.dropCanvas.width, this.dropCanvas.height);
-            this.undoStack.push(state);
+            this.undoStack.push({imageData: state, type: "drop"});
             ctx.drawImage(src_image, x, y, width, height);
         }
         this.canvas.width = width;

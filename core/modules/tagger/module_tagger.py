@@ -23,20 +23,7 @@ class ImportExportModule(BaseModule):
     def _initialize_websocket(self, handler: SocketHandler):
         logger.debug("Initializing websocket for Tagger module...")
         super()._initialize_websocket(handler)
-        handler.register("get_images", _list_images)
-        handler.register("get_image", _get_image)
         handler.register("save_caption", _save_caption)
-
-
-async def _list_images(data):
-    logger.debug(f"Data: {data}")
-    user = data["user"]
-    actual_data = data["data"]
-    fh = FileHandler(user_name=user)
-    img_dir = actual_data["image_dir"]
-    files = fh.get_dir_content(img_dir)
-    data["data"] = {"files": files}
-    return data
 
 
 async def _get_image(data):

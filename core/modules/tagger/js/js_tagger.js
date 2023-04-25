@@ -28,28 +28,26 @@ function loadModule() {
         console.log("FILE: ", file);
         const thumbContainer = document.getElementById("imageBrowser");
         let imageBrowser = document.getElementById("imageBrowser");
-        let recursive = document.getElementById("imageRecurse").checked;
+        let recurse = document.getElementById("imageRecurse").checked;
         imageBrowser.innerHTML = "Loading...";
-        sendMessage("files", {
-            start_dir: file,
-            include_files: true,
-            recursive: recursive,
-            filter: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
-            thumbs: true,
+        sendMessage("get_images", {
+            directory: file,
+            recurse: recurse,
+            return_thumbs: true,
             thumb_size: 128
         }).then((data) => {
             imageBrowser.innerHTML = "";
-            const items = data["items"];
+            const items = data["image_data"];
             for (const path in items) {
                 const thumbDataItem = items[path];
                 // Create thumbnail element
                 const thumbElem = document.createElement("div");
                 thumbElem.classList.add("thumb");
-                thumbElem.style.backgroundImage = `url(${thumbDataItem.thumb})`;
+                thumbElem.style.backgroundImage = `url(${thumbDataItem.src})`;
                 thumbElem.tabIndex = -1;
                 // Set path and tag in dataset
-                thumbElem.dataset.path = path;
-                thumbElem.dataset.tag = thumbDataItem.tag;
+                thumbElem.dataset.path = thumbDataItem.path;
+                thumbElem.dataset.tag = thumbDataItem.prompt;
 
                 // Add onclick listener
                 thumbElem.onclick = async function (event) {
@@ -271,17 +269,17 @@ async function updateThumbSelection() {
 
     if (selectedThumbs.length === 1) {
         const path = selectedThumbs[0].getAttribute("data-path");
-        const response = await sendMessage("file", {files: [path]});
+        const response = await sendMessage("get_image", {directory: path});
         console.log("Res: ", response);
         try {
-            let file = response["files"][0];
+            let file = response["image_data"][0];
             let src = file["src"];
-            let data = file["data"];
+            let prompt = (file.hasOwnProperty("prompt")) ? file["prompt"] : "";
             const fullImageElem = document.createElement("img");
             fullImageElem.src = src;
             fullImageWrap.appendChild(fullImageElem);
             const imageTagElem = document.getElementById("imageCaption");
-            imageTagElem.value = data;
+            imageTagElem.value = prompt;
         } catch (e) {
             console.error("Error: ", e);
         }

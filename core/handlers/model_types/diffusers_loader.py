@@ -3,8 +3,9 @@ import os.path
 
 import torch
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
-    StableDiffusionControlNetPipeline
-from diffusers.models.cross_attention import AttnProcessor2_0
+    StableDiffusionControlNetPipeline, StableDiffusionSAGPipeline
+
+from diffusers.models.attention_processor import AttnProcessor2_0
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data
@@ -14,12 +15,16 @@ logger = logging.getLogger(__name__)
 
 def load_diffusers(model_data: ModelData):
     model_path = model_data.path
+    load_sag = model_data.data.get("load_sag", True)
     pipeline = None
     if not os.path.exists(model_path):
         logger.debug(f"Unable to load model: {model_path}")
     else:
         try:
-            pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+            if load_sag:
+                pipeline = StableDiffusionSAGPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+            else:
+                pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
             pipeline.enable_model_cpu_offload()
             pipeline.unet.set_attn_processor(AttnProcessor2_0())
             if os.name != "nt":

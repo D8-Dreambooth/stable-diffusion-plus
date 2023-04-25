@@ -8,6 +8,7 @@
   padding: 10px;
   background: var(--primary-accent-color);
   overflow-y: auto;
+  height: 100%;
 }
 
 #imageBrowser .thumb {

@@ -37,7 +37,7 @@ class FileBrowser {
         this.treeContainer.classList.add("tree");
 
         this.treeParent = document.createElement("div");
-        this.treeParent.classList.add("tree-container", "col");
+        this.treeParent.classList.add("tree-container", "col", "borderSection");
         this.showTitle = options["showTitle"] !== undefined ? options["showTitle"] : true;
         this.showInfo = options["showInfo"] !== undefined ? options["showInfo"] : true;
         this.style = options["style"] !== undefined ? options["style"] : "";

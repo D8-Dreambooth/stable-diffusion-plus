@@ -1,13 +1,17 @@
+import base64
 import hashlib
+import json
 import logging
 import os
 import re
+from io import BytesIO
+from typing import Tuple, List, Dict
 
 from PIL import Image, PngImagePlugin
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.directories import DirectoryHandler
-from core.handlers.file import FileHandler
+from core.handlers.file import FileHandler, list_features, is_image
 from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
@@ -30,7 +34,7 @@ class ImageHandler:
             cls._instance.current_dir = user_dir
             cls._instance.file_handler = FileHandler()
             cls.socket_handler = SocketHandler()
-            # socket_handler.register("images", cls._instance.get_image)
+            cls.socket_handler.register("get_images", cls._instance._get_image)
         if user_name is not None:
             if user_name in cls._instances:
                 return cls._instances[user_name]
@@ -42,13 +46,29 @@ class ImageHandler:
                 user_instance.current_dir = user_dir
                 user_instance.file_handler = FileHandler(user_name=user_name)
                 user_instance.socket_handler = cls._instance.socket_handler
+                user_instance.socket_handler.register("get_images", cls._instance._get_image, user=user_name)
                 cls._instances[user_name] = user_instance
                 return user_instance
         else:
             return cls._instance
 
-    def db_save_image(self, image: Image, directory: str, prompt_data: InferSettings = None, save_txt: bool = True,
-                      custom_name: str = None):
+    def save_image(self, image, directory: str, prompt_data=None, save_txt: bool = True, custom_name: str = None):
+        image_filenames = []
+
+        if isinstance(image, list):
+            for idx, img in enumerate(image):
+                if isinstance(prompt_data, list):
+                    prompt = prompt_data[idx] if idx < len(prompt_data) else None
+                else:
+                    prompt = prompt_data
+                image_filenames.append(self._save_single_image(img, directory, prompt, save_txt, custom_name))
+        else:
+            image_filenames.append(self._save_single_image(image, directory, prompt_data, save_txt, custom_name))
+
+        return image_filenames
+
+    def _save_single_image(self, image: Image, directory: str, prompt_data: InferSettings = None, save_txt: bool = True,
+                           custom_name: str = None):
 
         image_base = hashlib.sha1(image.tobytes()).hexdigest()
 
@@ -69,22 +89,12 @@ class ImageHandler:
         image_filename = os.path.join(dest_dir, f"{file_name}.tmp")
         pnginfo_data = PngImagePlugin.PngInfo()
         if prompt_data is not None:
-            size = (prompt_data.width, prompt_data.height)
-            generation_params = {
-                "Steps": prompt_data.steps,
-                "CFG scale": prompt_data.scale,
-                "Seed": prompt_data.seed,
-                "Size": f"{size[1]}x{size[0]}",
-                "Model": f"{prompt_data.model.display_name}"
-            }
-
-            generation_params_text = ", ".join(
-                [k if k == v else f'{k}: {f"{v}" if "," in str(v) else v}' for k, v in generation_params.items()
-                 if v is not None])
-
-            prompt_string = f"{prompt_data.prompt}\nNegative prompt: {prompt_data.negative_prompt}\n{generation_params_text}".strip()
-            pnginfo_data.add_text("parameters", prompt_string)
-
+            for k, v in prompt_data.__dict__.items():
+                try:
+                    val = json.dumps(v)
+                    pnginfo_data.add_text(k, val)
+                except TypeError:
+                    pass
         image_format = Image.registered_extensions()[".png"]
 
         image.save(image_filename, format=image_format, pnginfo=pnginfo_data)
@@ -97,3 +107,86 @@ class ImageHandler:
         os.replace(image_filename, image_filename.replace(".tmp", ".png"))
         return image_filename.replace(".tmp", ".png")
 
+    def _get_image(self, request):
+        data = request["data"]
+        directory = data.get("directory")
+        thumb_size = data.get("thumb_size", 256)
+        return_thumb = data.get("return_thumb", False)
+        recurse = data.get("recurse", False)
+        images, image_data = self.load_image(directory, recurse=recurse)
+        img_idx = 0
+        for img in images:
+            if return_thumb:
+                width, height = img.size
+                aspect_ratio = width / height
+                if aspect_ratio >= 1:
+                    new_width = thumb_size
+                    new_height = round(thumb_size / aspect_ratio)
+                else:
+                    new_width = round(thumb_size * aspect_ratio)
+                    new_height = thumb_size
+                img = img.resize((new_width, new_height))
+
+                # Crop the image to a square with dimensions of thumb_size x thumb_size
+                width, height = img.size
+                left = (width - thumb_size) / 2
+                top = (height - thumb_size) / 2
+                right = (width + thumb_size) / 2
+                bottom = (height + thumb_size) / 2
+                img = img.crop((left, top, right, bottom))
+            with BytesIO() as output:
+                img.save(output, format="JPEG")
+                contents = output.getvalue()
+                image_data[img_idx]["src"] = f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+        return {"image_data": image_data}
+
+    def load_image(self, directory: str = None, filename: str = None, recurse:bool = False) -> Tuple[List[Image.Image], List[Dict]]:
+        # If no filename specified, enumerate all images in directory
+        pil_features = list_features()
+        if directory is None:
+            directory = os.path.join(self.user_dir, "outputs")
+
+        images = []
+        data = []
+        if filename is None:
+            for file in os.listdir(directory):
+                full_file = os.path.join(directory, file)
+                if is_image(full_file, pil_features):
+                    images.append(full_file)
+                if os.path.isdir(full_file) and recurse:
+                    sub_images, sub_data = self.load_image(full_file, recurse=recurse)
+                    images.extend(sub_images)
+                    data.extend(sub_data)
+        else:
+            full_file = os.path.join(directory, filename)
+            if os.path.exists(full_file) and is_image(full_file, pil_features):
+                images.append(full_file)
+            if os.path.isdir(full_file) and recurse:
+                sub_images, sub_data = self.load_image(full_file, recurse=recurse)
+                images.extend(sub_images)
+                data.extend(sub_data)
+
+        for image_file in images:
+            image_data = {"path": image_file}
+            with Image.open(image_file) as img:
+                png_info = img.info
+                for k in InferSettings({}).__dict__.keys():
+                    if png_info.get(k):
+                        try:
+                            val = json.loads(png_info.get(k))
+                            image_data[k] = val
+                        except (TypeError, ValueError):
+                            pass
+
+                txt_file = image_file.replace(".png", ".txt")
+                if os.path.exists(txt_file):
+                    with open(txt_file, "r", encoding="utf8") as file:
+                        prompt = file.read()
+                else:
+                    prompt = None
+
+                if prompt is not None and len(prompt):
+                    image_data["prompt"] = prompt
+                data.append(image_data)
+
+        return images, data
