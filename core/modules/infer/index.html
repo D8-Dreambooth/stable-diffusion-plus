@@ -52,6 +52,27 @@
                             <label for="infer_negative_prompt">Negative Prompt</label>
                             <textarea class="form-control prompt-text" id="infer_negative_prompt" rows="4"></textarea>
                         </div>
+                        <div class="form-group text-center mt-3 advancedInfer">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="inferMode" id="infer_txt2img"
+                                       value="txt2img" checked>
+                                <label class="form-check-label" for="infer_txt2img">Txt2Img</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="inferMode" id="infer_inpaint"
+                                       value="inpaint">
+                                <label class="form-check-label" for="infer_inpaint">Inpaint</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="inferMode" id="infer_img2img"
+                                       value="img2img">
+                                <label class="form-check-label" for="infer_img2img">Img2Img</label>
+                            </div>
+                        </div>
+                        <div class="form-group advancedInfer" id="inpaintEditorContainer">
+                            <label for="inpaintEditor">Input Image:</label>
+                            <div class="imageEditor" id="inpaintEditor"></div>
+                        </div>
                         <!-- Gradio-esque slider elements, populated by JS -->
 
                         <div class="accordion mt-2" id="advancedInferSettings">
@@ -75,13 +96,19 @@
                                             <label for="infer_seed">Seed</label>
                                             <input type="number" class="form-control" id="infer_seed" value="-1">
                                         </div>
+                                        <div class="form-group">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="infer_sag" checked>
+                                        <label class="form-check-label" for="infer_sag">Self-Attention-Guidance</label>
+                                    </div>
+                                </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="accordion mt-3 shadow" id="controlnetSettings">
+                <div class="accordion mt-3 shadow advancedInfer" id="controlnetSettings">
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="cnHeading">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
@@ -96,50 +123,55 @@
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="enableControlNet">
                                         <label class="form-check-label" for="enableControlNet">Enable ControlNet</label>
-                                    </div>                                    
-                                </div>                                
+                                    </div>
+                                </div>
                                 <div class="form-group">
                                     <label for="controlnetType">Controlnet Type:</label>
                                     <select class="form-control" id="controlnetType"></select>
                                 </div>
                                 <div class="form-group">
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="controlnetPreProcess" checked>
-                                        <label class="form-check-label" for="controlnetPreProcess">Preprocess Input</label>
-                                    </div>                                    
+                                        <input class="form-check-input" type="checkbox" id="controlnetPreProcess"
+                                               checked>
+                                        <label class="form-check-label" for="controlnetPreProcess">Preprocess
+                                            Input</label>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="controlnetBatchInput">
                                         <label class="form-check-label" for="controlnetBatchInput">Batch Input</label>
-                                    </div>                                    
+                                    </div>
                                 </div>
                                 <div class="form-group controlnetSingle">
                                     <label for="controlnetEditor">Input Image:</label>
-                                    <div class="imageEditor" id="controlnetEditor"></div>                                    
+                                    <div class="imageEditor" id="controlnetEditor"></div>
                                 </div>
                                 <div class="form-group controlnetSingle">
-                                    <div class="form-check form-switch">                                        
-                                        <input type="checkbox" class="form-check-input" id="autoLoadResolutionOn" checked>
-                                        <label for="autoLoadResolutionOn">Auto-load resolution:</label>                                    
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" class="form-check-input" id="autoLoadResolutionOn"
+                                               checked>
+                                        <label for="autoLoadResolutionOn">Auto-load resolution:</label>
                                     </div>
                                 </div>
                                 <div class="form-group controlnetBatch" style="display: none">
                                     <div class="form-check form-switch">
-                                        <input type="checkbox" class="form-check-input" id="controlnetBatchUsePrompt" checked>
+                                        <input type="checkbox" class="form-check-input" id="controlnetBatchUsePrompt"
+                                               checked>
                                         <label for="controlnetBatchUsePrompt">Use prompt from input images:</label>
                                     </div>
                                 </div>
                                 <div class="form-group controlnetBatch" style="display: none">
-                                    <div class="col-12" id="controlnetBatchFileSelect"></div>                                    
+                                    <div class="col-12" id="controlnetBatchFileSelect"></div>
                                 </div>
                                 <div class="form-group controlnetBatch" style="display: none">
                                     <label for="controlnetBatchFind">Find:</label>
-                                    <input type="text" class="form-control" id="controlnetBatchFind" placeholder="Find">                                    
+                                    <input type="text" class="form-control" id="controlnetBatchFind" placeholder="Find">
                                 </div>
                                 <div class="form-group controlnetBatch" style="display: none">
                                     <label for="controlnetBatchReplace">Replace:</label>
-                                    <input type="text" class="form-control" id="controlnetBatchReplace" placeholder="Replace">                                    
+                                    <input type="text" class="form-control" id="controlnetBatchReplace"
+                                           placeholder="Replace">
                                 </div>
                                 <div class="form-group">
                                     <div class="bootstrapSlider" id="detectResolution"></div>

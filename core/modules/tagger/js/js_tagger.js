@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 function loadModule() {
     console.log("Loading tagger module.");
     registerModule("Tagger", "moduleTagger", "purchase-tag-alt", false, -1);
-    imageFileBrowser = new FileBrowser(document.getElementById("imageFileSelect"), {
+    imageFileBrowser = new FileBrowser(document.getElementById("tagImageFileSelect"), {
         "file_type": "image",
         "showSelectButton": true,
         "listFiles": false,
@@ -33,13 +33,14 @@ function loadModule() {
         sendMessage("get_images", {
             directory: file,
             recurse: recurse,
-            return_thumbs: true,
+            return_thumb: true,
             thumb_size: 128
         }).then((data) => {
             imageBrowser.innerHTML = "";
             const items = data["image_data"];
             for (const path in items) {
                 const thumbDataItem = items[path];
+                console.log("Parsing: ", thumbDataItem);
                 // Create thumbnail element
                 const thumbElem = document.createElement("div");
                 thumbElem.classList.add("thumb");
@@ -269,7 +270,7 @@ async function updateThumbSelection() {
 
     if (selectedThumbs.length === 1) {
         const path = selectedThumbs[0].getAttribute("data-path");
-        const response = await sendMessage("get_image", {directory: path});
+        const response = await sendMessage("get_images", {directory: path});
         console.log("Res: ", response);
         try {
             let file = response["image_data"][0];

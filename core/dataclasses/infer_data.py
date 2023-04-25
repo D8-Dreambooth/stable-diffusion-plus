@@ -12,26 +12,31 @@ from core.dataclasses.model_data import ModelData
 
 @dataclass
 class InferSettings:
-    prompt: str = ""
-    negative_prompt: str = ""
-    steps: int = 20
-    scale: float = 7.5
-    num_images: int = 1
     batch_size: int = 1
-    model: ModelData = "None"
-    seed: int = -1
-    width: int = 512
-    height: int = 512
-    mask = None
-    image = None
-    enable_controlnet = False
-    controlnet_type = None
-    controlnet_preprocess = True
     controlnet_batch = False
     controlnet_batch_dir = None
     controlnet_batch_find = ""
     controlnet_batch_replace = ""
     controlnet_batch_use_prompt = ""
+    controlnet_image = None
+    controlnet_mask = None
+    controlnet_preprocess = True
+    controlnet_type = None
+    enable_controlnet = False
+    enable_sag = True
+    height: int = 512
+    infer_image = None
+    infer_mask = None
+    mode: str = "infer"
+    model: ModelData = "None"
+    negative_prompt: str = ""
+    num_images: int = 1
+    prompt: str = ""
+    scale: float = 7.5
+    seed: int = -1
+    self_attention_guidance = False
+    steps: int = 20
+    width: int = 512
 
     def __init__(self, data: Dict):
         for key, value in data.items():
@@ -71,8 +76,8 @@ class InferSettings:
 
             setattr(self, key, value)
 
-    def get_image(self) -> Union[Image.Image, None]:
-        value = self.image
+    def get_controlnet_image(self) -> Union[Image.Image, None]:
+        value = self.controlnet_image
         if value is not None:
             # Load image from base64
             if "data:image/png" in value:
@@ -84,8 +89,34 @@ class InferSettings:
                     return None
                 return Image.open(BytesIO(img_bytes))
 
-    def get_mask(self) -> Union[Image.Image, None]:
-        value = self.mask
+    def get_controlnet_mask(self) -> Union[Image.Image, None]:
+        value = self.controlnet_mask
+        if value is not None:
+            # Load image from base64
+            if "data:image/png" in value:
+                img_data = re.sub('^data:image/.+;base64,', '', value)
+                # Convert base64 data to bytes
+                img_bytes = base64.b64decode(img_data)
+                if len(img_bytes) == 0:
+                    print("Empty image data")
+                    return None
+                return Image.open(BytesIO(img_bytes))
+
+    def get_infer_image(self) -> Union[Image.Image, None]:
+        value = self.infer_image
+        if value is not None:
+            # Load image from base64
+            if "data:image/png" in value:
+                img_data = re.sub('^data:image/.+;base64,', '', value)
+                # Convert base64 data to bytes
+                img_bytes = base64.b64decode(img_data)
+                if len(img_bytes) == 0:
+                    print("Empty image data")
+                    return None
+                return Image.open(BytesIO(img_bytes))
+
+    def get_infer_mask(self) -> Union[Image.Image, None]:
+        value = self.infer_mask
         if value is not None:
             # Load image from base64
             if "data:image/png" in value:

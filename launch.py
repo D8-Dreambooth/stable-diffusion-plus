@@ -1,3 +1,4 @@
+import filecmp
 import json
 import logging
 import os
@@ -5,6 +6,10 @@ import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
+from multiprocessing import freeze_support
+
+import uvicorn
 
 sys.path.append(os.getcwd())
 
@@ -34,6 +39,27 @@ if sys.version_info < (3, 10):
 # Placeholder functionality
 def install_extensions():
     logger.debug("Checking extension installations...")
+
+
+def check_bitsandbytes():
+    """
+    Check for "different" B&B Files and copy only if necessary
+    """
+    if os.name == "nt":
+        try:
+            bnb_src = os.path.join(os.path.dirname(os.path.realpath(__file__)), "core", "modules", "dreambooth",
+                                   "bitsandbytes_windows")
+            bnb_dest = os.path.join(sysconfig.get_paths()["purelib"], "bitsandbytes")
+            filecmp.clear_cache()
+            for file in os.listdir(bnb_src):
+                src_file = os.path.join(bnb_src, file)
+                if file == "main.py" or file == "paths.py":
+                    dest = os.path.join(bnb_dest, "cuda_setup")
+                else:
+                    dest = bnb_dest
+                shutil.copy2(src_file, dest)
+        except:
+            pass
 
 
 def run(command, desc=None, errdesc=None, custom_env=None, live=False):
@@ -99,7 +125,6 @@ else:
         python = default_python
 
 path = os.environ.get("PATH")
-
 sys.path.append(venv)
 
 freeze_command = "pip freeze"
@@ -193,10 +218,8 @@ if "torch_command" in launch_settings:
 
 if sys.platform == "win32":
     activate = os.path.join(venv, "Scripts", "activate.bat")
-    uvicorn = os.path.join(venv, "Scripts", "uvicorn.exe")
 else:
-    activate = os.path.join(venv, "bin", "activate")
-    uvicorn = os.path.join(venv, "bin", "uvicorn")
+    activate = f"source {os.path.join(venv, 'bin', 'activate')}"
 
 # Define the dreambooth repository path
 dreambooth_path = os.path.join(base_path, "core", "modules", "dreambooth")
@@ -209,7 +232,6 @@ env["PYTHONPATH"] = os.pathsep.join([dreambooth_path, os.path.dirname(os.path.ab
 
 install_command = f"{activate} && {python} -m pip install -r {requirements}"
 torch_command = f"{activate} && {python} -m {torch_command}"
-run_command = f"{uvicorn} app.main:app --host 0.0.0.0 --reload --port {listen_port}"
 
 if os.environ.get("SKIP_INSTALL", "false").lower() == "true":
     do_install = False
@@ -217,5 +239,9 @@ if os.environ.get("SKIP_INSTALL", "false").lower() == "true":
 if do_install:
     logger.info(f"Installing the things: {install_command}")
     run(install_command, "Installing the things.")
-    
-subprocess.run(run_command, shell=True, env=env, check=True)
+
+check_bitsandbytes()
+
+if __name__ == '__main__':
+    freeze_support()
+    uvicorn.run("app.main:app", port=listen_port, reload=True, access_log=False, host="0.0.0.0")

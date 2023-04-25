@@ -127,14 +127,14 @@ input {
 }
 
 .card-header, .accordion-header, .accordion-button, .modal-header {
-    height: 40px;
+    height: 44px;
 }
 
 .modal-header {
     border-radius: calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0;
 }
 
-.card, .modal-content, .accordion, .accordion-collapse {
+.card, .modal-content, .accordion.shadow, .accordion-collapse {
     background-color: var(--bs-body-bg-rgb);
     border: 1px solid var(--bs-border-dark);
 }
@@ -249,6 +249,11 @@ input {
 
 .sectionLabel {
     font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.card-header {
+    font-size: 22px;
     margin-bottom: 5px;
 }
 

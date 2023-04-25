@@ -107,15 +107,26 @@ class ImageHandler:
         os.replace(image_filename, image_filename.replace(".tmp", ".png"))
         return image_filename.replace(".tmp", ".png")
 
-    def _get_image(self, request):
+    async def _get_image(self, request):
         data = request["data"]
         directory = data.get("directory")
         thumb_size = data.get("thumb_size", 256)
         return_thumb = data.get("return_thumb", False)
         recurse = data.get("recurse", False)
-        images, image_data = self.load_image(directory, recurse=recurse)
+        logger.debug(f"Get image request: {request}")
+        if "user" in request:
+            dir_handler = DirectoryHandler(user_name=request["user"])
+            user_dir = dir_handler.get_directory(request["user"])[0]
+            logger.debug(f"User: {user_dir}")
+            self.user_dir = user_dir
+        filename = None
+        if os.path.isfile(directory):
+            filename = os.path.basename(directory)
+            directory = os.path.dirname(directory)
+        images, image_data = self.load_image(directory, filename=filename, recurse=recurse)
         img_idx = 0
-        for img in images:
+        for image in images:
+            img = Image.open(image)
             if return_thumb:
                 width, height = img.size
                 aspect_ratio = width / height
@@ -135,16 +146,22 @@ class ImageHandler:
                 bottom = (height + thumb_size) / 2
                 img = img.crop((left, top, right, bottom))
             with BytesIO() as output:
-                img.save(output, format="JPEG")
+                img.save(output, format="PNG")
                 contents = output.getvalue()
-                image_data[img_idx]["src"] = f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+                image_data[img_idx]["src"] = f"data:image/png;base64,{base64.b64encode(contents).decode()}"
+            img_idx += 1
         return {"image_data": image_data}
 
     def load_image(self, directory: str = None, filename: str = None, recurse:bool = False) -> Tuple[List[Image.Image], List[Dict]]:
         # If no filename specified, enumerate all images in directory
         pil_features = list_features()
+
         if directory is None:
             directory = os.path.join(self.user_dir, "outputs")
+        else:
+            logger.debug(f"Loading image, using user dir: {self.user_dir} and {directory}")
+            if self.user_dir not in directory:
+                directory = os.path.abspath(os.path.join(self.user_dir, directory))
 
         images = []
         data = []

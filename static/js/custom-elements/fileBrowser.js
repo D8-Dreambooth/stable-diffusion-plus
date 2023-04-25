@@ -8,6 +8,7 @@ class FileBrowser {
         this.startLink = "";
         let wrapper = document.createElement("div");
         wrapper.classList.add("row", "fileBrowserContainer");
+        parentElement.innerHTML = "";
         parentElement.appendChild(wrapper);
 
         this.parentElement = wrapper;
@@ -727,10 +728,6 @@ class FileBrowser {
 
         if (this.infoPanel) {
             this.infoPanel.classList.add("closed");
-        }
-
-        if (this.showSelectButton) {
-
         }
 
         const tempDiv = document.createElement('div');

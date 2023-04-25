@@ -31,7 +31,7 @@ class BootstrapSlider {
         this.labelWrapper.appendChild(this.labelElement);
 
         this.labelText = document.createElement("span");
-        this.labelText.classList.add("text-gray-500", "text-[0.855rem]", "mb-2", "block", "dark:text-gray-200", "relative", "z-40");
+        this.labelText.classList.add("text-gray-500", "text-[0.855rem]", "mb-2", "block", "dark:text-gray-200", "relative", "z-40", "fit");
         this.labelText.title = options.title || "How many times to improve the generated image iteratively; higher values take longer; very low values can produce bad results";
         this.labelText.innerText = this.label;
         this.labelElement.appendChild(this.labelText);

@@ -58,6 +58,9 @@ async def start_inference(inference_settings: InferSettings, user):
 
         logger.debug("Using controlnet.")
 
+        if inference_settings.enable_sag:
+            model_data.data = {"enable_sag": True}
+
         if inference_settings.controlnet_batch:
             # List files in the batch directory
             logger.debug("Controlnet batch, baby!")
@@ -94,8 +97,8 @@ async def start_inference(inference_settings: InferSettings, user):
                 input_prompts.append(img_prompt if img_prompt else inference_settings.prompt)
                 negative_prompts.append(inference_settings.negative_prompt)
         else:
-            src_image = inference_settings.get_image()
-            src_mask = inference_settings.get_mask()
+            src_image = inference_settings.get_controlnet_image()
+            src_mask = inference_settings.get_controlnet_mask()
             input_prompts = [inference_settings.prompt]
             if preprocess_src == "image":
                 if not src_image:
@@ -125,12 +128,17 @@ async def start_inference(inference_settings: InferSettings, user):
 
         model_data.data = {"type": inference_settings.controlnet_type}
         status_handler.update("status", "Loading model.")
-        pipeline = model_handler.load_model("diffusers_controlnet", model_data)
 
     else:
         input_prompts = [inference_settings.prompt]
         negative_prompts = [inference_settings.negative_prompt]
+
+    if inference_settings.mode == "txt2img":
         pipeline = model_handler.load_model("diffusers", model_data)
+    elif inference_settings.mode == "inpaint":
+        pipeline = model_handler.load_model("diffusers_inpaint", model_data)
+    elif inference_settings.mode == "img2img":
+        pipeline = model_handler.load_model("diffusers_img2img", model_data)
 
     input_prompts = input_prompts * inference_settings.num_images
     negative_prompts = negative_prompts * inference_settings.num_images

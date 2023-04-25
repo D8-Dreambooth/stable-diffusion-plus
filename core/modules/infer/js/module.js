@@ -3,21 +3,26 @@ let moduleSelect;
 let inferProgress;
 let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
 let userConfig;
-let imageEditor;
+let controlnetImageEditor;
+let inpaintImageEditor;
 let controlnetFileBrowser;
 
 let inferSettings = {
     "prompt": "",
+    "mode": "infer",
     "negative_prompt": "",
     "steps": 20,
     "scale": 7.5,
+    "use_sag": true,
     "num_images": 1,
     "batch_size": 1,
     "width": 512,
     "height": 512,
     "model": undefined,
-    "mask": undefined,
-    "image": undefined,
+    "infer_mask": undefined,
+    "infer_image": undefined,
+    "controlnet_mask": undefined,
+    "controlnet_image": undefined,
     "controlnet": false,
     "controlnet_type": undefined,
     "controlnet_preprocess": true,
@@ -36,9 +41,13 @@ const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
 const advancedSettings = $("#advancedInferSettings");
+const advancedElements = $(".advancedInfer");
+const inpaintImgEditor = $("#inpaintEditor");
 moduleSelect = $("#inferModel").modelSelect();
 advancedSettings.hide();
+advancedElements.hide();
 ratioContainer.hide();
+inpaintImgEditor.hide();
 inferWidth.hide();
 inferHeight.hide();
 
@@ -185,12 +194,26 @@ document.addEventListener("DOMContentLoaded", function () {
     let submit = document.getElementById("startInfer");
     let cancel = document.getElementById("stopInfer");
     let controlEditor = document.getElementById("controlnetEditor");
-    imageEditor = new ImageEditor("controlnetEditor", 512, 512);
+    controlnetImageEditor = new ImageEditor("controlnetEditor", 512, 512);
+    inpaintImageEditor = new ImageEditor("inpaintEditor", 512, 512);
 
     submit.addEventListener("click", function () {
         startInference().then(function (result) {
         })
     });
+
+    const radioButtons = document.getElementsByName('inferMode');
+    for (let i = 0; i < radioButtons.length; i++) {
+        radioButtons[i].addEventListener('change', function () {
+            console.log(this.value);
+            inferSettings.mode = this.value;
+            if (this.value === "txt2img") {
+                inpaintImgEditor.hide();
+            } else {
+                inpaintImgEditor.show();
+            }
+        });
+    }
 
     sendMessage("get_config", {"section_key": "infer"}).then((data) => {
         userConfig = data;
@@ -221,8 +244,10 @@ function loadSettings(data) {
     if (data.hasOwnProperty("basic_infer")) {
         if (data.basic_infer) {
             advancedSettings.hide();
+            advancedElements.hide();
         } else {
             advancedSettings.show();
+            advancedElements.show();
         }
     }
     if (data["show_aspect_ratios"]) {
@@ -276,7 +301,7 @@ function setResolution(ratio) {
     height = Math.floor(height / 64) * 64;
     inferSettings.width = width;
     inferSettings.height = height;
-    imageEditor.scaleCanvas(width, height);
+    controlnetImageEditor.scaleCanvas(width, height);
 
     console.log("Updated infer settings: ", inferSettings);
     return {width, height};
@@ -297,18 +322,35 @@ async function startInference() {
         let enableControlNet = document.getElementById("enableControlNet");
         let controlnetType = document.getElementById("controlnetType");
         let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
-        let mask = imageEditor.getMask();
-        let image = imageEditor.getDropped();
+        let enableSag = document.getElementById("infer_sag");
+        let controlnet_mask = controlnetImageEditor.getMask();
+        let controlnet_image = controlnetImageEditor.getDropped();
+        let infer_mask = inpaintImageEditor.getMask();
+        let infer_image = inpaintImageEditor.getDropped();
+
+        const radioButtons = document.getElementsByName('inferMode');
+        let inferMode = 'txt2img';
+
+        for (let i = 0; i < radioButtons.length; i++) {
+            if (radioButtons[i].checked) {
+                inferMode = radioButtons[i].value;
+                break;
+            }
+        }
+        inferSettings.mode = inferMode;
         inferSettings.model = model;
         inferSettings.prompt = promptEl.value;
         inferSettings.negativePrompt = negEl.value;
         inferSettings.seed = parseInt(seedEl.value);
         inferSettings.scale = scaleTest.value;
+        inferSettings.use_sag = enableSag.checked;
         inferSettings.steps = parseInt(stepTest.value);
         inferSettings.num_images = parseInt(numImages.value);
         inferSettings.batch_size = parseInt(batchSize.value);
-        inferSettings.mask = mask;
-        inferSettings.image = image;
+        inferSettings.controlnet_mask = controlnet_mask;
+        inferSettings.controlnet_image = controlnet_image;
+        inferSettings.infer_mask = infer_mask;
+        inferSettings.infer_image = infer_image;
         inferSettings.enable_controlnet = enableControlNet.checked;
         inferSettings.controlnet_type = controlnetType.value;
         inferSettings.controlnet_preprocess = document.getElementById("controlnetPreProcess").checked;
@@ -319,9 +361,9 @@ async function startInference() {
         inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnetBatchUsePrompt").checked;
 
         if (enableControlNet.checked && autoLoadResolution.checked && inferSettings.image !== undefined) {
-            inferSettings.width = imageEditor.originalResolution.width;
-            inferSettings.height = imageEditor.originalResolution.height
-            inferSettings.image = imageEditor.imageSource;
+            inferSettings.width = controlnetImageEditor.originalResolution.width;
+            inferSettings.height = controlnetImageEditor.originalResolution.height
+            inferSettings.image = controlnetImageEditor.imageSource;
         } else {
             if (userConfig["show_aspect_ratios"]) {
                 const selectedRatio = document.querySelector(".aspectButton.btn-selected");

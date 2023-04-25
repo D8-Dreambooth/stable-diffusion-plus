@@ -1,6 +1,7 @@
 .inline-gallery-container {
-    background: var(--secondary-text-color);
     max-height: 400px;
+    border: 1px solid var(--bs-border-dark);
+    border-radius: 5px;
 }
 
 .fotorama__wrap--css3 .fotorama__download-icon:not(:focus) {
