@@ -1,14 +1,7 @@
-document.addEventListener("DOMContentLoaded", function (event) {
-    sendMessage("get_config",{"section_key": "import_export"}).then((data)=>{
-        console.log("IODATA: ", data);
-        if (data["enable"]) {
-            loadModule();
-        }
-    });
-});
+// registerModule("Input/Output", "moduleImportExport", "import", false, -1);
+const ioModule = new Module("Input/Output", "moduleImportExport", "import", false, -1, initImportExport);
 
-function loadModule() {
-    registerModule("Input/Output", "moduleImportExport", "import", false, -1);
+function initImportExport() {
     const modelSelect = document.getElementById("modelSelect");
     const modelExportSelect = document.getElementById("modelExportSelect");
 
@@ -28,8 +21,7 @@ function loadModule() {
     startExtract.addEventListener("click", () => {
         console.log("startExtract button was clicked");
         let modelInfo = selector.getModel();
-        let is_512 = document.getElementById("convUse512").checked;
-        modelInfo["is_512"] = is_512;
+        modelInfo["is_512"] = document.getElementById("convUse512").checked;
         sendMessage("extract_checkpoint", modelInfo,true).then((res)=>{
             console.log("All done!", res);
         });

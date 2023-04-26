@@ -2,18 +2,9 @@ let imageFileBrowser;
 let captionData = {};
 let lastSelected = null;
 
-document.addEventListener("DOMContentLoaded", function (event) {
-    sendMessage("get_config", {"section_key": "tagger"}).then((data) => {
-        console.log("TAGDATA: ", data);
-        if (data["enable"]) {
-            loadModule();
-        }
-    });
-});
-
-function loadModule() {
+const taggerModule = new Module("Tagger", "moduleTagger", "purchase-tag-alt", false, -1, initTagger);
+function initTagger() {
     console.log("Loading tagger module.");
-    registerModule("Tagger", "moduleTagger", "purchase-tag-alt", false, -1);
     imageFileBrowser = new FileBrowser(document.getElementById("tagImageFileSelect"), {
         "file_type": "image",
         "showSelectButton": true,
@@ -23,7 +14,6 @@ function loadModule() {
         "multiselect": false,
         "dropdown": true
     });
-
     imageFileBrowser.addOnSelect((file) => {
         console.log("FILE: ", file);
         const thumbContainer = document.getElementById("imageBrowser");
@@ -109,11 +99,7 @@ function loadModule() {
         });
     });
 
-    // Select the imageBrowser div and all thumb elements within it
-
-// Set the initial selected index to 0
     let selectedIndex = 0;
-
     // Add a keyboard listener to the document
     document.addEventListener("keydown", (event) => {
         const imageBrowser = document.getElementById("imageBrowser");

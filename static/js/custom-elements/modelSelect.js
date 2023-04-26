@@ -39,7 +39,10 @@ class ModelSelect {
         wrapper.appendChild(this.selectElement);
         this.container.appendChild(wrapper);
         this.setOnChangeHandler((selectedModel) => {
-            this.currentModel = selectedModel;
+            console.log("Selected model (chang):", selectedModel);
+            if (selectedModel.hasOwnProperty("hash")) {
+                this.currentModel = selectedModel.hash;
+            }
         });
         this.refresh();
         ModelSelect.modelSelectMap.set(container, this);
@@ -61,10 +64,9 @@ class ModelSelect {
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");
         blankOption.value = "none";
+        console.log("Got model list: ", modelList);
         const loaded = modelList["loaded"];
-        if (loaded !== undefined && loaded !== null) {
-            this.currentModel = loaded.hash;
-        }
+        this.currentModel = (loaded === undefined || loaded === null ? "none" : loaded);
 
         if (this.currentModel === "none") {
             blankOption.selected = true;
@@ -76,7 +78,7 @@ class ModelSelect {
                 let option = document.createElement("option");
                 option.value = (model.hasOwnProperty("hash") ? model.hash : "none");
                 if (this.currentModel !== "none" && this.currentModel !== undefined) {
-                if (this.currentModel.hash === option.value) {
+                if (this.currentModel === option.value) {
                     option.selected = true;
                 }
                 }

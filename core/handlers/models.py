@@ -168,7 +168,12 @@ class ModelHandler:
             diff_dirs = self.load_diffusion_models()
             for diff_dir in diff_dirs:
                 self.logger.debug(f"Enumerating: {diff_dir}")
-                output.append(ModelData(diff_dir))
+                name = None
+                if "working" in diff_dir:
+                    # Set model data.name to the parent directory of diff_dir
+                    name = os.path.basename(os.path.dirname(diff_dir))
+                model_data = ModelData(diff_dir, name=name)
+                output.append(model_data)
             return output
 
         if ext_include is None:
@@ -235,6 +240,7 @@ class ModelHandler:
         target_directories = []
         for path in self.models_path:
             target_directories.append(os.path.join(path, "diffusers"))
+            target_directories.append(os.path.join(path, "dreambooth"))
 
         self.logger.debug(f"Model dirs: {target_directories}")
         for model_path in target_directories:

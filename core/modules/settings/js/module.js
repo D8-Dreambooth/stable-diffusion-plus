@@ -1,11 +1,12 @@
-document.addEventListener("DOMContentLoaded", function () {
+const settingsModule = new Module("Settings", "moduleSettings", "cog", false, 1000, initSettings);
+
+function initSettings() {
     // Register the module with the UI. Icon is from boxicons by default.
-    registerModule("Settings", "moduleSettings", "cog", false, 1000);
     sendMessage("get_settings", {}, true).then((res) => {
         console.log("Got settings res: ", res);
         parseObject(res);
     });
-});
+}
 
 function parseObject(obj) {
     const systemSection = obj.shared.core;

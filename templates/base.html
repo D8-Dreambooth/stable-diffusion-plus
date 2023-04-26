@@ -63,6 +63,14 @@
 
 <!--Container Main start-->
 <div class="bg-light" id="mainBody">
+    <div class="loading" id="loading">
+        <div class="loadWrap">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <div class="loadingText" id="loadingText">Loading...</div>
+        </div>
+    </div>
     {% for module in module_html %}
     {{ module|safe }}
     {% endfor %}
@@ -117,14 +125,15 @@
 <!-- Load core JS file, which has methods all other scripts should be able to access. -->
 <script type="text/javascript" src="/static/js/custom-elements/keyListener.js"></script>
 <script type="text/javascript" src="/static/js/core_methods.js"></script>
+<!-- Load restricted JS file, which has methods only module code should be able to access. -->
+<script type="text/javascript" src="/static/js/restricted_methods.js"></script>
 
+<script type="text/javascript" src="/static/js/module_base.js"></script>
 <!-- Now append all extension code -->
 {% for js in js_files_ext %}
 <script src="{{ js }}"></script>
 {% endfor %}
 
-<!-- Load restricted JS file, which has methods only module code should be able to access. -->
-<script type="text/javascript" src="/static/js/restricted_methods.js"></script>
 
 <!-- Now load script for modules. -->
 {% for js in js_files %}

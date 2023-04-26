@@ -1,12 +1,17 @@
 let gallery;
-let moduleSelect;
 let inferProgress;
 let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
 let userConfig;
 let controlnetImageEditor;
-let inpaintImageEditor;
 let controlnetFileBrowser;
+const moduleSelect = $("#inferModel").modelSelect();
+const ratioContainer = $("#infer_ratios");
+const inferWidth = $("#infer_width");
+const inferHeight = $("#infer_height");
+const advancedElements = $(".advancedInfer");
+const inpaintContainer = $("#inpaintContainer");
 
+let inpaintImageEditor;
 let inferSettings = {
     "prompt": "",
     "mode": "infer",
@@ -33,35 +38,20 @@ let inferSettings = {
     "controlnet_batch_use_prompt": false
 }
 
+advancedElements.hide();
+ratioContainer.hide();
+inpaintContainer.hide();
+inferWidth.hide();
+inferHeight.hide();
+
+const inferModule = new Module("Inference", "moduleInfer", "images", true, 1, inferInit);
 function inferResponse(data) {
     //console.log("Inference response received: ", data);
 }
 
-const ratioContainer = $("#infer_ratios");
-const inferWidth = $("#infer_width");
-const inferHeight = $("#infer_height");
-const advancedSettings = $("#advancedInferSettings");
-const advancedElements = $(".advancedInfer");
-const inpaintImgEditor = $("#inpaintEditor");
-moduleSelect = $("#inferModel").modelSelect();
-advancedSettings.hide();
-advancedElements.hide();
-ratioContainer.hide();
-inpaintImgEditor.hide();
-inferWidth.hide();
-inferHeight.hide();
-
-// Wait till the doc is loaded
-document.addEventListener("DOMContentLoaded", function () {
-    // Register the module with the UI. Icon is from boxicons by default.
-    registerModule("Inference", "moduleInfer", "images", true, 1);
+function inferInit() {
     registerSocketMethod("infer", "infer", inferResponse);
     keyListener.register("ctrl+Enter", "#inferSettings", startInference);
-
-    let promptEl = document.getElementById("infer_prompt");
-    let negEl = document.getElementById("infer_negative_prompt");
-    let seedEl = document.getElementById("infer_seed");
-
 
     // Progress group example. Options can also be passed to inferProgress.update() in the same format.
     inferProgress = new ProgressGroup(document.getElementById("inferProgress"), {
@@ -72,14 +62,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Gallery creation. Options can also be passed to .update()
-    gallery = new InlineGallery(document.getElementById('inferGallery'),
-        {
+    gallery = new InlineGallery(document.getElementById('inferGallery'), {
             "thumbnail": true,
             "closeable": false,
             "show_maximize": true,
             "start_open": true
-        }
-    );
+        });
 
     scaleTest = new BootstrapSlider(document.getElementById("infer_scale"), {
         elem_id: "scaleSlid",
@@ -89,7 +77,6 @@ document.addEventListener("DOMContentLoaded", function () {
         value: 7.5,
         label: "Scale"
     });
-
 
     widthSlider = new BootstrapSlider(document.getElementById("infer_width"), {
         elem_id: "widthSlid",
@@ -118,7 +105,6 @@ document.addEventListener("DOMContentLoaded", function () {
         label: "Steps"
     });
 
-
     numImages = new BootstrapSlider(document.getElementById("infer_num_images"), {
         elem_id: "numImages",
         min: 1,
@@ -127,7 +113,6 @@ document.addEventListener("DOMContentLoaded", function () {
         step: 1,
         label: "Number of Images"
     });
-
 
     // Same as above. Why not?
     batchSize = new BootstrapSlider(document.getElementById("infer_batch_size"), {
@@ -149,77 +134,25 @@ document.addEventListener("DOMContentLoaded", function () {
         "multiselect": false,
         "dropdown": true
     });
-
-    promptEl.addEventListener("change", function () {
-        inferSettings["prompt"] = promptEl.value;
-    });
-
-    negEl.addEventListener("change", function () {
-        inferSettings["negativePrompt"] = negEl.value;
-    });
-
-    seedEl.addEventListener("change", function () {
-        inferSettings["seed"] = parseInt(seedEl.value);
-    });
-
-    $("#controlnetBatchInput").on("change", function () {
-        let singleDivs = $(".controlnetSingle");
-        let batchDivs = $(".controlnetBatch");
-        if ($(this).is(":checked")) {
-            singleDivs.hide();
-            batchDivs.show();
-        } else {
-            singleDivs.show();
-            batchDivs.hide();
-        }
-    });
-
-    scaleTest.setOnChange(function (value) {
-        inferSettings.scale = value
-    })
-
-    stepTest.setOnChange(function (value) {
-        inferSettings.steps = value
-    })
-
-    numImages.setOnChange(function (value) {
-        inferSettings.num_images = value
-    })
-
-
-    batchSize.setOnChange(function (value) {
-        inferSettings.batch_size = value
-    })
-
-    let submit = document.getElementById("startInfer");
-    let cancel = document.getElementById("stopInfer");
-    let controlEditor = document.getElementById("controlnetEditor");
     controlnetImageEditor = new ImageEditor("controlnetEditor", 512, 512);
     inpaintImageEditor = new ImageEditor("inpaintEditor", 512, 512);
 
-    submit.addEventListener("click", function () {
-        startInference().then(function (result) {
-        })
-    });
+    let submit = document.getElementById("startInfer");
+
+    submit.addEventListener("click", function () {startInference().then(function (result) {})});
 
     const radioButtons = document.getElementsByName('inferMode');
     for (let i = 0; i < radioButtons.length; i++) {
         radioButtons[i].addEventListener('change', function () {
-            console.log(this.value);
-            inferSettings.mode = this.value;
             if (this.value === "txt2img") {
-                inpaintImgEditor.hide();
+                inpaintContainer.hide();
             } else {
-                inpaintImgEditor.show();
+                inpaintContainer.show();
             }
         });
     }
-
-    sendMessage("get_config", {"section_key": "infer"}).then((data) => {
-        userConfig = data;
-        loadSettings(data);
-        console.log("Infer settings: ", userConfig);
-    });
+    let moduleSettings = inferModule.systemConfig
+    loadSettings(moduleSettings);
     sendMessage("get_controlnets", {}, true).then((data) => {
         console.log("Controlnets: ", data);
         let controlnetSelect = document.getElementById("controlnetType");
@@ -235,23 +168,20 @@ document.addEventListener("DOMContentLoaded", function () {
             controlnetSelect.add(option);
         }
     });
-});
+}
 
 function loadSettings(data) {
     console.log("Data: ", data);
-    const advancedSettings = $("#advancedInferSettings");
 
     if (data.hasOwnProperty("basic_infer")) {
         if (data.basic_infer) {
-            advancedSettings.hide();
             advancedElements.hide();
         } else {
-            advancedSettings.show();
             advancedElements.show();
         }
     }
     if (data["show_aspect_ratios"]) {
-        addRatioCards(data["max_resolution"]);
+        addRatioCards();
         ratioContainer.show();
     } else {
         inferWidth.show();
@@ -259,7 +189,7 @@ function loadSettings(data) {
     }
 }
 
-function addRatioCards(max_resolution) {
+function addRatioCards() {
     const ratioContainer = document.querySelector("#infer_ratios");
     const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
     const buttonGroup = document.createElement("div");

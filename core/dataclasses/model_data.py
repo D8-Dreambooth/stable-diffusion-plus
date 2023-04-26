@@ -17,7 +17,7 @@ class ModelData:
     data: Dict
     display_name: ""
 
-    def __init__(self, model_path, loader=None):
+    def __init__(self, model_path, name=None, loader=None):
         self.path = model_path
         self.loader = loader
         self.data = {}
@@ -30,8 +30,7 @@ class ModelData:
         else:
             self.is_url = False
             self.get_hash(model_path)
-
-        self.name = os.path.basename(model_path)
+        self.name = name if name else os.path.basename(model_path)
         self.display_name = self.name + " [" + self.hash[:6] + "]" if self.hash else self.name
 
     def serialize(self):

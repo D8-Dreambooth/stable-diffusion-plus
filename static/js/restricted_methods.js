@@ -1,81 +1,63 @@
 // A set of JS methods that are loaded *after* extensions, so they are only available to native modules
 let moduleIds = {};
+let modules = [];
+let loadDiv = $(".loading");
+// region ModuleHandling
 
-// region RegistrationMethods
-
-// Register a UI Module in the menu
-function registerModule(module_name, module_id, module_icon, is_default = false, index=-1) {
-    console.log("Register module: ", module_name, module_id, index);
-
-    let navList = document.getElementById("navList");
-    let existingModule = document.getElementById(module_id + "_link");
-    let newModule;
-
-    if (existingModule) {
-        navList.removeChild(existingModule);
-    }
-
-    newModule = document.createElement("a");
-    newModule.href = "#";
-    newModule.className = "nav_link";
-    newModule.id = module_id + "_link";
-    moduleIds[module_id] = module_name;
-    newModule.setAttribute("data-index", index); // Add data-index attribute
-
-    let icon = document.createElement("i");
-    icon.className = `bx bx-${module_icon} nav_icon`;
-
-    let name = document.createElement("span");
-    name.className = "nav_name";
-    name.textContent = module_name;
-
-    newModule.appendChild(icon);
-    newModule.appendChild(name);
-    navList.appendChild(newModule);
-
-    newModule.addEventListener("click", function() {
-        showPane(module_id);
-    });
-
-    if (is_default) {
-        showPane(module_id);
-    }
-
-    // Sort navList by data-index
-    let navLinks = Array.from(navList.children);
-    navLinks.sort((a, b) => {
-        let aIndex = parseInt(a.getAttribute("data-index"));
-        let bIndex = parseInt(b.getAttribute("data-index"));
-        if (aIndex === -1) {
-            if (bIndex === -1) {
-                return a.textContent.localeCompare(b.textContent); // Sort alphabetically if both have index of -1
-            } else {
-                return 1; // Append a to the end
+document.addEventListener("DOMContentLoaded", function () {
+    sendMessage("get_modules", {}).then(function (response) {
+        let module_data = response["module_data"];
+        console.log("Got module data: ", module_data);
+        loadDiv.addClass("loaded");
+        // Parse module data, which is a dict of lists where the key is the module ID, and the value is a list with two
+        // elements, the first being the module settings, and the second being the module defaults.
+        for (let module_id in module_data) {
+            console.log("Enumerating module data: ", module_id);
+            let module_settings = module_data[module_id]["config"];
+            let module_defaults = module_data[module_id]["defaults"];
+            let enableModule = false;
+            if (module_settings.hasOwnProperty("enable")) {
+                enableModule = module_settings["enable"];
             }
-        } else if (bIndex === -1) {
-            return -1; // Append b to the end
-        } else {
-            return aIndex - bIndex;
+            if (module_id === "module_settings") {
+                enableModule = true;
+            }
+            // Check if the module is enabled
+            if (enableModule) {
+                console.log("Enabling module: ", module_id);
+                for(let module of modules) {
+                    const camelCaseId = module_id.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+                    console.log("CamelId: ", camelCaseId);
+                    if (module.id === camelCaseId) {
+                        module.enabled = true;
+                        module.init(module_settings, module_defaults);
+                        break;
+                    }
+                }
+            }
         }
     });
+});
 
-    // Re-add sorted navLinks to navList
-    navList.innerHTML = "";
-    for (let link of navLinks) {
-        navList.appendChild(link);
+// Register a UI Module in the menu
+function registerModule(module) {
+    if (modules.indexOf(module) !== -1) {
+        console.log("Module already registered: ", module);
+        return;
     }
+    console.log("Register module: ", module);
+    modules.push(module);
 }
 
 // Deregister a UI Module from the menu
-function DeregisterModule(module_id) {
-    console.log("Deregister module: ", module_id);
-
-    let navList = document.getElementById("navList");
-    let existingModule = document.getElementById(module_id + "_link");
-
-    if (existingModule) {
-        navList.removeChild(existingModule);
+function deregisterModule(module_id) {
+    if (modules.indexOf(module_id) === -1) {
+        console.log("Module not registered: ", module_id);
+        return;
     }
+    console.log("Deregister module: ", module_id);
+    modules.splice(modules.indexOf(module_id), 1);
 }
+
 
 // endregion

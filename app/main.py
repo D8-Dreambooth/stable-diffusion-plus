@@ -172,7 +172,7 @@ def initialize_app():
             ImageHandler(user_name=user)
 
     # Now that all the other handlers are alive, initialize modules and extensions
-    module_handler = ModuleHandler(os.path.join(app_path, "core", "modules"))
+    module_handler = ModuleHandler(os.path.join(app_path, "core", "modules"), socket_handler)
     extension_handler = ExtensionHandler()
 
     # Enumerate data for the UI from each module and extension

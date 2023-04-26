@@ -1,7 +1,10 @@
-document.addEventListener("DOMContentLoaded", function () {
+// registerModule("Files", "moduleFileBrowser", "folder-open", false, 3);
+const fileBrowserModule = new Module("Files", "moduleFileBrowser", "folder-open", false, 3, initFileBrowser);
+
+function initFileBrowser() {
+    console.log("FB Init: ", fileBrowserModule);
     // Register the module with the UI. Icon is from boxicons by default.
-    registerModule("Files", "moduleFileBrowser", "folder-open", false, 3);
-    let fc = new FileBrowser(
+    new FileBrowser(
         document.getElementById("fileContainer"), {
             "listFiles": true,
             "expand": true,
@@ -10,4 +13,4 @@ document.addEventListener("DOMContentLoaded", function () {
             "showTitle": false,
             "showInfo": true
         });
-});
+}
