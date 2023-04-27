@@ -268,7 +268,7 @@ class ModelHandler:
                 output.append(md)
 
         if len(output) == 0:
-            dest_folder = os.path.join(self.models_path[0], "diffusers", "stable-diffusion-2-1")
+            dest_folder = os.path.join(self.models_path[1], "diffusers", "stable-diffusion-2-1")
             self.logger.info("No diffusion models found. Downloading default.")
             repo_id = "stabilityai/stable-diffusion-2-1"
             exclude_files = ["v2-1_768-ema-pruned.ckpt", "v2-1_768-ema-pruned.safetensors",
