@@ -151,7 +151,7 @@ function inferInit() {
             }
         });
     }
-    let moduleSettings = inferModule.systemConfig
+    let moduleSettings = inferModule.systemConfig;
     loadSettings(moduleSettings);
     sendMessage("get_controlnets", {}, true).then((data) => {
         console.log("Controlnets: ", data);
@@ -172,7 +172,7 @@ function inferInit() {
 
 function loadSettings(data) {
     console.log("Data: ", data);
-
+    userConfig = data;
     if (data.hasOwnProperty("basic_infer")) {
         if (data.basic_infer) {
             advancedElements.hide();

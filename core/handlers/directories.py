@@ -19,7 +19,6 @@ class DirectoryHandler:
         if not cls._instance and launch_settings and app_path:
             cls._instance = super(DirectoryHandler, cls).__new__(cls)
             cls._instance.logger = logging.getLogger(f"{__name__}-shared")
-            cls._instance.logger.debug("Dir handler init")
             cls._instance._launch_settings = launch_settings
             cls._instance._user_name = user_name
             cls._instance.app_path = app_path
@@ -31,7 +30,6 @@ class DirectoryHandler:
             else:
                 user_instance = super(DirectoryHandler, cls).__new__(cls)
                 user_instance.logger = logging.getLogger(f"{__name__}-{user_name}")
-                user_instance.logger.debug("Dir handler init")
                 user_instance._user_name = user_name
                 user_instance._launch_settings = cls._instance._launch_settings
                 user_instance.app_path = cls._instance.app_path
@@ -71,7 +69,6 @@ class DirectoryHandler:
         if self._user_name:
             user_dir = os.path.join(self.protected_path, "users", self._user_name)
             if directory == self._user_name:
-                self.logger.debug(f"Returning user dir: {user_dir}")
                 return [user_dir]
             if directory in self.combine_dirs:
                 output = [os.path.join(user_dir, directory), os.path.join(self.shared_path, directory)]
@@ -82,8 +79,6 @@ class DirectoryHandler:
                 output = [os.path.join(self.shared_path, directory)]
             elif directory in self.protected_dirs:
                 output = [os.path.join(self.protected_path, directory)]
-
-        self.logger.debug(f"Dir request: {directory}: {output}")
 
         return output
 

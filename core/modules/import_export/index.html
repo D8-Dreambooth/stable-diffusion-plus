@@ -1,33 +1,44 @@
 <div class="module" id="moduleImportExport">
-    <div class="container">
-        <div class="card">
-            <div class="card-header">
-                Extract Checkpoint
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-12 col-md-6" id="modelSelect"></div>
-                    <div class="col-12 col-md-6">
-                        <button class="btn btn-primary form-control" id="startExtract">Extract</button>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Extract Checkpoint
                     </div>
-                    <div class="col-12 col-md-6">
-                        <div class="form-group mt-3">
-                            <label for="convUse512">Model is 512x</label>
-                            <input type="checkbox" id="convUse512"/>
+                    <div class="card-body">
+                        <div class="form-group text-center">
+                            <div class="d-inline-block">
+                                <div id="modelSelect"></div>
+                            </div>
                         </div>
+                        <div class="row justify-content-center">
+                            <div class="col-12 text-center">
+                                <div class="form-group mt-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="convUse512">
+                                        <label class="form-check-label" for="convUse512">Model is 512x</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 text-center">
+                                <button class="btn btn-primary" id="startExtract">Extract</button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="card">
-            <div class="card-header">
-                Compile Checkpoint
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6" id="modelExportSelect"></div>
-                    <div class="col-md-6">
-                        <button class="btn btn-primary form-control" id="startCompile">Compile</button>
+            <div class="card">
+                <div class="card-header">
+                    Compile Checkpoint
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6" id="modelExportSelect"></div>
+                        <div class="col-md-6">
+                            <button class="btn btn-primary form-control" id="startCompile">Compile</button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -39,7 +39,6 @@ class ModelHandler:
             models_path = dir_handler.get_directory("models")
             cls._instance = super(ModelHandler, cls).__new__(cls)
             cls._instance.logger = logging.getLogger(f"{__name__}-shared")
-            cls._instance.logger.debug(f"INIT MODEL HANDLER: {models_path}")
             cls._instance.models = {}
             cls._instance.loaded_models = {}
             cls._instance.models_path = models_path
@@ -71,22 +70,19 @@ class ModelHandler:
 
     async def list_models(self, msg):
         data = msg["data"]
-        self.logger.debug(f"Socket model request received: {data}")
         if "model_type" not in data:
-            self.logger.debug(f"Invalid request: {data}")
+            self.logger.warning(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
             model_type = data["model_type"]
             if model_type in self.model_finders:
-                self.logger.debug(f"Using finder: {model_type}")
                 model_list = self.model_finders[model_type](data, self)
             else:
-                self.logger.debug(f"Using default model loader: {model_type}")
                 ext_include = None if "ext_include" not in data else data["ext_include"]
                 ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
                 model_list = self.load_models(model_type=data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
 
-            self.logger.debug(f"Got model_list: {model_list}")
+            self.listed_models[model_type] = model_list
             model_json = [model.serialize() for model in model_list]
             loaded_model = None
             if data["model_type"] in self.loaded_models:
@@ -95,27 +91,34 @@ class ModelHandler:
             return {"models": model_json, "loaded": loaded_model}
 
     async def find_model(self, model_type: str, value: str):
+        logger.debug(f"Trying to find model: {self.listed_models.keys()} and {self.load_params.keys()}")
         if model_type in self.listed_models:
             models = self.listed_models[model_type]
+            logger.debug(f"Using existing list: {models}")
         elif model_type in self.load_params:
             params = self.load_params[model_type]
             models = self.load_models(model_type, **params)
+            logger.debug(f"Loaded model list: {models}")
         else:
-            self.logger.debug("Can't list models?")
-            models = []
+            self.logger.warning(f"Can't list models: {model_type}")
+            models = self.load_models(model_type)
+
         for model in models:
             if model.name == value or model.hash == value or model.display_name == value or model.path == value:
+                logger.debug(f"Found model: {model}")
                 return model
+
+        logger.debug(f"Can't find model: {value}")
+        return None
 
     async def loadmodel(self, msg):
         data = msg["data"]
-        self.logger.debug(f"Socket model request received: {data}")
         try:
             md = ModelData("http")
             md.deserialize(data)
         except Exception as e:
-            self.logger.debug(f"Can't deserialize: {data} {e}")
-            return {"error": "Unable to deserialize data."}
+            self.logger.warning(f"Can't deserialize: {data} {e}")
+            return {"message": "Unable to deserialize data."}
 
         if "model_type" not in data:
             self.logger.debug(f"Invalid request: {data}")
@@ -153,7 +156,6 @@ class ModelHandler:
 
         """
         output = []
-        self.logger.debug(f"Request for mt: {model_type}")
 
         # Save these for later so when "refresh" is called, we can reload.
         self.load_params[model_type] = {
@@ -163,11 +165,9 @@ class ModelHandler:
             "download_name": download_name
         }
 
-        if model_type == "diffusers":
-            self.logger.debug("Loading diffusion models??")
-            diff_dirs = self.load_diffusion_models()
+        if "diffusers" in model_type:
+            diff_dirs = self.load_diffusion_models("dreambooth" in model_type)
             for diff_dir in diff_dirs:
-                self.logger.debug(f"Enumerating: {diff_dir}")
                 name = None
                 if "working" in diff_dir:
                     # Set model data.name to the parent directory of diff_dir
@@ -180,10 +180,8 @@ class ModelHandler:
             ext_include = []
 
         try:
-            self.logger.debug(f"MP: {self.models_path}")
             for mp in self.models_path:
                 model_path = os.path.join(mp, model_type)
-                self.logger.debug(f"Checking: {model_path}")
                 if not os.path.exists(model_path):
                     os.makedirs(model_path)
 
@@ -192,14 +190,12 @@ class ModelHandler:
                     if os.path.isdir(full_path):
                         continue
                     if os.path.islink(full_path) and not os.path.exists(full_path):
-                        self.logger.debug(f"Skipping broken symlink: {full_path}")
                         continue
                     if ext_exclude is not None and any([full_path.endswith(x) for x in ext_exclude]):
                         continue
                     if len(ext_include) != 0:
                         model_type, extension = os.path.splitext(file)
                         if extension not in ext_include:
-                            self.logger.debug(f"NO EXT: {extension}")
                             continue
                     model_data = ModelData(full_path)
                     if model_data not in output:
@@ -215,7 +211,7 @@ class ModelHandler:
                         output.append(model_data)
 
         except Exception as e:
-            self.logger.warning(f"Fucking bullshit: {e}")
+            self.logger.warning(f"Exception: {e}")
             traceback.print_exc()
             pass
 
@@ -223,7 +219,7 @@ class ModelHandler:
 
     def refresh(self, model_type: str):
         if model_type not in self.load_params:
-            self.logger.debug("Unable to refresh model: ", model_type)
+            self.logger.warning("Unable to refresh model: ", model_type)
         else:
             params = self.load_params[model_type]
             reloaded = self.load_models(model_type, **params)
@@ -235,14 +231,14 @@ class ModelHandler:
             }
             self.socket_handler.manager.broadcast(msg)
 
-    def load_diffusion_models(self):
+    def load_diffusion_models(self, load_dreambooth: bool = False) -> List[str]:
         model_directories = []
         target_directories = []
         for path in self.models_path:
             target_directories.append(os.path.join(path, "diffusers"))
-            target_directories.append(os.path.join(path, "dreambooth"))
+            if load_dreambooth:
+                target_directories.append(os.path.join(path, "dreambooth"))
 
-        self.logger.debug(f"Model dirs: {target_directories}")
         for model_path in target_directories:
             for root, dirs, files in os.walk(model_path):
                 # Check if the current directory contains a "model_index.json" file
@@ -273,7 +269,7 @@ class ModelHandler:
 
         if len(output) == 0:
             dest_folder = os.path.join(self.models_path[0], "diffusers", "stable-diffusion-2-1")
-            self.logger.debug("No diffusion models found. Downloading default.")
+            self.logger.info("No diffusion models found. Downloading default.")
             repo_id = "stabilityai/stable-diffusion-2-1"
             exclude_files = ["v2-1_768-ema-pruned.ckpt", "v2-1_768-ema-pruned.safetensors",
                              "v2-1_768-nonema-pruned.ckpt",
@@ -286,16 +282,14 @@ class ModelHandler:
 
     def register_loader(self, model_type, callback):
         if model_type not in self.model_loaders:
-            self.logger.debug(f"Registered model loader: {model_type}")
             self.model_loaders[model_type] = callback
 
     def register_finder(self, model_type: str, callback):
         if model_type not in self.model_finders:
-            self.logger.debug(f"Registering model finder: {model_type}")
             self.model_finders[model_type] = callback
 
     def load_model(self, model_type: str, model_data: ModelData):
-        self.logger.debug(f"We need to load: {model_data.serialize()}")
+        self.logger.debug(f"Loading model: {model_data.serialize()}")
         if model_type in self.loaded_models:
             loaded_model_data, model = self.loaded_models[model_type]
             if model_data != loaded_model_data:
@@ -307,31 +301,28 @@ class ModelHandler:
                 gc.collect()
             else:
                 return model
+
         # Convert stable-diffusion/checkpoints to diffusers
         if model_type == "stable-diffusion":
-            self.logger.debug("Convert sd model to diffusers.")
             target_model = os.path.join(self.models_path, "diffusers", os.path.basename(model_data.path))
             if os.path.exists(target_model):
-                self.logger.debug("Model already extracted")
+                self.logger.debug("Model already extracted.")
                 return target_model
+
+            self.logger.debug("Converting sd model to diffusers.")
 
             try:
                 results = extract_checkpoint("test", model_data.path, extract_ema=True, train_unfrozen=True)
                 model_dir = results[1]
-                self.logger.debug(f"Model Dir: {model_dir}")
                 if os.path.exists(model_dir):
-                    self.logger.debug(f"We got something: {model_dir}")
                     diffusers_path = os.path.join(model_dir, "working")
                     if os.path.exists(diffusers_path):
-                        self.logger.debug("Found the diffusers too.")
                         dest_path = os.path.join(self.models_path, "diffusers")
                         os.makedirs(dest_path)
                         dest_path = os.path.join(self.models_path, "diffusers", os.path.basename(model_data.path))
-                        if os.path.exists(dest_path):
-                            self.logger.debug("Model already exists!")
-                        else:
+                        if not os.path.exists(dest_path):
                             shutil.copytree(diffusers_path, dest_path)
-                            self.logger.debug("Diffusers extracted?")
+                            self.logger.debug("Diffusers copied.")
                     shutil.rmtree(model_dir)
 
             except Exception as e:
@@ -342,12 +333,18 @@ class ModelHandler:
             else:
                 loaded = self.model_loaders[model_type](model_data)
                 if loaded:
-                    self.logger.debug(f"{model_type} model loaded.")
+                    self.logger.debug(f"Loaded {model_data}.")
                     if torch.has_cuda:
                         try:
                             loaded = loaded.to("cuda")
                         except:
                             self.logger.debug("Couldn't load model to GPU.")
+
+                    if torch.has_mps:
+                        try:
+                            loaded = loaded.to("ddp")
+                        except:
+                            self.logger.debug("Couldn't load model to DDP.")
 
                     self.loaded_models[model_type] = (model_data, loaded)
                     return loaded

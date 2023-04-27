@@ -26,7 +26,6 @@ class StatusHandler:
         if user_name is not None:
             userinstance = cls._instances.get(user_name, None)
             if userinstance is None:
-                logger.debug(f"Creating new status handler for user: {user_name}")
                 userinstance = super(StatusHandler, cls).__new__(cls)
                 userinstance.socket_handler = cls._instance.socket_handler
                 userinstance.socket_handler.register("get_status", userinstance._get_status, user_name)
@@ -38,13 +37,11 @@ class StatusHandler:
                 cls._instances[user_name] = userinstance
             return userinstance
         else:
-            logger.debug(f"Returning existing user-specific instance of status handler: {user_name}")
             return cls._instance
 
     def send(self):
         message = {"name": "status", "status": self.status.dict(), "user":self._user_name}
         self.queue.put_nowait(message)
-        logger.debug("Really sent")
 
     async def _get_status(self, data):
         return {"status": self.status.dict()}
@@ -61,7 +58,6 @@ class StatusHandler:
         self.send()
 
     def step(self, n: int = 1, secondary_bar: bool = False):
-        logger.debug(f"\nSTEP: {n}")
         if secondary_bar:
             self.status.progress_2_current += n
             if self.status.progress_2_current >= self.status.progress_2_total:
@@ -104,5 +100,4 @@ class StatusHandler:
             for k, v in items.items():
                 setattr(self.status, k, v)
         if send:
-            logger.debug("SENDD")
             self.send()

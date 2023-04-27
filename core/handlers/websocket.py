@@ -24,7 +24,6 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        logger.debug("Accepted.")
         self.active_connections.append(websocket)
 
     async def send_personal_message(self, message: Dict):
@@ -39,7 +38,6 @@ class ConnectionManager:
                 logger.debug("NO USER")
             else:
                 if user in self.sessions:
-                    logger.debug(f"Setting socket targets to user: {user}")
                     message_targets = self.sessions[user]
 
         disconnected = []
@@ -60,16 +58,13 @@ class ConnectionManager:
             self.active_connections.remove(websocket)
         for user, sessions in self.sessions.items():
             if websocket in sessions:
-                logger.debug(f"Removing user session: {user}")
                 sessions.remove(websocket)
 
     async def register_session(self, websocket: WebSocket, user: str):
 
         if user not in self.sessions:
             self.sessions[user] = []
-        logger.debug(f"Registering new session for user: {user}")
         self.sessions[user].append(websocket)
-        logger.debug("Registered.")
 
     async def unregister_session(self, websocket: WebSocket, user: str):
 
@@ -109,40 +104,34 @@ class SocketHandler:
     async def consume_queue(self):
         while True:
             message = await self.queue.get()
-            logger.debug("Pull queue...")
             await self.manager.broadcast(message)
             self.queue.task_done()
 
     async def handle_socket_callback(self, msg):
         await_response = msg["await"]
         name = msg["name"]
-        response = msg
+        response = msg.copy()
         user = msg.get("user", None)
         try:
             if await_response:
                 if user and name in self.socket_callbacks.get(user, {}):
-                    logger.debug(f"Awaiting user callback: {name}")
                     data = await self.socket_callbacks[user][name](msg)
                 else:
-                    logger.debug(f"Awaiting shared callback: {name}")
                     data = await self.socket_callbacks[name](msg)
                 response["data"] = data
             else:
                 if user and name in self.socket_callbacks.get(user, {}):
-                    logger.debug(f"Putting user job to queue: {name}")
-                    self.queue_handler.put_job(self.socket_callbacks[user][name](msg), self.callback_response, msg)
+                    self.queue_handler.put_job(self.socket_callbacks[user][name], self.callback_response, msg)
                 else:
                     if name in self.socket_callbacks:
-                        logger.debug(f"Putting job to queue: {name}")
-                        self.queue_handler.put_job(self.socket_callbacks[name](msg), self.callback_response, msg)
+                        self.queue_handler.put_job(self.socket_callbacks[name], self.callback_response, msg)
                     else:
-                        logger.debug(f"No registered job for callback: {name}")
-                response["data"] = "Message added to queue."
+                        logger.warning(f"No registered job for callback: {name}")
+                response["data"] = {"message": "Message added to queue."}
         except Exception as e:
-            response["data"] = f"Exception with socket callback: {e}"
+            response["data"] = {"message": f"Exception with socket callback: {e}"}
             traceback.print_exc()
 
-        # logger.debug(f"Sending response: {response}")
         await self.manager.send_personal_message(response)
 
     async def callback_response(self, response):
@@ -159,14 +148,11 @@ class SocketHandler:
                 )
                 try:
                     socket_cookie = websocket.cookies
-                    logger.debug(f"Got cookie: {socket_cookie}")
                     csrf_token = socket_cookie.get("Authorization", None)
                     username = None
                     if csrf_token:
-                        logger.debug("Got token!")
                         csrf_token = csrf_token.split(" ")[1]
                         payload = jwt.decode(csrf_token, SECRET_KEY, algorithms=[ALGORITHM])
-                        logger.debug(f"Decoded payload: {payload}")
                         username: str = payload.get("sub")
                     if username is None:
                         raise credentials_exception
@@ -180,7 +166,6 @@ class SocketHandler:
                     return
 
                 await self.manager.register_session(websocket, username)
-                logger.debug("Really registered, connecting")
 
             await self.manager.connect(websocket)
             logger.debug(f"Socket connected: {username}")
@@ -212,13 +197,12 @@ class SocketHandler:
                                         "name": name
                                     }
                                     if username is not None:
-                                        logger.debug(f"Definitely setting username: {username}")
                                         msg["user"] = username
                                     asyncio.create_task(self.handle_socket_callback(msg))
                                 else:
-                                    logger.debug(f"Undefined message: {message}")
+                                    logger.warning(f"Undefined message: {message}")
                             else:
-                                logger.debug(f"Invalid message: {message}")
+                                logger.warning(f"Invalid message: {message}")
                         except Exception as e:
                             logger.warning(f"Exception parsing socket message: {e}")
                             traceback.print_exc()
@@ -237,7 +221,6 @@ class SocketHandler:
         self.socket_callbacks = {}
 
     def register(self, name: str, callback, user=None):
-        logger.debug(f"Socket callback registered: {name} {user}")
         if user:
             if user not in self.socket_callbacks:
                 self.socket_callbacks[user] = {}
