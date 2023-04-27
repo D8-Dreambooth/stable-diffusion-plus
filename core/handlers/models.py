@@ -273,10 +273,11 @@ class ModelHandler:
             repo_id = "stabilityai/stable-diffusion-2-1"
             exclude_files = ["v2-1_768-ema-pruned.ckpt", "v2-1_768-ema-pruned.safetensors",
                              "v2-1_768-nonema-pruned.ckpt",
-                             "v2-1_768-nonema-pruned.safetensors", "README.md", ".gitattributes"]
+                             "v2-1_768-nonema-pruned.safetensors", "README.md", ".gitattributes", ".bin", ".ckpt"]
             snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
                               local_dir_use_symlinks=False, ignore_patterns=exclude_files)
             output.append(dest_folder)
+
             self.refresh("diffusers")
         return output
 

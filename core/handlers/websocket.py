@@ -135,7 +135,6 @@ class SocketHandler:
         await self.manager.send_personal_message(response)
 
     async def callback_response(self, response):
-        websocket = response.pop("socket")
         await self.manager.send_personal_message(response)
 
     def _init(self, app=None):
