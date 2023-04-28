@@ -391,4 +391,6 @@ def is_image(path: str, feats=None):
     extensions = Image.registered_extensions()
     supported_extensions = {ex for ex, f in extensions.items() if f in Image.OPEN}
     is_img = os.path.isfile(path) and os.path.splitext(path)[1].lower() in supported_extensions
+    if not is_img:
+        logging.getLogger(__name__).debug(f"File {path} is not an image: {supported_extensions}")
     return is_img
