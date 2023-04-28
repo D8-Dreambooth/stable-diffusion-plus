@@ -23,10 +23,10 @@ preview_steps = 5
 pipeline = None
 
 
-async def start_inference(inference_settings: InferSettings, user):
+async def start_inference(inference_settings: InferSettings, user, target: str = None):
     global pipeline, preview_steps
     model_handler = ModelHandler(user_name=user)
-    status_handler = StatusHandler(user_name=user)
+    status_handler = StatusHandler(user_name=user, target=target)
     image_handler = ImageHandler(user_name=user)
     ch = ConfigHandler()
     logger.debug(f"Infer the things: {inference_settings}")

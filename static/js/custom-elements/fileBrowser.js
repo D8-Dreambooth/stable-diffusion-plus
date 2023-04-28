@@ -10,7 +10,7 @@ class FileBrowser {
         wrapper.classList.add("row", "fileBrowserContainer");
         parentElement.innerHTML = "";
         parentElement.appendChild(wrapper);
-
+        this.container = parentElement;
         this.parentElement = wrapper;
         this.infoPanel = undefined;
         this.currentPath = "";
@@ -22,8 +22,9 @@ class FileBrowser {
         this.value = "";
         this.selectedLink = undefined;
 
-        if (options["selectedElement"] !== undefined) {
+        if (options["selectedElement"] !== undefined && options["selectedElement"] !== "") {
             const path = options["selectedElement"];
+            console.log("We should be setting a path here: ", path);
             const lastSeparatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
             if (lastSeparatorIndex !== -1) {
                 const parentDirectory = path.slice(0, lastSeparatorIndex);
@@ -31,6 +32,10 @@ class FileBrowser {
                 this.setCurrentPath(parentDirectory);
                 this.selectedLinks = [];
                 this.selected = directory;
+                this.value = path;
+            } else {
+                this.selectedLinks = [];
+                this.selected = path;
                 this.value = path;
             }
         }
@@ -91,8 +96,8 @@ class FileBrowser {
                             this.input.value = this.selectedLink.dataset.fullPath;
                             this.value = this.selectedLink.dataset.fullPath;
                         }
-
-                        this.parentElement.dataset.fileBrowser = JSON.stringify(this);
+                        this.container.dataset.value = this.input.value;
+                        this.container.dataset.fileBrowser = JSON.stringify(this);
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
                             this.onSelectCallbacks[i](this.input.value);
                         }

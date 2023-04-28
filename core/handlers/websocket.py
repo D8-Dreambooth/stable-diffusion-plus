@@ -171,40 +171,43 @@ class SocketHandler:
             while True:
                 await asyncio.sleep(0)
                 try:
-                    data = await websocket.receive_json()
-                    response = {"name": "Received"}
-                    if "id" in data:
-                        response["id"] = data["id"]
-                    if data is not None:
-                        try:
-                            message = data
-                            if "name" in message and "data" in message:
-                                name = message.pop("name")
-                                if name == "logout":
-                                    await websocket.send_json(message)
-                                    self.manager.disconnect(websocket)
-                                    break
-                                data = message["data"]
-                                await_msg = message.pop("await")
-                                message_id = message.pop("id")
-                                if name in self.socket_callbacks:
-                                    msg = {
-                                        "socket": websocket,
-                                        "id": message_id,
-                                        "data": data,
-                                        "await": await_msg,
-                                        "name": name
-                                    }
-                                    if username is not None:
-                                        msg["user"] = username
-                                    asyncio.create_task(self.handle_socket_callback(msg))
-                                else:
-                                    logger.warning(f"Undefined message: {message}")
-                            else:
-                                logger.warning(f"Invalid message: {message}")
-                        except Exception as e:
-                            logger.warning(f"Exception parsing socket message: {e}")
-                            traceback.print_exc()
+                    message = await websocket.receive_json()
+                    if message is None:
+                        continue
+                    if "name" not in message or "data" not in message:
+                        logger.warning(f"Invalid message: {message}")
+                        continue
+                    try:
+                        name = message.pop("name")
+                        if name == "logout":
+                            await websocket.send_json(message)
+                            self.manager.disconnect(websocket)
+                            break
+                        if name not in self.socket_callbacks:
+                            logger.warning(f"Undefined message: {message}")
+                            continue
+                        data = message.pop("data")
+                        await_msg = message.pop("await")
+                        message_id = message.pop("id")
+                        target = None
+
+                        if "target" in message:
+                            target = message.pop("target")
+
+                        msg = {
+                            "socket": websocket,
+                            "id": message_id,
+                            "data": data,
+                            "await": await_msg,
+                            "name": name,
+                            "target": target
+                        }
+                        if username is not None:
+                            msg["user"] = username
+                        asyncio.create_task(self.handle_socket_callback(msg))
+                    except Exception as e:
+                        logger.warning(f"Exception parsing socket message: {e}")
+                        traceback.print_exc()
                 except WebSocketDisconnect as d:
                     logger.debug("Socket disconnected.")
                     self.manager.disconnect(websocket)

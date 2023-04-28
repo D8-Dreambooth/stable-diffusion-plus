@@ -45,6 +45,7 @@ inferWidth.hide();
 inferHeight.hide();
 
 const inferModule = new Module("Inference", "moduleInfer", "images", true, 1, inferInit);
+
 function inferResponse(data) {
     //console.log("Inference response received: ", data);
 }
@@ -58,16 +59,18 @@ function inferInit() {
         "primary_status": "Status 1", // Status 1 text
         "secondary_status": "Status 2", // Status 2...
         "bar1_progress": 0, // Progressbar 1 position
-        "bar2_progress": 0 // etc
+        "bar2_progress": 0,
+        "id": "inference"// etc
     });
 
     // Gallery creation. Options can also be passed to .update()
     gallery = new InlineGallery(document.getElementById('inferGallery'), {
-            "thumbnail": true,
-            "closeable": false,
-            "show_maximize": true,
-            "start_open": true
-        });
+        "thumbnail": true,
+        "closeable": false,
+        "show_maximize": true,
+        "start_open": true,
+        "id": "inference"
+    });
 
     scaleTest = new BootstrapSlider(document.getElementById("infer_scale"), {
         elem_id: "scaleSlid",
@@ -139,7 +142,37 @@ function inferInit() {
 
     let submit = document.getElementById("startInfer");
 
-    submit.addEventListener("click", function () {startInference().then(function (result) {})});
+    submit.addEventListener("click", function () {
+        startInference().then(function (result) {
+        })
+    });
+
+    $(".inferDrop").each(function () {
+        this.addEventListener("dragover", function (event) {
+            event.preventDefault();
+        });
+
+        this.addEventListener("drop", function (event) {
+            event.preventDefault();
+            let file = event.dataTransfer.files[0];
+            // If the file is a png, try to read the pnginfo
+            if (file.name.endsWith(".png")) {
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    let dataURL = e.target.result;
+                    let base64Data = dataURL.split(",")[1];
+                    sendMessage("read_image_info", {"image": base64Data}).then((data) => {
+                        if (data.hasOwnProperty("image_data")) {
+                            console.log("Image info: ", data);
+                            applyInferSettings(data["image_data"]);
+                        }
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
 
     const radioButtons = document.getElementsByName('inferMode');
     for (let i = 0; i < radioButtons.length; i++) {
@@ -303,6 +336,62 @@ async function startInference() {
                 inferSettings.height = parseInt(heightSlider.value);
             }
         }
-        return sendMessage("start_inference", inferSettings, true);
+        return sendMessage("start_inference", inferSettings, true, "inference");
     }
+}
+
+function applyInferSettings(decodedSettings) {
+  let promptEl = document.getElementById("infer_prompt");
+  let negEl = document.getElementById("infer_negative_prompt");
+  let seedEl = document.getElementById("infer_seed");
+  let enableControlNet = document.getElementById("enableControlNet");
+  let controlnetType = document.getElementById("controlnetType");
+  let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
+  let enableSag = document.getElementById("infer_sag");
+  let controlnet_mask = controlnetImageEditor.getMask();
+  let controlnet_image = controlnetImageEditor.getDropped();
+  let infer_mask = inpaintImageEditor.getMask();
+  let infer_image = inpaintImageEditor.getDropped();
+
+  promptEl.value = decodedSettings.prompt;
+  negEl.value = decodedSettings.negative_prompt;
+  seedEl.value = decodedSettings.seed.toString();
+  enableControlNet.checked = decodedSettings.enable_controlnet;
+  controlnetType.value = decodedSettings.controlnet_type;
+  autoLoadResolution.checked = false;  // Set to true if image is set below
+  enableSag.checked = decodedSettings.use_sag;
+  // controlnetImageEditor.setMask(decodedSettings.controlnet_mask);
+  // controlnetImageEditor.setDropped(decodedSettings.controlnet_image);
+  // inpaintImageEditor.setMask(decodedSettings.infer_mask);
+  // inpaintImageEditor.setDropped(decodedSettings.infer_image);
+
+  const radioButtons = document.getElementsByName('inferMode');
+  let inferMode = decodedSettings.mode;
+
+  for (let i = 0; i < radioButtons.length; i++) {
+    if (radioButtons[i].value === inferMode) {
+      radioButtons[i].checked = true;
+      break;
+    }
+  }
+
+  if (decodedSettings.enable_controlnet && decodedSettings.image !== undefined) {
+    autoLoadResolution.checked = true;
+    controlnetImageEditor.setResolution(decodedSettings.width, decodedSettings.height);
+    controlnetImageEditor.setImage(decodedSettings.image);
+  } else {
+    widthSlider.value = decodedSettings.width.toString();
+    heightSlider.value = decodedSettings.height.toString();
+  }
+
+  scaleTest.value = decodedSettings.scale.toString();
+  stepTest.value = decodedSettings.steps.toString();
+  numImages.value = decodedSettings.num_images.toString();
+  batchSize.value = decodedSettings.batch_size.toString();
+  document.getElementById("controlnetPreProcess").checked = decodedSettings.controlnet_preprocess;
+  document.getElementById("controlnetBatchInput").checked = decodedSettings.controlnet_batch;
+  controlnetFileBrowser.value = decodedSettings.controlnet_batch_dir;
+  document.getElementById("controlnetBatchFind").value = decodedSettings.controlnet_batch_find;
+  document.getElementById("controlnetBatchReplace").value = decodedSettings.controlnet_batch_replace;
+  document.getElementById("controlnetBatchUsePrompt").checked = decodedSettings.controlnet_batch_use_prompt;
 }

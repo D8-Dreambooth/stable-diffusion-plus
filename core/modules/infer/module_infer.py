@@ -46,9 +46,10 @@ async def _start_inference(msg):
     data = msg["data"]
     msg_id = msg["id"]
     user = msg["user"] if "user" in msg else None
+    target = msg.pop("target") if "target" in msg else None
     infer_data = InferSettings(data)
     # Call start_inference() in a separate thread using asyncio.create_task()
-    asyncio.create_task(start_inference(infer_data, user))
+    asyncio.create_task(start_inference(infer_data, user, target))
 
     # Immediately return a reply to the websocket
     return {"name": "inference_started", "message": "Inference started.", "id": msg_id}

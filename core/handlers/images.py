@@ -17,6 +17,59 @@ from core.handlers.websocket import SocketHandler
 logger = logging.getLogger(__name__)
 
 
+async def _read_image_info(request):
+    data = request["data"]
+    image_data = {}
+    if "image" in data:
+        # data is a png file, read the png info
+        image = Image.open(BytesIO(base64.b64decode(data["image"])))
+        image_data = image.info
+        image_data = decode_dict(image_data)
+        logger.debug(f"Image data: {image_data}")
+    return {"image_data": image_data}
+
+
+def decode_dict(input_dict):
+    decoded_dict = {}
+    for key, value in input_dict.items():
+        # Remove the escape characters
+        decoded_value = value.encode('utf-8').decode('unicode_escape')
+
+        # Convert strings "true" and "false" to boolean values True and False, respectively
+        if decoded_value == "true":
+            decoded_value = True
+        elif decoded_value == "false":
+            decoded_value = False
+        else:
+            # Check if the value can be parsed as an integer
+            try:
+                decoded_value = int(decoded_value)
+            except ValueError:
+                pass
+            else:
+                # If the value can be parsed as an integer, skip the float check
+                decoded_dict[key] = decoded_value
+                continue
+
+            # Check if the value can be parsed as a float
+            try:
+                decoded_value = float(decoded_value)
+            except ValueError:
+                pass
+
+        # Remove the escape characters from string values that include path elements
+        if isinstance(decoded_value, str):
+            if decoded_value.startswith('"') and decoded_value.endswith('"'):
+                decoded_value = decoded_value[1:-1]
+                decoded_value = decoded_value.replace("\\\\", "\\")
+                decoded_value = decoded_value.replace("\\\"", "\"")
+
+        # Add the decoded key-value pair to the new dictionary
+        decoded_dict[key] = decoded_value
+
+    return decoded_dict
+
+
 class ImageHandler:
     _instance = None
     _instances = {}
@@ -35,6 +88,7 @@ class ImageHandler:
             cls._instance.file_handler = FileHandler()
             cls.socket_handler = SocketHandler()
             cls.socket_handler.register("get_images", cls._instance._get_image)
+            cls.socket_handler.register("read_image_info", _read_image_info)
         if user_name is not None:
             if user_name in cls._instances:
                 return cls._instances[user_name]
@@ -46,7 +100,8 @@ class ImageHandler:
                 user_instance.current_dir = user_dir
                 user_instance.file_handler = FileHandler(user_name=user_name)
                 user_instance.socket_handler = cls._instance.socket_handler
-                user_instance.socket_handler.register("get_images", cls._instance._get_image, user=user_name)
+                user_instance.socket_handler.register("get_images", user_instance._get_image, user=user_name)
+                user_instance.socket_handler.register("read_image_info", _read_image_info, user=user_name)
                 cls._instances[user_name] = user_instance
                 return user_instance
         else:
@@ -152,7 +207,8 @@ class ImageHandler:
             img_idx += 1
         return {"image_data": image_data}
 
-    def load_image(self, directory: str = None, filename: str = None, recurse:bool = False) -> Tuple[List[Image.Image], List[Dict]]:
+    def load_image(self, directory: str = None, filename: str = None, recurse: bool = False) -> Tuple[
+        List[Image.Image], List[Dict]]:
         # If no filename specified, enumerate all images in directory
         pil_features = list_features()
 

@@ -3,6 +3,7 @@ class InlineGallery {
         this.container = parentElement;
         this.currentElements = options["data"] || [];
         this.loaded = false;
+        this.id = (options.hasOwnProperty("id") ? options.id : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
 
         // See https://fotorama.io/docs/4/options/ for full list of options.
         this.gallery_options = Object.assign({
@@ -54,10 +55,15 @@ class InlineGallery {
 
 
     socketUpdate(data) {
+        if (data.hasOwnProperty("target") && data.target !== this.id) {
+            console.log("Target mismatch, nothing to update.", data.target, this.id);
+            return;
+        }
         console.log("Got status: ", data);
         const formatted = this.extractImageData(data);
         console.log("Formatted: ", formatted);
         this.update(formatted, false);
+
     }
 
     extractImageData(data) {

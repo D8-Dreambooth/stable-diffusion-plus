@@ -10,11 +10,12 @@ class StatusHandler:
     socket_handler = None
     _instance = None
     _instances = {}
+    _target = None
     _do_send = False
     status = StatusData()
     _user_name = None
 
-    def __new__(cls, socket_handler=None, user_name=None):
+    def __new__(cls, socket_handler=None, user_name=None, target=None):
         if cls._instance is None and socket_handler is not None:
             cls._instance = super(StatusHandler, cls).__new__(cls)
             cls._instance.socket_handler = socket_handler
@@ -24,9 +25,11 @@ class StatusHandler:
             cls._instance.queue = socket_handler.queue
             cls._instance._do_send = False
         if user_name is not None:
-            userinstance = cls._instances.get(user_name, None)
+            instance_name = user_name if target is None else f"{user_name}_{target}"
+            userinstance = cls._instances.get(instance_name, None)
             if userinstance is None:
                 userinstance = super(StatusHandler, cls).__new__(cls)
+                userinstance._target = target
                 userinstance.socket_handler = cls._instance.socket_handler
                 userinstance.socket_handler.register("get_status", userinstance._get_status, user_name)
                 userinstance.socket_handler.register("cancel", userinstance.cancel, user_name)
@@ -40,11 +43,15 @@ class StatusHandler:
             return cls._instance
 
     def send(self):
-        message = {"name": "status", "status": self.status.dict(), "user":self._user_name}
+        message = {"name": "status", "status": self.status.dict(), "user": self._user_name}
+        if self._target is not None:
+            message["target"] = self._target
         self.queue.put_nowait(message)
 
     async def _get_status(self, data):
-        return {"status": self.status.dict()}
+        status = {"status": self.status.dict()}
+        if self._target is not None:
+            status["target"] = self._target
 
     def start(self, total: int = 0, desc: str = ""):
         self.status.start()

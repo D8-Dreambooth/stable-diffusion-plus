@@ -139,7 +139,7 @@ function showPane(module_id) {
 
 
 // Send a socket message to the specified endpoint name
-function sendMessage(name, data, await = true) {
+function sendMessage(name, data, await = true, target = null) {
     let messageId = generateMessageId();
     return new Promise((resolve, reject) => {
         let message = {
@@ -148,7 +148,9 @@ function sendMessage(name, data, await = true) {
             data: data,
             await: await
         }
-
+        if (target !== null) {
+            message.target = target;
+        }
         const maxRetries = 5;
         let retryCount = 0;
 

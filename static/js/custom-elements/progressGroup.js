@@ -20,7 +20,7 @@ class ProgressGroup {
           show_secondary_status: true,
           show_percent: true
         };
-
+        this.id = (options.hasOwnProperty("id") ? options.id : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
 
         // Create HTML elements
         this.progressContainer = document.createElement("div");
@@ -80,12 +80,22 @@ class ProgressGroup {
     }
 
     update(options) {
+        if (options.hasOwnProperty("target")) {
+            if (this.id !== options.target) {
+                console.log("Target does not match",this.id, options.target);
+                return;
+            }
+        } else {
+            console.log("No target!", this.id, options.target);
+        }
+
         if (options.hasOwnProperty("status")) {
             options = options.status;
         }
+        console.log("Updating progress group: ", options, this.id);
+
         // Merge user options with default options
         this.options = {...this.options, ...options};
-        console.log("Updated options: ", this.options, this.progressBar1);
         // Update progress bars
         this.progressBar1.setAttribute("aria-valuenow", this.options.progress_1_current);
         this.progressBar2.setAttribute("aria-valuenow", this.options.progress_2_current);
