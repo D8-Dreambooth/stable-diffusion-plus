@@ -1,7 +1,7 @@
 <div class="module" id="moduleImportExport">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-12 col-md-6">
+            <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header">
                         Extract Checkpoint
@@ -29,15 +29,42 @@
                     </div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    Compile Checkpoint
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Compile Checkpoint
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6" id="modelExportSelect"></div>
+                            <div class="col-md-6">
+                                <button class="btn btn-primary form-control" id="startCompile">Compile</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6" id="modelExportSelect"></div>
-                        <div class="col-md-6">
-                            <button class="btn btn-primary form-control" id="startCompile">Compile</button>
+            </div>
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Download Model
+                    </div>
+                    <div class="card-body">
+                        <div class="progressGroup" id="importProgressGroup"></div>
+                        <div class="form-group">
+                            <label for="downloadModelUrl">Model Name</label>
+                            <input type="text" class="form-control" id="downloadModelUrl" placeholder="Model URL">
+                        </div>
+                        <div class="form-group">
+                            <label for="downloadModelType">Model Type</label>
+                            <input type="text" class="form-control" id="downloadModelType" placeholder="Model Type">
+                        </div>
+                        <div class="form-group">
+                            <label for="downloadModelName">Model Name</label>
+                            <input type="text" class="form-control" id="downloadModelName" placeholder="Model Name (Optional)">
+                        </div>
+                        <div class="form-group text-center">
+                            <button class="btn btn-primary" id="startModelDownload">Download</button>
                         </div>
                     </div>
                 </div>

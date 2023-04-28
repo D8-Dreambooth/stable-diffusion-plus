@@ -34,5 +34,24 @@ function initImportExport() {
         console.log("startCompile button was clicked");
         let modelInfo = selectorEx.getModel();
         console.log("Current export model: ", modelInfo);
+    })
+
+    let pg = new ProgressGroup(document.getElementById("importProgressGroup"),{});
+
+    $("#startModelDownload").click(()=>{
+        let downloadModelUrl = $("#downloadModelUrl").val();
+        let downloadModelType = $("#downloadModelType").val();
+        let downloadModelName = $("#downloadModelName").val();
+        if (downloadModelUrl !== "" && downloadModelType !== "") {
+            sendMessage("download_model", {
+                "url": downloadModelUrl,
+                "model_type": downloadModelType,
+                "model_name": downloadModelName
+            }, false).then((res)=>{
+                console.log("All done!", res);
+            });
+        } else {
+            alert("Please provide a URL and model type.");
+        }
     });
 }
