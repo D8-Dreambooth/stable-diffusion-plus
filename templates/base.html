@@ -100,48 +100,49 @@
 <!--End Modals -->
 
 {% block scripts %}
-<script type="text/javascript" src="/static/js/lib/font-awesome.min.js"></script>
-<script type="text/javascript" src="/static/js/lib/jquery-3.6.4.min.js"></script>
-<script type="text/javascript" src="/static/js/lib/fitty.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/font-awesome.min.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/lib/jquery-3.6.4.min.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/lib/fitty.min.js?v={{ timestamp }}"></script>
 
 <!-- Popper.JS -->
-<script type="text/javascript" src="/static/js/lib/popper.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/popper.min.js?v={{ timestamp }}"></script>
 
 <!-- Bootstrap 5 JS -->
-<script type="text/javascript" src="/static/js/lib/bootstrap.bundle.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/bootstrap.bundle.min.js?v={{ timestamp }}"></script>
 
 <!-- jQuery Custom Scroller CDN -->
-<script type="text/javascript" src="/static/js/lib/jquery.mCustomScrollbar.concat.min.js"></script>
+<script type="text/javascript" src="/static/js/lib/jquery.mCustomScrollbar.concat.min.js?v={{ timestamp }}"></script>
 
 <!-- LightGallery + Plugins. -->
-<script type="text/javascript" src="/static/js/lib/fotorama.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/cancelButton.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/imageEditor.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/inlineGallery.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/bootstrapSlider.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/fileBrowser.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/modelSelect.js"></script>
-<script type="text/javascript" src="/static/js/custom-elements/progressGroup.js"></script>
+<script type="text/javascript" src="/static/js/lib/fotorama.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/cancelButton.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/imageEditor.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/inlineGallery.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/bootstrapSlider.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/fileBrowser.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/modelSelect.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/custom-elements/progressGroup.js?v={{ timestamp }}"></script>
 <!-- Load core JS file, which has methods all other scripts should be able to access. -->
-<script type="text/javascript" src="/static/js/custom-elements/keyListener.js"></script>
-<script type="text/javascript" src="/static/js/core_methods.js"></script>
+<script type="text/javascript" src="/static/js/custom-elements/keyListener.js?v={{ timestamp }}"></script>
+<script type="text/javascript" src="/static/js/core_methods.js?v={{ timestamp }}"></script>
 <!-- Load restricted JS file, which has methods only module code should be able to access. -->
-<script type="text/javascript" src="/static/js/restricted_methods.js"></script>
+<script type="text/javascript" src="/static/js/restricted_methods.js?v={{ timestamp }}"></script>
 
-<script type="text/javascript" src="/static/js/module_base.js"></script>
+<script type="text/javascript" src="/static/js/module_base.js?v={{ timestamp }}"></script>
 <!-- Now append all extension code -->
 {% for js in js_files_ext %}
-<script src="{{ js }}"></script>
+<script src="{{ js }}?v={{ timestamp }}"></script>
 {% endfor %}
 
 
 <!-- Now load script for modules. -->
 {% for js in js_files %}
-<script src="{{ js }}"></script>
+<script src="{{ js }}?v={{ timestamp }}"></script>
 {% endfor %}
 
 
 {% endblock %}
+
 </body>
 
 </html>

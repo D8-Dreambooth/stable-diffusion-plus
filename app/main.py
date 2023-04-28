@@ -3,6 +3,7 @@ import json
 import logging
 import os.path
 import sys
+import time
 import traceback
 from typing import Dict
 
@@ -258,6 +259,7 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
         if current_user:
             # User is logged in, show the usual home page
             css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, user_data["admin"])
+            timestamp = int(time.time())
             return templates.TemplateResponse(
                 "base.html",
                 {
@@ -266,7 +268,8 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
                     "js_files": js_files,
                     "js_files_ext": js_files_ext,
                     "custom_files": custom_files,
-                    "module_html": html
+                    "module_html": html,
+                    "timestamp": timestamp
                 }
             )
         else:
