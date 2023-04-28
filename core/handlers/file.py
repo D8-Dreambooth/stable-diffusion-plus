@@ -4,11 +4,10 @@ import os
 import shutil
 import traceback
 from datetime import datetime
-from io import BytesIO, StringIO
+from io import BytesIO
 from typing import Dict, List, Tuple, Union
 
-from PIL import Image, features
-from fastapi import UploadFile, File, Request
+from PIL import Image
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -75,11 +74,10 @@ class FileHandler:
             current_path = ""
         if thumbs:
             new_res = {}
-            feats = list_features()
             for item_path, value in res.items():
                 full_path = os.path.join(self.user_dir, item_path)
                 self.logger.debug(f"Checking if {full_path} is an image")
-                if is_image(full_path, feats):
+                if is_image(full_path):
                     self.logger.debug("It is an image")
                     value["thumb"], value["tag"] = await self.get_thumbnail(full_path, thumb_size)
                 new_res[item_path] = value
@@ -144,7 +142,6 @@ class FileHandler:
         return data
 
     async def get_file(self, request: Dict):
-        pil_features = list_features()
         data = request["data"]
         self.logger.debug(f"File request: {data}")
         file = data["files"]
@@ -208,7 +205,7 @@ class FileHandler:
                     pass
 
             # Encode image data in base64 if image can be opened with PIL
-            if is_image(filename, pil_features):
+            if is_image(filename):
                 self.logger.debug(f"Encoding image: {filename}")
                 try:
                     tag_data = ""
@@ -390,26 +387,8 @@ class FileHandler:
         return result
 
 
-def list_features():
-    # Create buffer for pilinfo() to write into rather than stdout
-    buffer = StringIO()
-    features.pilinfo(out=buffer)
-    pil_features = []
-    # Parse and analyse lines
-    for line in buffer.getvalue().splitlines():
-        if "Extensions:" in line:
-            ext_list = line.split(": ")[1]
-            extensions = ext_list.split(", ")
-            for extension in extensions:
-                if extension not in pil_features:
-                    pil_features.append(extension)
-    return pil_features
-
-
 def is_image(path: str, feats=None):
-    if feats is None:
-        feats = []
-    if not len(feats):
-        feats = list_features()
-    is_img = os.path.isfile(path) and os.path.splitext(path)[1].lower() in feats
+    extensions = Image.registered_extensions()
+    supported_extensions = {ex for ex, f in extensions.items() if f in Image.OPEN}
+    is_img = os.path.isfile(path) and os.path.splitext(path)[1].lower() in supported_extensions
     return is_img

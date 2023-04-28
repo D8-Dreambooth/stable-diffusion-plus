@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.config import ConfigHandler
-from core.handlers.file import FileHandler, list_features, is_image
+from core.handlers.file import FileHandler, is_image
 from core.handlers.images import ImageHandler
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data, preprocess_image
 from core.handlers.models import ModelHandler
@@ -67,13 +67,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             batch_dir = inference_settings.controlnet_batch_dir
             file_handler = FileHandler(user_name=user)
             files = file_handler.get_dir_content(batch_dir, True, False, None)
-            pil_features = list_features()
 
             # Check if the files are images
             images = []
 
             for file in files:
-                if is_image(os.path.join(file_handler.user_dir, file), pil_features):
+                if is_image(os.path.join(file_handler.user_dir, file)):
                     images.append(file)
 
             # Get the images and prompts

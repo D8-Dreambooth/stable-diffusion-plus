@@ -11,7 +11,7 @@ from PIL import Image, PngImagePlugin
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.directories import DirectoryHandler
-from core.handlers.file import FileHandler, list_features, is_image
+from core.handlers.file import FileHandler, is_image
 from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
@@ -210,7 +210,6 @@ class ImageHandler:
     def load_image(self, directory: str = None, filename: str = None, recurse: bool = False) -> Tuple[
         List[Image.Image], List[Dict]]:
         # If no filename specified, enumerate all images in directory
-        pil_features = list_features()
 
         if directory is None:
             directory = os.path.join(self.user_dir, "outputs")
@@ -224,7 +223,7 @@ class ImageHandler:
         if filename is None:
             for file in os.listdir(directory):
                 full_file = os.path.join(directory, file)
-                if is_image(full_file, pil_features):
+                if is_image(full_file):
                     images.append(full_file)
                 if os.path.isdir(full_file) and recurse:
                     sub_images, sub_data = self.load_image(full_file, recurse=recurse)
@@ -232,7 +231,7 @@ class ImageHandler:
                     data.extend(sub_data)
         else:
             full_file = os.path.join(directory, filename)
-            if os.path.exists(full_file) and is_image(full_file, pil_features):
+            if os.path.exists(full_file) and is_image(full_file):
                 images.append(full_file)
             if os.path.isdir(full_file) and recurse:
                 sub_images, sub_data = self.load_image(full_file, recurse=recurse)
