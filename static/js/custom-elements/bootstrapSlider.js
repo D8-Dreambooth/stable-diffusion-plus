@@ -116,31 +116,32 @@ class BootstrapSlider {
 }
 
 $.fn.BootstrapSlider = function () {
-  const defaultOptions = {
-    min: this.data("min") || 1,
-    max: this.data("max") || 150,
-    step: this.data("step") || 1,
-    value: this.data("value") || null,
-    visible: this.data("visible") || true,
-    interactive: this.data("interactive") || true,
-    label: this.data("label") || "Sampling steps",
-    elem_id: this.data("elem-id") || "item-" + generateRandomString(8),
-  };
+    const defaultOptions = {
+        min: this.data.hasOwnProperty("min") ? this.data["min"] : 1,
+        max: this.data.hasOwnProperty("max") ? this.data["max"] : 150,
+        step: this.data.hasOwnProperty("step") ? this.data["step"] : 1,
+        value: this.data.hasOwnProperty("value") ? this.data["value"] : null,
+        visible: this.data.hasOwnProperty("visible") ? this.data["visible"] : true,
+        interactive: this.data.hasOwnProperty("interactive") ? this.data["interactive"] : true,
+        label: this.data.hasOwnProperty("label") ? this.data["label"] : "Sampling steps",
+        elem_id: this.data.hasOwnProperty("elem-id") ? this.data["elem-id"] : "item-" + generateRandomString(8),
 
-  this.each(function () {
-    const $this = $(this);
-    let slider = $this.data("BootstrapSlider");
+    };
 
-    if (!slider) {
-      const options = {
-        ...defaultOptions,
-        ...$this.data(),
-      };
-      slider = new BootstrapSlider(this, options);
-      $this.data("BootstrapSlider", slider);
-    }
-  });
+    this.each(function () {
+        const $this = $(this);
+        let slider = $this.data("BootstrapSlider");
 
-  return this;
+        if (!slider) {
+            const options = {
+                ...defaultOptions,
+                ...$this.data(),
+            };
+            slider = new BootstrapSlider(this, options);
+            $this.data("BootstrapSlider", slider);
+        }
+    });
+
+    return this;
 };
 
