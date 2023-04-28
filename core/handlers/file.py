@@ -390,8 +390,10 @@ class FileHandler:
 def is_image(path: str, feats=None):
     extensions = Image.registered_extensions()
     supported_extensions = {ex for ex, f in extensions.items() if f in Image.OPEN}
-    file_ext = os.path.splitext(path)[1].lower()
+    filename, file_ext = os.path.splitext(path.strip())
+    file_ext = file_ext.lower()
     is_img = os.path.isfile(path) and file_ext in supported_extensions
     if not is_img:
         logging.getLogger(__name__).debug(f"File {path}({file_ext}) is not an image: {supported_extensions}")
     return is_img
+
