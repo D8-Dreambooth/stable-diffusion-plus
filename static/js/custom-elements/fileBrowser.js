@@ -93,13 +93,13 @@ class FileBrowser {
                             this.input.value = this.currentParent;
                             this.value = this.currentParent;
                         } else {
-                            this.input.value = this.selectedLink.dataset.fullPath;
+                            this.input.value = this.selectedLink.dataset.path;
                             this.value = this.selectedLink.dataset.fullPath;
                         }
-                        this.container.dataset.value = this.input.value;
+                        this.container.dataset.value = this.value;
                         this.container.dataset.fileBrowser = JSON.stringify(this);
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
-                            this.onSelectCallbacks[i](this.input.value);
+                            this.onSelectCallbacks[i](this.value);
                         }
                         this.toggleTree();
                     }
@@ -749,6 +749,7 @@ class FileBrowser {
     }
 
     generateTree(response) {
+        console.log("Generating tree: ", response);
         const root = document.createElement("ul");
         root.classList.add("treeRoot");
         const listItem = document.createElement("li");
@@ -780,7 +781,7 @@ class FileBrowser {
             const size = details.size;
             const type = details.type;
             const children = details.data;
-            const fullPath = path;
+            const fullPath = details.fullPath;
             const listItem = document.createElement("li");
             listItem.classList.add("fileLi");
             listItem.dataset.path = path;

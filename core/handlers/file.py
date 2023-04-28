@@ -369,7 +369,8 @@ class FileHandler:
                 entry_data_2 = {
                     "time": entry.stat().st_mtime,
                     "size": entry.stat().st_size,
-                    "type": os.path.splitext(entry.path)[1] if entry.is_file() else "directory"
+                    "type": os.path.splitext(entry.path)[1] if entry.is_file() else "directory",
+                    "fullPath": entry.path
                 }
 
                 if entry.is_dir() and recursive:
