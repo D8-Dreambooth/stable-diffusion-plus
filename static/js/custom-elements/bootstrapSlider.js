@@ -1,13 +1,13 @@
 class BootstrapSlider {
     constructor(parentElement, options) {
-        this.min = options.min || 1;
-        this.max = options.max || 150;
-        this.step = options.step || 1;
-        this.value = options.value || this.min;
-        this.visible = options.visible || true;
-        this.interactive = options.interactive || true;
-        this.label = options.label || "Sampling steps";
-        this.elem_id = options.elem_id || "item-" + generateRandomString(8);
+        this.min = (options.hasOwnProperty("min")) ? options.min : 1;
+        this.max = (options.hasOwnProperty("max")) ? options.max : 150;
+        this.step = (options.hasOwnProperty("step")) ? options.step : 1;
+        this.value = (options.hasOwnProperty("value")) ? options.value : this.min;
+        this.visible = (options.hasOwnProperty("visible")) ? options.visible : true;
+        this.interactive = (options.hasOwnProperty("interactive")) ? options.interactive : true;
+        this.label = (options.hasOwnProperty("label")) ? options.label : "";
+        this.elem_id = (options.hasOwnProperty("elem_id")) ? options.elem_id : "item-" + generateRandomString(8);
 
         // create the HTML elements
         this.container = document.createElement("div");
