@@ -77,12 +77,14 @@ class ImageHandler:
     current_dir = None
     socket_handler = None
     file_handler = None
+    infer_keys = []
 
     def __new__(cls, user_name=None):
         if cls._instance is None:
             dir_handler = DirectoryHandler()
             user_dir = dir_handler.get_directory("users")[0]
             cls._instance = super(ImageHandler, cls).__new__(cls)
+            cls._instance.infer_keys = InferSettings({}).__dict__.keys()
             cls._instance.user_dir = user_dir
             cls._instance.current_dir = user_dir
             cls._instance.file_handler = FileHandler()
@@ -98,6 +100,7 @@ class ImageHandler:
                 user_instance = super(ImageHandler, cls).__new__(cls)
                 user_instance.user_dir = user_dir
                 user_instance.current_dir = user_dir
+                user_instance.infer_keys = InferSettings({}).__dict__.keys()
                 user_instance.file_handler = FileHandler(user_name=user_name)
                 user_instance.socket_handler = cls._instance.socket_handler
                 user_instance.socket_handler.register("get_images", user_instance._get_image, user=user_name)
@@ -201,7 +204,9 @@ class ImageHandler:
                 bottom = (height + thumb_size) / 2
                 img = img.crop((left, top, right, bottom))
             with BytesIO() as output:
-                img.save(output, format="PNG")
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                img.save(output, format="JPEG")
                 contents = output.getvalue()
                 image_data[img_idx]["src"] = f"data:image/png;base64,{base64.b64encode(contents).decode()}"
             img_idx += 1
@@ -242,7 +247,7 @@ class ImageHandler:
             image_data = {"path": image_file}
             with Image.open(image_file) as img:
                 png_info = img.info
-                for k in InferSettings({}).__dict__.keys():
+                for k in self.infer_keys:
                     if png_info.get(k):
                         try:
                             val = json.loads(png_info.get(k))

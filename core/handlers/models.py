@@ -44,7 +44,7 @@ class ModelHandler:
             cls._instance.models_path = models_path
             cls._instance.socket_handler = SocketHandler()
             cls._instance.socket_handler.register("models", cls._instance.list_models)
-            cls._instance.socket_handler.register("load_model", cls._instance.loadmodel)
+            cls._instance.socket_handler.register("load_model", cls._instance._load_model)
             cls._instance.initialize_loaders()
         if user_name is not None:
             if user_name in cls._instances:
@@ -60,7 +60,7 @@ class ModelHandler:
                 user_instance.models_path = models_path
                 user_instance.socket_handler = SocketHandler()
                 user_instance.socket_handler.register("models", user_instance.list_models, user_name)
-                user_instance.socket_handler.register("load_model", user_instance.loadmodel, user_name)
+                user_instance.socket_handler.register("load_model", user_instance._load_model, user_name)
                 user_instance.user_name = user_name
                 user_instance.initialize_loaders()
                 cls._instances[user_name] = user_instance
@@ -111,7 +111,7 @@ class ModelHandler:
         logger.debug(f"Can't find model: {value}")
         return None
 
-    async def loadmodel(self, msg):
+    async def _load_model(self, msg):
         data = msg["data"]
         try:
             md = ModelData("http")
@@ -350,6 +350,31 @@ class ModelHandler:
                     self.loaded_models[model_type] = (model_data, loaded)
                     return loaded
         return None
+
+    def to_cpu(self):
+        for model_type, model in self.loaded_models.items():
+            model_data, loaded_model = model[0], model[1]
+            self.loaded_models[model_type] = (model_data, loaded_model.to("cpu"))
+        try:
+            gc.collect()
+            torch.cuda.empty_cache()
+        except:
+            pass
+
+    def to_gpu(self):
+        device = "cpu"
+        if torch.has_cuda:
+            device = "cuda"
+        if torch.has_mps:
+            device = "ddp"
+        for model_type, model in self.loaded_models.items():
+            model_data, loaded_model = model[0], model[1]
+            self.loaded_models[model_type] = (model_data, loaded_model.to(device))
+        try:
+            gc.collect()
+            torch.cuda.empty_cache()
+        except:
+            pass
 
     @staticmethod
     def friendly_name(file: str):
