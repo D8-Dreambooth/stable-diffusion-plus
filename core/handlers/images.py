@@ -210,7 +210,8 @@ class ImageHandler:
                 contents = output.getvalue()
                 image_data[img_idx]["src"] = f"data:image/png;base64,{base64.b64encode(contents).decode()}"
             img_idx += 1
-        return {"image_data": image_data}
+        sorted_image_data = sorted(image_data, key=lambda x: x["filename"])
+        return {"image_data": sorted_image_data}
 
     def load_image(self, directory: str = None, filename: str = None, recurse: bool = False) -> Tuple[
         List[Image.Image], List[Dict]]:
@@ -244,7 +245,7 @@ class ImageHandler:
                 data.extend(sub_data)
 
         for image_file in images:
-            image_data = {"path": image_file}
+            image_data = {"path": image_file, "filename": os.path.basename(image_file)}
             with Image.open(image_file) as img:
                 png_info = img.info
                 for k in self.infer_keys:
