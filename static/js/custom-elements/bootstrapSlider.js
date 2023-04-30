@@ -23,22 +23,24 @@ class BootstrapSlider {
         this.container.appendChild(this.inputWrapper);
 
         this.labelWrapper = document.createElement("div");
-        this.labelWrapper.classList.add("flex", "justify-between");
+        this.labelWrapper.classList.add("row");
         this.inputWrapper.appendChild(this.labelWrapper);
 
-        this.labelElement = document.createElement("label");
-        this.labelElement.htmlFor = "range_id_0";
+        this.labelElement = document.createElement("div");
+        this.labelElement.classList.add("col-9");
         this.labelWrapper.appendChild(this.labelElement);
 
         this.labelText = document.createElement("span");
-        this.labelText.classList.add("text-gray-500", "text-[0.855rem]", "mb-2", "block", "dark:text-gray-200", "relative", "z-40", "fit");
+        this.labelText.classList.add("text-gray-500", "mb-2", "col-11", "fit");
         this.labelText.title = options.title || "How many times to improve the generated image iteratively; higher values take longer; very low values can produce bad results";
         this.labelText.innerText = this.label;
-        this.labelElement.appendChild(this.labelText);
+        let labelWrap = document.createElement("div");
+        labelWrap.appendChild(this.labelText);
+        this.labelElement.appendChild(labelWrap);
 
         this.numberInput = document.createElement("input");
         this.numberInput.type = "number";
-        this.numberInput.classList.add("gr-box", "gr-input", "gr-text-input", "text-center", "h-6");
+        this.numberInput.classList.add("gr-box", "gr-input", "gr-text-input", "text-center", "h-6", "col-3");
         this.numberInput.min = this.min;
         this.numberInput.max = this.max;
         this.numberInput.step = this.step;

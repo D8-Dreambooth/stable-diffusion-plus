@@ -36,6 +36,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         }
+        fitty(".fit",
+            {
+            minSize: 10,
+            maxSize: 16,
+            multiLine: false,
+        });
     });
 });
 

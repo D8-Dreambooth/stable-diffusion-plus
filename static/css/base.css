@@ -139,6 +139,31 @@ input {
     border: 1px solid var(--bs-border-dark);
 }
 
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    width: 0;
+    border-left: 1px solid #BBB;
+    opacity: .5; /* shows Spin Buttons per default (Chrome >= 39) */
+    position: absolute;
+    top: 0;
+    right: -12px;
+    transition: all .3s ease-in-out;
+    bottom: 0;
+}
+input[type="number"]:hover::-webkit-inner-spin-button,
+input[type="number"]:active::-webkit-inner-spin-button{
+    display: block;
+    width: 1em;
+    box-shadow: 0 0 2px #0CF;
+    opacity: .8;
+    background: var(--secondary-color);
+    color: black;
+    transition: all .3s ease-in-out;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
 .accordion-item {
     border: none !important;
 }

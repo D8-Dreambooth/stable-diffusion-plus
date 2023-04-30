@@ -40,7 +40,6 @@ let inferSettings = {
 
 advancedElements.hide();
 ratioContainer.hide();
-inpaintContainer.hide();
 inferWidth.hide();
 inferHeight.hide();
 
@@ -117,7 +116,6 @@ function inferInit() {
         label: "Number of Images"
     });
 
-    // Same as above. Why not?
     batchSize = new BootstrapSlider(document.getElementById("infer_batch_size"), {
         elem_id: "batchSize",
         min: 1,
@@ -173,6 +171,16 @@ function inferInit() {
         });
     });
 
+    $("#controlnetBatchInput").change(function () {
+        console.log("Controlnet changed",this.checked);
+        if (this.checked) {
+            $(".controlnetSingle").hide();
+            $(".controlnetBatch").show();
+        } else {
+            $(".controlnetSingle").show();
+            $(".controlnetBatch").hide();
+        }
+    });
 
     const radioButtons = document.getElementsByName('inferMode');
     for (let i = 0; i < radioButtons.length; i++) {
@@ -211,8 +219,10 @@ function loadSettings(data) {
             advancedElements.hide();
         } else {
             advancedElements.show();
+            inpaintContainer.hide();
         }
     }
+
     if (data["show_aspect_ratios"]) {
         addRatioCards();
         ratioContainer.show();

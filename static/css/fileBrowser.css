@@ -179,21 +179,15 @@ li.fileLi * {
     padding: 0;
 }
 
-.fileBtnRow, .fileBrowserContainer:not(.dropdown) {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    margin: 0;
-}
-
 .fileBtnRow {
     top: 0;
     height: var(--file-btn-height);
 }
 
 .fileBrowserContainer:not(.dropdown) {
-    top: var(--file-btn-height);
-    height: calc(100% - var(--file-btn-height));
+    left: 0;
+    width: 100%;
+    margin: 0;
 }
 
 .imgPanel {

@@ -44,7 +44,6 @@ document.addEventListener("DOMContentLoaded", function () {
         loadCoreSettings(data);
     });
     const $buttons = $('.cancelButton').cancelButton();
-    $(".fit").fit();
 });
 
 function loadCoreSettings(data) {

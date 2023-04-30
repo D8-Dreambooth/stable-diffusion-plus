@@ -2,6 +2,8 @@ class ProgressGroup {
     constructor(parentElement, options) {
         this.parentElement = parentElement;
         this.update = this.update.bind(this);
+        this.onComplete = null;
+        this.onCancel = null;
 
         registerSocketMethod("progressGroup", "status", this.update);
       // Set options last with update(options)
@@ -170,8 +172,22 @@ class ProgressGroup {
         // Update progress bar CSS classes
         this.progressBar1.className = "progress-bar" + this.options.progress_1_css;
         this.progressBar2.className = "progress-bar" + this.options.progress_2_css;
+        if (options["active"] === false) {
+            if (options["canceled"] === true) {
+                this.onCancel();
+            } else {
+                this.onComplete();
+            }
+        }
     }
 
+    setOnCancel(callback) {
+        this.onCancel = callback;
+    }
+
+    setOnComplete(callback) {
+        this.onComplete = callback;
+    }
 
 }
      

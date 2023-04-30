@@ -35,11 +35,8 @@
 }
 
 .gr-box > div > div > input.gr-text-input {
-    position: absolute;
     right: 0.9em;
-    top: 0.3em;
-    z-index: 400;
-    width: 6em;
+    top: -0.24em;
 }
 
 .gr-compact .gr-box {

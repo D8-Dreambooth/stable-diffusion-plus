@@ -1,10 +1,11 @@
-#fileCard, #fileCard > * {
+#fileCard > * {
     height: 100%;
     max-height: 100%;
 }
 
-.fileContainer {
-  width: 100%;
-  height: 100%;
+#fbContainer, #fbCol, #fbRow, #fileCard, #fileCardBody, #fileContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-height: calc(100% - var(--footer-height));
 }
-

@@ -106,5 +106,7 @@ class StatusHandler:
         if items:
             for k, v in items.items():
                 setattr(self.status, k, v)
+        if not self.status.active and not self.status.canceled:
+            self.status.active = True
         if send:
             self.send()

@@ -1,15 +1,19 @@
 <div class="module" id="moduleTagger">
-    <div class="container">
-        <div class="card">
+    <div class="container-fluid">
+        <div class="card shadow">
             <div class="card-body">
                 <div class="borderSection">
                     <div class="sectionLabel">Select Directory</div>
                     <div class="row">
-                        <div class="col-12" id="tagImageFileSelect"></div>
-                        <div class="col-12 col-md-6">
-                            <div class="form-group mt-3">
-                                <label for="imageRecurse" class="form-check-label">Recurse</label>
-                                <input type="checkbox" id="imageRecurse" class="form-check-input" checked/>
+                        <div class="col-12 col-md-9">
+                            <div class="form-group" id="tagImageFileSelect"></div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="form-group">
+                                <div class="form-check form-switch m-2">
+                                    <input class="form-check-input" type="checkbox" id="imageRecurse">
+                                    <label class="form-check-label" for="imageRecurse">Recurse</label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -18,24 +22,33 @@
         </div>
         <div class="card" id="imageEditCard">
             <div class="card-body">
-                <div class="borderSection row">
-                    <div class="sectionLabel">Edit Tags</div>
-                    <div class="col-12">
-                        <label for="autoSave" class="form-check-label">Auto-Save</label>
-                        <input type="checkbox" id="autoSave" class="form-check-input" checked/>
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <label for="imageCaption">
-                            Caption
-                        </label>
-                        <textarea class="form-control" id="imageCaption" rows="6"></textarea>
-                        <div class="fullImgWrap">
-                            <img id="fullImage">
+                <div class="borderSection">
+                    <div class="row">
+                        <div class="col-12 col-md-6">
+                            <div class="form-group">
+                                <div class="sectionLabel">Edit</div>
+                                <div class="col-12">
+                                    <label for="autoSave" class="form-check-label">Auto-Save</label>
+                                    <input type="checkbox" id="autoSave" class="form-check-input" checked/>
+                                </div>
+                                <div class="col-12 col-12">
+                                    <label for="imageCaption">
+                                        Caption
+                                    </label>
+                                    <textarea class="form-control" id="imageCaption" rows="6"></textarea>
+                                    <div class="fullImgWrap">
+                                        <img id="fullImage">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-
                     </div>
+
                     <div class="col-12 col-md-6">
-                        <div id="imageBrowser"></div>
+                        <div class="form-group">
+                            <div class="sectionLabel">Select</div>
+                            <div id="imageBrowser"></div>
+                        </div>
                     </div>
                 </div>
             </div>

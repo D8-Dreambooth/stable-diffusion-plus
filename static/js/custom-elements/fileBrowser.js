@@ -9,7 +9,6 @@ class FileBrowser {
         let wrapper = document.createElement("div");
         wrapper.classList.add("row", "fileBrowserContainer");
         parentElement.innerHTML = "";
-        parentElement.appendChild(wrapper);
         this.container = parentElement;
         this.parentElement = wrapper;
         this.infoPanel = undefined;
@@ -39,6 +38,7 @@ class FileBrowser {
                 this.value = path;
             }
         }
+
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
 
@@ -119,13 +119,15 @@ class FileBrowser {
                 this.parentElement.appendChild(btnGroup);
 
             }
-            this.parentElement.append(this.treeParent);
 
             if (!this.dropdown) {
                 const fileButtons = this.buildFileButtons();
                 parentElement.append(fileButtons);
             }
 
+            parentElement.appendChild(wrapper);
+
+            this.parentElement.append(this.treeParent);
 
             if (this.showInfo) {
                 this.onClickCallbacks.push(this.showFileInfo);
