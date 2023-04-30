@@ -1,9 +1,9 @@
 class BootstrapSlider {
     constructor(parentElement, options) {
-        this.min = (options.hasOwnProperty("min")) ? options.min : 1;
-        this.max = (options.hasOwnProperty("max")) ? options.max : 150;
-        this.step = (options.hasOwnProperty("step")) ? options.step : 1;
-        this.value = (options.hasOwnProperty("value")) ? options.value : this.min;
+        this.min = (options.hasOwnProperty("min")) ? parseInt(options.min) : 1;
+        this.max = (options.hasOwnProperty("max")) ? parseInt(options.max) : 150;
+        this.step = (options.hasOwnProperty("step")) ? parseFloat(options.step) : 1;
+        this.value = (options.hasOwnProperty("value")) ? parseInt(options.value) : this.min;
         this.visible = (options.hasOwnProperty("visible")) ? options.visible : true;
         this.interactive = (options.hasOwnProperty("interactive")) ? options.interactive : true;
         this.label = (options.hasOwnProperty("label")) ? options.label : "";
@@ -112,7 +112,7 @@ class BootstrapSlider {
         this.container.style.display = "none";
     }
 
-    value() {
+    getValue() {
         return this.value;
     }
 }
