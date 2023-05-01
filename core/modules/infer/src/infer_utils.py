@@ -209,7 +209,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 embed_prompts.append(parsed)
 
             embed_negative_prompts = []
-            for np in negative_prompts:
+            for np in batch_negative:
                 parsed = parse_prompt(np)
                 if parsed != np:
                     use_embeds = True
@@ -280,9 +280,11 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
             out_images.extend(paths)
             out_prompts.extend(prompts)
-
+            current_total = len(out_images) + (1 * inference_settings.batch_size)
+            if current_total > total_images:
+                current_total = total_images
             status_handler.update(items={
-                "status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{total_images} images."},
+                "status": f"Generating {current_total}/{total_images} images."},
                 send=True)
 
 
