@@ -4,9 +4,11 @@ import json
 import logging
 import os
 import re
+import time
 from io import BytesIO
 from typing import Tuple, List, Dict
 
+import torch
 from PIL import Image, PngImagePlugin
 
 from core.dataclasses.infer_data import InferSettings
@@ -32,8 +34,10 @@ async def _read_image_info(request):
 def decode_dict(input_dict):
     decoded_dict = {}
     for key, value in input_dict.items():
-        # Remove the escape characters
-        decoded_value = value.encode('utf-8').decode('unicode_escape')
+        decoded_value = value
+        # Remove the escape characters only if the value is a string
+        if isinstance(value, str):
+            decoded_value = value.encode('utf-8').decode('unicode_escape')
 
         # Convert strings "true" and "false" to boolean values True and False, respectively
         if decoded_value == "true":
@@ -44,7 +48,7 @@ def decode_dict(input_dict):
             # Check if the value can be parsed as an integer
             try:
                 decoded_value = int(decoded_value)
-            except ValueError:
+            except:
                 pass
             else:
                 # If the value can be parsed as an integer, skip the float check
@@ -54,7 +58,7 @@ def decode_dict(input_dict):
             # Check if the value can be parsed as a float
             try:
                 decoded_value = float(decoded_value)
-            except ValueError:
+            except:
                 pass
 
         # Remove the escape characters from string values that include path elements

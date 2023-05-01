@@ -168,6 +168,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             items={
                 "status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{total_images} images."})
         initial_seed = inference_settings.seed
+        # If the seed is a string, parse it
+        if isinstance(inference_settings.seed, str):
+            initial_seed = int(inference_settings.seed)
+
         pbar = tqdm(desc="Making images.", total=total_images)
 
         def update_progress(step: int, timestep: int, latents: torch.FloatTensor):
@@ -223,12 +227,13 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             if initial_seed == -1:
                 seed = int(random.randrange(21474836147))
             else:
-                initial_seed = initial_seed + 1
+                if len(out_images) > 0:
+                    initial_seed = initial_seed + 1
                 if initial_seed > 21474836147:
                     initial_seed = int(random.randrange(21474836147))
                 seed = initial_seed
             inference_settings.seed = seed
-            generator = torch.manual_seed(int(seed))
+            generator = torch.manual_seed(seed)
             loop = asyncio.get_event_loop()
             # Here's the magic sauce
             preview_steps = ch.get_item("preview_steps", default=5)
@@ -286,7 +291,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             status_handler.update(items={
                 "status": f"Generating {current_total}/{total_images} images."},
                 send=True)
-
 
     except Exception as e:
         logger.error(f"Exception inferring: {e}")

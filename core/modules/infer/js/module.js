@@ -374,7 +374,7 @@ async function startInference() {
         inferSettings.mode = inferMode;
         inferSettings.model = model;
         inferSettings.prompt = promptEl.value;
-        inferSettings.negativePrompt = negEl.value;
+        inferSettings.negative_prompt = negEl.value;
         inferSettings.seed = parseInt(seedEl.value);
         inferSettings.scale = scaleTest.value;
         inferSettings.use_sag = enableSag.checked;
