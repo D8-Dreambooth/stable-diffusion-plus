@@ -52,6 +52,10 @@ function inferResponse(data) {
 function inferInit() {
     registerSocketMethod("infer", "infer", inferResponse);
     keyListener.register("ctrl+Enter", "#inferSettings", startInference);
+    keyListener.register("ctrl+ArrowUp", "#infer_prompt", increaseWeight);
+    keyListener.register("ctrl+ArrowDown", "#infer_prompt", decreaseWeight);
+    keyListener.register("ctrl+ArrowUp", "#infer_negative_prompt", increaseWeight);
+    keyListener.register("ctrl+ArrowDown", "#infer_negative_prompt", decreaseWeight);
 
     // Progress group example. Options can also be passed to inferProgress.update() in the same format.
     inferProgress = new ProgressGroup(document.getElementById("inferProgress"), {
@@ -172,7 +176,7 @@ function inferInit() {
     });
 
     $("#controlnetBatchInput").change(function () {
-        console.log("Controlnet changed",this.checked);
+        console.log("Controlnet changed", this.checked);
         if (this.checked) {
             $(".controlnetSingle").hide();
             $(".controlnetBatch").show();
@@ -209,6 +213,63 @@ function inferInit() {
             controlnetSelect.add(option);
         }
     });
+}
+
+
+function getSelectedText(input) {
+    return input.value.substring(input.selectionStart, input.selectionEnd);
+}
+
+
+
+function increaseWeight() {
+    const input = document.activeElement;
+    const value = input.value;
+    let selectionStart = input.selectionStart;
+    let selectionEnd = input.selectionEnd;
+    const selectedText = value.substring(selectionStart, selectionEnd);
+    if (!selectedText) {
+        return;
+    }
+    let selectionOffset = 0
+    // Check if the characters immediately before and after selection are square brackets
+    if (value[selectionStart - 1] === "[" && value[selectionEnd] === "]") {
+        // If so, remove them and return
+        input.value = value.substring(0, selectionStart - 1) + selectedText + value.substring(selectionEnd + 1);
+        selectionOffset = -1;
+    } else {
+        // Otherwise, surround the selected text with parenthesis and apply it to the input
+        input.value = value.replace(selectedText, "(" + selectedText + ")");
+        selectionOffset = 1;
+    }
+    selectionStart += selectionOffset;
+    selectionEnd += selectionOffset;
+    input.setSelectionRange(selectionStart, selectionEnd);
+}
+
+function decreaseWeight() {
+    const input = document.activeElement;
+    const value = input.value;
+    let selectionStart = input.selectionStart;
+    let selectionEnd = input.selectionEnd;
+    const selectedText = value.substring(selectionStart, selectionEnd);
+    if (!selectedText) {
+        return;
+    }
+    let selectionOffset = 0
+    // Check if the characters immediately before and after selection are square brackets
+    if (value[selectionStart - 1] === "(" && value[selectionEnd] === ")") {
+        // If so, remove them and return
+        input.value = value.substring(0, selectionStart - 1) + selectedText + value.substring(selectionEnd + 1);
+        selectionOffset = -1;
+    } else {
+        // Otherwise, surround the selected text with parenthesis and apply it to the input
+        input.value = value.replace(selectedText, "[" + selectedText + "]");
+        selectionOffset = 1;
+    }
+    selectionStart += selectionOffset;
+    selectionEnd += selectionOffset;
+    input.setSelectionRange(selectionStart, selectionEnd);
 }
 
 function loadSettings(data) {
@@ -351,57 +412,57 @@ async function startInference() {
 }
 
 function applyInferSettings(decodedSettings) {
-  let promptEl = document.getElementById("infer_prompt");
-  let negEl = document.getElementById("infer_negative_prompt");
-  let seedEl = document.getElementById("infer_seed");
-  let enableControlNet = document.getElementById("enableControlNet");
-  let controlnetType = document.getElementById("controlnetType");
-  let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
-  let enableSag = document.getElementById("infer_sag");
-  let controlnet_mask = controlnetImageEditor.getMask();
-  let controlnet_image = controlnetImageEditor.getDropped();
-  let infer_mask = inpaintImageEditor.getMask();
-  let infer_image = inpaintImageEditor.getDropped();
+    let promptEl = document.getElementById("infer_prompt");
+    let negEl = document.getElementById("infer_negative_prompt");
+    let seedEl = document.getElementById("infer_seed");
+    let enableControlNet = document.getElementById("enableControlNet");
+    let controlnetType = document.getElementById("controlnetType");
+    let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
+    let enableSag = document.getElementById("infer_sag");
+    let controlnet_mask = controlnetImageEditor.getMask();
+    let controlnet_image = controlnetImageEditor.getDropped();
+    let infer_mask = inpaintImageEditor.getMask();
+    let infer_image = inpaintImageEditor.getDropped();
 
-  promptEl.value = decodedSettings.prompt;
-  negEl.value = decodedSettings.negative_prompt;
-  seedEl.value = decodedSettings.seed.toString();
-  enableControlNet.checked = decodedSettings.enable_controlnet;
-  controlnetType.value = decodedSettings.controlnet_type;
-  autoLoadResolution.checked = false;  // Set to true if image is set below
-  enableSag.checked = decodedSettings.use_sag;
-  // controlnetImageEditor.setMask(decodedSettings.controlnet_mask);
-  // controlnetImageEditor.setDropped(decodedSettings.controlnet_image);
-  // inpaintImageEditor.setMask(decodedSettings.infer_mask);
-  // inpaintImageEditor.setDropped(decodedSettings.infer_image);
+    promptEl.value = decodedSettings.prompt;
+    negEl.value = decodedSettings.negative_prompt;
+    seedEl.value = decodedSettings.seed.toString();
+    enableControlNet.checked = decodedSettings.enable_controlnet;
+    controlnetType.value = decodedSettings.controlnet_type;
+    autoLoadResolution.checked = false;  // Set to true if image is set below
+    enableSag.checked = decodedSettings.use_sag;
+    // controlnetImageEditor.setMask(decodedSettings.controlnet_mask);
+    // controlnetImageEditor.setDropped(decodedSettings.controlnet_image);
+    // inpaintImageEditor.setMask(decodedSettings.infer_mask);
+    // inpaintImageEditor.setDropped(decodedSettings.infer_image);
 
-  const radioButtons = document.getElementsByName('inferMode');
-  let inferMode = decodedSettings.mode;
+    const radioButtons = document.getElementsByName('inferMode');
+    let inferMode = decodedSettings.mode;
 
-  for (let i = 0; i < radioButtons.length; i++) {
-    if (radioButtons[i].value === inferMode) {
-      radioButtons[i].checked = true;
-      break;
+    for (let i = 0; i < radioButtons.length; i++) {
+        if (radioButtons[i].value === inferMode) {
+            radioButtons[i].checked = true;
+            break;
+        }
     }
-  }
 
-  if (decodedSettings.enable_controlnet && decodedSettings.image !== undefined) {
-    autoLoadResolution.checked = true;
-    controlnetImageEditor.setResolution(decodedSettings.width, decodedSettings.height);
-    controlnetImageEditor.setImage(decodedSettings.image);
-  } else {
-    widthSlider.value = decodedSettings.width.toString();
-    heightSlider.value = decodedSettings.height.toString();
-  }
+    if (decodedSettings.enable_controlnet && decodedSettings.image !== undefined) {
+        autoLoadResolution.checked = true;
+        controlnetImageEditor.setResolution(decodedSettings.width, decodedSettings.height);
+        controlnetImageEditor.setImage(decodedSettings.image);
+    } else {
+        widthSlider.value = decodedSettings.width.toString();
+        heightSlider.value = decodedSettings.height.toString();
+    }
 
-  scaleTest.value = decodedSettings.scale.toString();
-  stepTest.value = decodedSettings.steps.toString();
-  numImages.value = decodedSettings.num_images.toString();
-  batchSize.value = decodedSettings.batch_size.toString();
-  document.getElementById("controlnetPreProcess").checked = decodedSettings.controlnet_preprocess;
-  document.getElementById("controlnetBatchInput").checked = decodedSettings.controlnet_batch;
-  controlnetFileBrowser.value = decodedSettings.controlnet_batch_dir;
-  document.getElementById("controlnetBatchFind").value = decodedSettings.controlnet_batch_find;
-  document.getElementById("controlnetBatchReplace").value = decodedSettings.controlnet_batch_replace;
-  document.getElementById("controlnetBatchUsePrompt").checked = decodedSettings.controlnet_batch_use_prompt;
+    scaleTest.value = decodedSettings.scale.toString();
+    stepTest.value = decodedSettings.steps.toString();
+    numImages.value = decodedSettings.num_images.toString();
+    batchSize.value = decodedSettings.batch_size.toString();
+    document.getElementById("controlnetPreProcess").checked = decodedSettings.controlnet_preprocess;
+    document.getElementById("controlnetBatchInput").checked = decodedSettings.controlnet_batch;
+    controlnetFileBrowser.value = decodedSettings.controlnet_batch_dir;
+    document.getElementById("controlnetBatchFind").value = decodedSettings.controlnet_batch_find;
+    document.getElementById("controlnetBatchReplace").value = decodedSettings.controlnet_batch_replace;
+    document.getElementById("controlnetBatchUsePrompt").checked = decodedSettings.controlnet_batch_use_prompt;
 }

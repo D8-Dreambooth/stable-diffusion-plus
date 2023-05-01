@@ -16,6 +16,7 @@ class KeyListener {
                 (element) => element.contains(event.target)
             );
             if (isCorrectKey && isCorrectModifier && isElementWithinSelector) {
+                event.preventDefault();
                 this.listeners[key].forEach((callback) => callback());
             }
         });

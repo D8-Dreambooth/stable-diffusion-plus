@@ -3,9 +3,11 @@ import concurrent.futures
 import logging
 import os
 import random
+import re
 import traceback
 
 import torch
+from compel import Compel
 from tqdm import tqdm
 
 from core.dataclasses.infer_data import InferSettings
@@ -93,7 +95,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         logger.debug("Swapped Prompt: " + img_prompt)
 
                 control_images.append(image)
-                input_prompts.append(img_prompt if img_prompt else inference_settings.prompt)
+                prompt_in = img_prompt if img_prompt else inference_settings.prompt
+                input_prompts.append(prompt_in)
                 negative_prompts.append(inference_settings.negative_prompt)
         else:
             src_image = inference_settings.get_controlnet_image()
@@ -138,6 +141,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         pipeline = model_handler.load_model("diffusers_inpaint", model_data)
     elif inference_settings.mode == "img2img":
         pipeline = model_handler.load_model("diffusers_img2img", model_data)
+
+    compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
 
     input_prompts = input_prompts * inference_settings.num_images
     negative_prompts = negative_prompts * inference_settings.num_images
@@ -195,6 +200,23 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             batch_negative = negative_prompts[:batch_size]
             negative_prompts = negative_prompts[batch_size:]
 
+            weighted_prompts = []
+            use_embeds = False
+            for bp in batch_prompts:
+                parsed = parse_prompt(bp)
+                if parsed != bp:
+                    use_embeds = True
+                weighted_prompts.append(parsed)
+            batch_prompts = weighted_prompts
+
+            weighted_prompts = []
+            for np in negative_prompts:
+                parsed = parse_prompt(np)
+                if parsed != np:
+                    use_embeds = True
+                weighted_prompts.append(parsed)
+            negative_prompts = weighted_prompts
+
             if control_images and len(control_images) > 0:
                 batch_control = control_images[:batch_size]
                 control_images = control_images[batch_size:]
@@ -215,11 +237,23 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             if preview_steps > inference_settings.steps:
                 preview_steps = inference_settings.steps
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                kwargs = {"prompt": batch_prompts,
-                          "num_inference_steps": inference_settings.steps,
-                          "guidance_scale": inference_settings.scale,
-                          "negative_prompt": batch_negative,
-                          "generator": generator}
+                if use_embeds:
+                    logger.debug("Using conditioning!")
+                    conditioning = compel_proc(batch_prompts)
+                    negative_conditioning = compel_proc(batch_negative)
+                    [conditioning, negative_conditioning] = compel_proc.pad_conditioning_tensors_to_same_length(
+                        [conditioning, negative_conditioning])
+                    kwargs = {"prompt_embeds": conditioning,
+                              "num_inference_steps": inference_settings.steps,
+                              "guidance_scale": inference_settings.scale,
+                              "negative_prompt_embeds": negative_conditioning,
+                              "generator": generator}
+                else:
+                    kwargs = {"prompt": batch_prompts,
+                              "num_inference_steps": inference_settings.steps,
+                              "guidance_scale": inference_settings.scale,
+                              "negative_prompt": batch_negative,
+                              "generator": generator}
 
                 if len(batch_control):
                     kwargs["image"] = batch_control
@@ -266,3 +300,46 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     status_handler.update(
         items={"status": f"Generation complete.", "images": out_images, "prompts": out_prompts})
     return out_images, out_prompts
+
+
+def parse_prompt(input_string):
+    input_string = input_string.replace(" ", "_")
+    tokens = input_string.split(",")
+    new_tokens = []
+    for token in tokens:
+        words = token.split("_")
+        new_words = []
+        for word in words:
+            matched = False
+            stripped = word.strip()
+            if stripped == "":
+                continue
+            weight = 1.0
+            raw_word = stripped
+            if "(" in stripped and ")" in stripped:
+                if ":" in stripped:
+                    try:
+                        weight = float(stripped.split(":")[1].replace(")", ""))
+                        raw_word = stripped.replace(f":{weight}", "").replace("(", "").replace(")", "")
+                    except:
+                        raw_word = stripped
+                else:
+                    matched = True
+                    # Set the weight to 1.1 to the power of the number of open parens
+                    weight = 1.1 ** stripped.count("(")
+                    raw_word = stripped.replace("(", "").replace(")", "")
+            if "[" in stripped and "]" in stripped:
+                weight = 0.9 ** stripped.count("[")
+                raw_word = stripped.replace("[", "").replace("]", "")
+            weight = max(0.0, min(2.0, weight))
+            if matched:
+                logger.debug(f"Matched {stripped} to {raw_word} with weight {weight}")
+            if weight != 1.0:
+                new_words.append(f"({raw_word}){weight}")
+            else:
+                new_words.append(raw_word)
+        new_tokens.append("_".join(new_words))
+    output_string = ", ".join(new_tokens)
+    output_string = output_string.replace("_", " ")
+
+    return output_string
