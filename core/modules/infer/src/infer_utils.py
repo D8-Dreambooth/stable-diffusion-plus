@@ -200,22 +200,20 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             batch_negative = negative_prompts[:batch_size]
             negative_prompts = negative_prompts[batch_size:]
 
-            weighted_prompts = []
+            embed_prompts = []
             use_embeds = False
             for bp in batch_prompts:
                 parsed = parse_prompt(bp)
                 if parsed != bp:
                     use_embeds = True
-                weighted_prompts.append(parsed)
-            batch_prompts = weighted_prompts
+                embed_prompts.append(parsed)
 
-            weighted_prompts = []
+            embed_negative_prompts = []
             for np in negative_prompts:
                 parsed = parse_prompt(np)
                 if parsed != np:
                     use_embeds = True
-                weighted_prompts.append(parsed)
-            negative_prompts = weighted_prompts
+                embed_negative_prompts.append(parsed)
 
             if control_images and len(control_images) > 0:
                 batch_control = control_images[:batch_size]
@@ -238,9 +236,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 preview_steps = inference_settings.steps
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 if use_embeds:
-                    logger.debug("Using conditioning!")
-                    conditioning = compel_proc(batch_prompts)
-                    negative_conditioning = compel_proc(batch_negative)
+                    conditioning = compel_proc(embed_prompts)
+                    negative_conditioning = compel_proc(embed_negative_prompts)
                     [conditioning, negative_conditioning] = compel_proc.pad_conditioning_tensors_to_same_length(
                         [conditioning, negative_conditioning])
                     kwargs = {"prompt_embeds": conditioning,
