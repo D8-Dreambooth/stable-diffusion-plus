@@ -2,7 +2,6 @@ class InlineGallery {
     constructor(parentSelector, options = {}) {
         this.parent = typeof parentSelector === "string" ? document.querySelector(parentSelector) : parentSelector;
         this.options = this._readOptions(options);
-        console.log("Options: ", this.options);
         this._initGallery();
         let selector = "";
         if (this.parent.hasAttribute("id")) {
@@ -11,11 +10,9 @@ class InlineGallery {
             selector = "." + this.parent.getAttribute("class").split(" ").join(".");
         }
         keyListener.register("ArrowLeft", selector, function () {
-            console.log("SP");
             this.selectPrevious();
         }.bind(this));
         keyListener.register("ArrowRight", selector, function () {
-            console.log("SN");
             this.selectNext();
         }.bind(this));
         registerSocketMethod("inlineGallery2", "status", this.socketUpdate.bind(this));
@@ -80,7 +77,6 @@ class InlineGallery {
 
     _populateGallery() {
         const {data, allowFullscreen, allowDownload} = this.options;
-        console.log("Populating gallery: ", data, allowFullscreen, allowDownload);
         const randomId = Math.random().toString(36).substring(7);
         // Create primary and preview containers
         this.primaryContainer = document.createElement('div');
@@ -184,7 +180,6 @@ class InlineGallery {
     }
 
     _addEventListeners() {
-        console.log("Adding event listeners");
         const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
         const captions = this.captionContainer ? this.captionContainer.querySelectorAll('.caption') : [];
         const thumbnails = this.thumbnailContainer ? this.thumbnailContainer.querySelectorAll('.thumbnail') : [];
@@ -313,7 +308,6 @@ class InlineGallery {
         if (data.hasOwnProperty("target") && data.target !== this.options.id) {
             return;
         }
-        console.log("SOCKET UPDATE: ", data);
 
         let [imageList, latent, append] = this.extractImageData(data);
         this.update(imageList, latent, append);
@@ -358,7 +352,6 @@ class InlineGallery {
     }
 
     update(imageList, latent, append = false) {
-        console.log("Updating gallery.")
         if (!append) {
             this._clearGallery();
         }
@@ -430,24 +423,18 @@ class InlineGallery {
         this._addEventListeners();
         // Preview
         if (latent !== null) {
-            console.log("We have a latent, wtf.");
             const latentImage = document.createElement('img');
             latentImage.src = latent;
             latentImage.classList.add('latent-image');
-            console.log("PREVIEW: SHOW");
             this.previewContainer.appendChild(latentImage);
             this.previewContainer.classList.remove("hidden");
         } else {
-            console.log("No latent, hide preview", this.previewContainer);
-            console.log("Before:", this.previewContainer.classList.toString());
             this.previewContainer.classList.add("hidden");
             this.previewContainer.innerHTML = "";
-            console.log("After:", this.previewContainer.classList.toString());
         }
     }
 
     _clearGallery() {
-        console.log("Clearing gallery.");
         // Remove primary images
         const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
         primaryImages.forEach(img => img.remove());

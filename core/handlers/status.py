@@ -75,11 +75,10 @@ class StatusHandler:
                 self.status.progress_1_current = self.status.progress_1_total
         self.send()
 
-    def cancel(self, data):
+    async def cancel(self, data):
         self.status.canceled = True
         shared.status.interrupted = True
-        message = {"name": "status", "status": self.status.dict()}
-        self.send()
+        self.end("Canceled")
 
     def update(self, key=None, value=None, items=None, send=True):
         """

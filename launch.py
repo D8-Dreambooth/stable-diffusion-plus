@@ -20,6 +20,8 @@ os.environ["SAFETENSORS_FAST_GPU"] = "1"
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger("launch")
 logging.getLogger('PIL').setLevel(logging.WARNING)
+logging.getLogger('accelerate').setLevel(logging.WARNING)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 # Set base path
 base_path = os.path.abspath(os.path.dirname(__file__))
