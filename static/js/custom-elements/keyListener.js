@@ -8,7 +8,13 @@ class KeyListener {
     handleKeyDown(event) {
         Object.keys(this.listeners).forEach((key) => {
             const [keyCommand, selector] = key.split("|");
-            const [modifier, keyCheck] = keyCommand.split("+")
+            let modifier = null;
+            let keyCheck = keyCommand;
+
+            if (keyCommand.indexOf("+") > -1) {
+                [modifier, keyCheck] = keyCommand.split("+");
+            }
+
             const elements = document.querySelectorAll(selector);
             const isCorrectKey = event.key === keyCheck;
             const isCorrectModifier = modifier ? event[`${modifier}Key`] : true;

@@ -70,24 +70,28 @@ class ModelHandler:
 
     async def list_models(self, msg):
         data = msg["data"]
+        loaded_model = None
+        model_json = []
         if "model_type" not in data:
             self.logger.warning(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
             model_type = data["model_type"]
-            if model_type in self.model_finders:
-                model_list = self.model_finders[model_type](data, self)
-            else:
-                ext_include = None if "ext_include" not in data else data["ext_include"]
-                ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
-                model_list = self.load_models(model_type=data["model_type"], ext_include=ext_include, ext_exclude=ext_exclude)
+            model_types = [model_type] if not "_" in model_type else model_type.split("_")
+            for model_type in model_types:
+                if model_type in self.model_finders:
+                    model_list = self.model_finders[model_type](data, self)
+                else:
+                    ext_include = None if "ext_include" not in data else data["ext_include"]
+                    ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
+                    model_list = self.load_models(model_type=model_type, ext_include=ext_include, ext_exclude=ext_exclude)
 
-            self.listed_models[model_type] = model_list
-            model_json = [model.serialize() for model in model_list]
-            loaded_model = None
-            if data["model_type"] in self.loaded_models:
-                model_data, _ = self.loaded_models[data["model_type"]]
-                loaded_model = model_data.hash
+                self.listed_models[model_type] = model_list
+                model_jsons = [model.serialize() for model in model_list]
+                model_json.extend(model_jsons)
+                if model_type in self.loaded_models:
+                    model_data, _ = self.loaded_models[model_type]
+                    loaded_model = model_data.hash
             return {"models": model_json, "loaded": loaded_model}
 
     async def find_model(self, model_type: str, value: str):

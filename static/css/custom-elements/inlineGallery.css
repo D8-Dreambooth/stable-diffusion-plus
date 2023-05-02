@@ -1,0 +1,189 @@
+.inline-gallery {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.gallery-container {
+    max-height: 300px;
+    height: 300px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--secondary-accent-color);
+    border-radius: 5px;
+}
+
+.primary-container,
+.preview-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+}
+
+.primary-image, .latent-image {
+    max-height: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    flex-shrink: 0;
+    object-fit: contain;
+    transition: transform 400ms;
+    pointer-events: none;
+    user-select: none;
+}
+
+.preview-container {
+    background-color: var(--bs-body-bg-rgb);
+    z-index: 10;
+}
+
+.preview-container.hidden {
+    display: none;
+}
+
+.gallery-container *:focus {
+  outline: none;
+}
+
+.thumbnail-container {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 10px;
+}
+
+.thumbnail {
+    cursor: pointer;
+    max-height: 80px;
+}
+
+.thumbnail.active {
+    border: 2px solid #000;
+}
+
+.caption-container {
+    padding: 10px;
+}
+
+.inlineButton {
+    font-size: 24px;
+    width: 35px;
+    height: 35px;
+    text-align: center;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    position: absolute;
+    z-index: 10;
+    color: var(--secondary-text-color);
+    background: var(--secondary-color);
+    text-shadow: var(--secondary-color);
+    opacity: 50%;
+}
+
+.inlineButton:hover {
+    color: var(--secondary-color);
+    background: var(--secondary-text-color);
+    opacity: 75%;
+}
+
+.left-arrow,
+.right-arrow {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.left-arrow::before {
+    content: '\eb32';
+    font-family: 'boxicons';
+}
+
+.right-arrow::before {
+    content: '\ebe5';
+    font-family: 'boxicons';
+}
+
+.left-arrow {
+    left: 15px;
+}
+
+.right-arrow {
+    right: 15px;
+}
+
+.fullscreen-button,
+.download-button {
+    top: 10px;
+}
+
+.fullscreen-button::before {
+    content: '\eaeb';
+    font-family: 'boxicons';
+}
+
+.download-button::before {
+    content: '\ed95';
+    font-family: 'boxicons';
+}
+
+.fullscreen-button {
+    left: 10px;
+}
+
+.download-button {
+    right: 10px;
+}
+
+
+.thumbnail-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background-color: var(--secondary-color);
+}
+
+.thumbnail-container::-webkit-scrollbar-thumb {
+    background-color: var(--secondary-text-color);
+    border-radius: 4px;
+}
+
+.thumbnail-container::-webkit-scrollbar-track {
+    background-color: var(--secondary-color);
+    border-radius: 4px;
+}
+
+.thumbnail-container::-moz-scrollbar {
+    width: 8px;
+    height: 8px;
+    background-color: var(--secondary-color);
+}
+
+.thumbnail-container::-moz-scrollbar-thumb {
+    background-color: var(--secondary-text-color);
+    border-radius: 4px;
+}
+
+.thumbnail-container::-moz-scrollbar-track {
+    background-color: var(--secondary-color);
+    border-radius: 4px;
+}
+
+.thumbnail-container::-ms-scrollbar {
+    width: 8px;
+    height: 8px;
+    background-color: var(--secondary-color);
+}
+
+.thumbnail-container::-ms-scrollbar-thumb {
+    background-color: var(--secondary-text-color);
+    border-radius: 4px;
+}
+
+.thumbnail-container::-ms-scrollbar-track {
+    background-color: var(--secondary-color);
+    border-radius: 4px;
+}
+

@@ -244,4 +244,10 @@ check_bitsandbytes()
 
 if __name__ == '__main__':
     freeze_support()
-    uvicorn.run("app.main:app", port=listen_port, reload=True, access_log=False, host="0.0.0.0")
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=listen_port,
+        reload=True,
+        workers=4
+    )

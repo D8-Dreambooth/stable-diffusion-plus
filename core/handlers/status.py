@@ -95,6 +95,7 @@ class StatusHandler:
         active = False
         canceled = False
         images = []
+        latents = []
         prompts = []
         descriptions = []
         :param value: 

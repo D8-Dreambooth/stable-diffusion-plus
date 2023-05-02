@@ -2,13 +2,13 @@ import base64
 import hashlib
 import json
 import logging
+import math
 import os
 import re
-import time
 from io import BytesIO
 from typing import Tuple, List, Dict
 
-import torch
+import PIL
 from PIL import Image, PngImagePlugin
 
 from core.dataclasses.infer_data import InferSettings
@@ -72,6 +72,41 @@ def decode_dict(input_dict):
         decoded_dict[key] = decoded_value
 
     return decoded_dict
+
+
+def create_image_grid(images):
+    image_objects = []
+    if isinstance(images, PIL.Image.Image):
+        return images
+    # Load image objects from input
+    for img in images:
+        if isinstance(img, str):
+            image_objects.append(Image.open(img))
+        elif isinstance(img, Image.Image):
+            image_objects.append(img)
+        else:
+            raise ValueError("Invalid input: list must contain strings with paths to images or PIL images.")
+
+    n_images = len(image_objects)
+
+    if n_images <= 1:
+        return image_objects[0] if n_images == 1 else None
+
+    # Calculate grid dimensions
+    grid_size = math.ceil(math.sqrt(n_images))
+    max_width = max([img.width for img in image_objects])
+    max_height = max([img.height for img in image_objects])
+
+    # Create an empty image to paste the input images onto
+    grid_image = Image.new('RGB', (grid_size * max_width, grid_size * max_height))
+
+    # Paste input images onto the grid
+    for i, img in enumerate(image_objects):
+        x = (i % grid_size) * max_width
+        y = (i // grid_size) * max_height
+        grid_image.paste(img, (x, y))
+
+    return grid_image
 
 
 class ImageHandler:

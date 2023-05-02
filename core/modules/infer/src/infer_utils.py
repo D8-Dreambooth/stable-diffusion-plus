@@ -181,7 +181,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             logger.debug(f"Images are: {type(converted)}")
             # Update the progress status handler with the new items
             status_handler.update(items={
-                "images": converted,
+                "latents": converted,
             }, send=False)
             status_handler.step(preview_steps)
 
@@ -289,7 +289,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             if current_total > total_images:
                 current_total = total_images
             status_handler.update(items={
-                "status": f"Generating {current_total}/{total_images} images."},
+                "status": f"Generating {current_total}/{total_images} images.", "images": out_images, "prompts": out_prompts},
                 send=True)
 
     except Exception as e:
@@ -301,7 +301,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         for img in original_controls:
             out_prompts.append("Control image")
     status_handler.update(
-        items={"status": f"Generation complete.", "images": out_images, "prompts": out_prompts})
+        items={"status": f"Generation complete.", "images": out_images, "prompts": out_prompts},send=False)
+    status_handler.end("Generation complete.")
     return out_images, out_prompts
 
 

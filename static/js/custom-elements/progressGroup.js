@@ -174,9 +174,15 @@ class ProgressGroup {
         this.progressBar2.className = "progress-bar" + this.options.progress_2_css;
         if (options["active"] === false) {
             if (options["canceled"] === true) {
-                this.onCancel();
+                // If this.onCancel is a function, call it
+                if (typeof this.onCancel === "function") {
+                    this.onCancel();
+                }
             } else {
-                this.onComplete();
+                // If this.onComplete is a function, call it
+                if (typeof this.onComplete === "function") {
+                    this.onComplete();
+                }
             }
         }
     }
