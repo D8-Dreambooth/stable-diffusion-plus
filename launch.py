@@ -19,6 +19,7 @@ os.environ["SAFETENSORS_FAST_GPU"] = "1"
 # Set up logging
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger("launch")
+logging.getLogger('PIL').setLevel(logging.WARNING)
 
 # Set base path
 base_path = os.path.abspath(os.path.dirname(__file__))
@@ -39,27 +40,6 @@ if sys.version_info < (3, 10):
 # Placeholder functionality
 def install_extensions():
     logger.debug("Checking extension installations...")
-
-
-def check_bitsandbytes():
-    """
-    Check for "different" B&B Files and copy only if necessary
-    """
-    if os.name == "nt":
-        try:
-            bnb_src = os.path.join(os.path.dirname(os.path.realpath(__file__)), "core", "modules", "dreambooth",
-                                   "bitsandbytes_windows")
-            bnb_dest = os.path.join(sysconfig.get_paths()["purelib"], "bitsandbytes")
-            filecmp.clear_cache()
-            for file in os.listdir(bnb_src):
-                src_file = os.path.join(bnb_src, file)
-                if file == "main.py" or file == "paths.py":
-                    dest = os.path.join(bnb_dest, "cuda_setup")
-                else:
-                    dest = bnb_dest
-                shutil.copy2(src_file, dest)
-        except:
-            pass
 
 
 def run(command, desc=None, errdesc=None, custom_env=None, live=False):
@@ -239,8 +219,6 @@ if os.environ.get("SKIP_INSTALL", "false").lower() == "true":
 if do_install:
     logger.info(f"Installing the things: {install_command}")
     run(install_command, "Installing the things.")
-
-check_bitsandbytes()
 
 if __name__ == '__main__':
     freeze_support()

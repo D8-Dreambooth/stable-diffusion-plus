@@ -34,11 +34,12 @@ class ConnectionManager:
         message_targets = self.active_connections
         if self.user_auth:
             user = message.get("user", None)
-            if user is None:
-                logger.debug("NO USER")
-            else:
+            if user:
                 if user in self.sessions:
                     message_targets = self.sessions[user]
+            else:
+                logger.debug("Message has no user: " + str(message))
+                return
 
         disconnected = []
         for connection in message_targets:
@@ -130,6 +131,7 @@ class SocketHandler:
                 response["data"] = {"message": "Message added to queue."}
         except Exception as e:
             response["data"] = {"message": f"Exception with socket callback: {e}"}
+            logger.warning(f"Exception with socket callback ({user})({name}): {e}")
             traceback.print_exc()
 
         await self.manager.send_personal_message(response)

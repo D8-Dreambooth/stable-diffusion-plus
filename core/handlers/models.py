@@ -84,7 +84,8 @@ class ModelHandler:
                 else:
                     ext_include = None if "ext_include" not in data else data["ext_include"]
                     ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
-                    model_list = self.load_models(model_type=model_type, ext_include=ext_include, ext_exclude=ext_exclude)
+                    model_list = self.load_models(model_type=model_type, ext_include=ext_include,
+                                                  ext_exclude=ext_exclude)
 
                 self.listed_models[model_type] = model_list
                 model_jsons = [model.serialize() for model in model_list]
@@ -356,12 +357,14 @@ class ModelHandler:
         return None
 
     def to_cpu(self):
+        self.log_vram()
         for model_type, model in self.loaded_models.items():
             model_data, loaded_model = model[0], model[1]
             self.loaded_models[model_type] = (model_data, loaded_model.to("cpu"))
         try:
             gc.collect()
             torch.cuda.empty_cache()
+            self.log_vram()
         except:
             pass
 
@@ -379,6 +382,14 @@ class ModelHandler:
             torch.cuda.empty_cache()
         except:
             pass
+
+    # A method to log the current/total VRAM usage
+    def log_vram(self):
+        if torch.has_cuda:
+            self.logger.debug(f"Current VRAM usage: {torch.cuda.memory_allocated() / 1024 ** 3} GB")
+            self.logger.debug(f"Total VRAM usage: {torch.cuda.memory_reserved() / 1024 ** 3} GB")
+        else:
+            self.logger.debug("No CUDA device detected.")
 
     @staticmethod
     def friendly_name(file: str):

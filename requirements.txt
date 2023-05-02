@@ -5,7 +5,8 @@ aiofiles
 albumentations~=1.3.0
 basicsr
 bcrypt
-bitsandbytes==0.38.1
+bitsandbytes @ https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl; os_name == 'nt'
+bitsandbytes==0.38.1; os_name != 'nt'
 compel
 diffusers==0.15.1
 discord-webhook~=1.1.0
