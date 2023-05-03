@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 def load_diffusers(model_data: ModelData):
     model_path = model_data.path
+    if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
+        logger.debug(f"Adding working to dreambooth model path: {model_path}")
+        model_path = os.path.join(model_path, "working")
+
     controlnet_type = model_data.data["type"] if "type" in model_data.data else None
     if controlnet_type:
         return load_diffusers_controlnet(model_data)
