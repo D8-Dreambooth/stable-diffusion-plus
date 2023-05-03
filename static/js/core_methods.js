@@ -2,6 +2,8 @@ let globalSocket = null;
 let socketMethods = {};
 
 const keyListener = new KeyListener();
+const historyTracker = new HistoryTracker();
+console.log("History tracker initialized.");
 let messages = [];
 // region Initialization
 

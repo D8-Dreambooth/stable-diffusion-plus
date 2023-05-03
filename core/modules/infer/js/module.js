@@ -57,6 +57,11 @@ function inferInit() {
     keyListener.register("ctrl+ArrowUp", "#infer_negative_prompt", increaseWeight);
     keyListener.register("ctrl+ArrowDown", "#infer_negative_prompt", decreaseWeight);
 
+    let promptEl = document.getElementById("infer_prompt");
+    let negEl = document.getElementById("infer_negative_prompt");
+    historyTracker.registerHistory(promptEl);
+    historyTracker.registerHistory(negEl);
+
     // Progress group example. Options can also be passed to inferProgress.update() in the same format.
     inferProgress = new ProgressGroup(document.getElementById("inferProgress"), {
         "primary_status": "Status 1", // Status 1 text
@@ -407,6 +412,10 @@ async function startInference() {
                 inferSettings.height = parseInt(heightSlider.value);
             }
         }
+
+        historyTracker.storeHistory(promptEl);
+        historyTracker.storeHistory(negEl);
+
         return sendMessage("start_inference", inferSettings, true, "inference");
     }
 }

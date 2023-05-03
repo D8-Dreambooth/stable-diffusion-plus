@@ -35,9 +35,27 @@
     user-select: none;
 }
 
+.latent-image.thumb-btn {
+    cursor: pointer;
+    pointer-events: auto;
+    max-width: 25%;
+    max-height: 25%;
+    opacity: 0.5;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    border: 1px solid var(--secondary-accent-color);
+    border-radius: 5px;
+}
+
 .preview-container {
     background-color: var(--bs-body-bg-rgb);
     z-index: 10;
+}
+
+.preview-container.thumb-container {
+    pointer-events: none;
+    background-color: transparent;
 }
 
 .preview-container.hidden {

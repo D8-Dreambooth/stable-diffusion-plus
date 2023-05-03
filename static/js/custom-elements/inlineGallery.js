@@ -193,10 +193,26 @@ class InlineGallery {
             });
         });
         const updateGallery = (newIndex) => {
+            // If we have a latent image and the gallery was selected, make it a thumbnail button
+            let latentImage = this.previewContainer.querySelector('.latent-image');
+            if (latentImage) {
+                this.previewContainer.classList.add("thumb-container");
+                latentImage.classList.add('thumb-btn');
+                latentImage.addEventListener('click', () => {
+                    latentImage.classList.remove('thumb-btn');
+                    this.previewContainer.classList.remove("thumb-container");
+                });
+            }
             // Hide all elements in primaryImages and captions
-            primaryImages.forEach((primaryImage) => {primaryImage.style.display = 'none';});
-            captions.forEach((caption) => {caption.style.display = 'none';});
-            thumbnails.forEach((thumbnail) => {thumbnail.classList.remove('active');});
+            primaryImages.forEach((primaryImage) => {
+                primaryImage.style.display = 'none';
+            });
+            captions.forEach((caption) => {
+                caption.style.display = 'none';
+            });
+            thumbnails.forEach((thumbnail) => {
+                thumbnail.classList.remove('active');
+            });
 
             if (newIndex < primaryImages.length) primaryImages[newIndex].style.display = 'block';
 
@@ -349,13 +365,32 @@ class InlineGallery {
         if (!append) {
             this._clearGallery();
         }
-        this.previewContainer.innerHTML = "";
+
         imageList.forEach(imageData => {
             const existingImage = this.primaryContainer.querySelector(`img[src="${imageData.src}"]`);
             const existingThumbnail = this.thumbnailContainer ? this.thumbnailContainer.querySelector(`img[src="${imageData.thumbnail || imageData.src}"]`) : null;
 
             if (existingImage || existingThumbnail) {
                 return;
+            }
+
+            // Preview
+            if (latent !== null) {
+                let latentImage = this.previewContainer.querySelector('.latent-image');
+                if (latentImage !== null) {
+                    console.log("Updating latent!");
+                    latentImage.src = latent;
+                } else {
+                    console.log("Resetting latent!");
+                    const latentImage = document.createElement('img');
+                    latentImage.src = latent;
+                    latentImage.classList.add('latent-image');
+                    this.previewContainer.appendChild(latentImage);
+                    this.previewContainer.classList.remove("hidden");
+                }
+            } else {
+                this.previewContainer.classList.add("hidden");
+                this.previewContainer.innerHTML = "";
             }
 
             // Primary image
@@ -411,21 +446,9 @@ class InlineGallery {
                 description: imageData.description || ''
             });
         });
-        const previewContainer = this.parent.querySelector('.preview-container');
-        previewContainer.innerHTML = "";
 
         this._addEventListeners();
-        // Preview
-        if (latent !== null) {
-            const latentImage = document.createElement('img');
-            latentImage.src = latent;
-            latentImage.classList.add('latent-image');
-            this.previewContainer.appendChild(latentImage);
-            this.previewContainer.classList.remove("hidden");
-        } else {
-            this.previewContainer.classList.add("hidden");
-            this.previewContainer.innerHTML = "";
-        }
+
     }
 
     _clearGallery() {
