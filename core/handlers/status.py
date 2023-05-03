@@ -48,6 +48,12 @@ class StatusHandler:
             message["target"] = self._target
         self.queue.put_nowait(message)
 
+    async def send_async(self):
+        message = {"name": "status", "status": self.status.dict(), "user": self._user_name}
+        if self._target is not None:
+            message["target"] = self._target
+        await self.socket_handler.manager.broadcast(message)
+
     async def _get_status(self, data):
         status = {"status": self.status.dict()}
         if self._target is not None:

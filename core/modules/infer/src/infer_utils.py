@@ -31,6 +31,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     image_handler = ImageHandler(user_name=user)
     ch = ConfigHandler()
     status_handler.start(inference_settings.num_images * inference_settings.steps, "Starting inference.")
+    await status_handler.send_async()
     # Check if our selected model is loaded, if not, loaded it.
     preprocess_src = None
 
@@ -58,7 +59,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             if cd["name"] == inference_settings.controlnet_type:
                 preprocess_src = cd["image_type"]
                 break
-
 
         if inference_settings.controlnet_batch:
             # List files in the batch directory
@@ -110,6 +110,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             else:
                 control_images.append(src_image if src_image else src_mask)
         status_handler.update("status", "Preprocessing control images.")
+        await status_handler.send_async()
+        logger.debug("Sending status(1)")
+        status_handler.send()
         max_res = int(ch.get_item("max_resolution", "infer", 512))
         control_images, input_prompts = preprocess_image(control_images,
                                                          prompt=input_prompts,
@@ -127,6 +130,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         negative_prompts = [inference_settings.negative_prompt]
 
     status_handler.update("status", "Loading model.")
+    logger.debug("Sending status(2)")
+
+    await status_handler.send_async()
+    logger.debug("Sent")
     if inference_settings.mode == "txt2img":
         pipeline = model_handler.load_model("diffusers", model_data)
     elif inference_settings.mode == "inpaint":
@@ -149,7 +156,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         gen_width = 0
         control_images = control_images * inference_settings.num_images
     total_images = len(input_prompts)
-
 
     out_images = []
     out_prompts = []
@@ -291,7 +297,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         for img in original_controls:
             out_prompts.append("Control image")
     status_handler.update(
-        items={"status": f"Generation complete.", "images": out_images, "prompts": out_prompts},send=False)
+        items={"status": f"Generation complete.", "images": out_images, "prompts": out_prompts}, send=False)
     status_handler.end("Generation complete.")
     return out_images, out_prompts
 

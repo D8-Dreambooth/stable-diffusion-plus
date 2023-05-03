@@ -366,6 +366,26 @@ class InlineGallery {
             this._clearGallery();
         }
 
+        // Preview
+        if (latent !== null) {
+            console.log("We have a latent...")
+            let latentImage = this.previewContainer.querySelector('.latent-image');
+            if (latentImage !== null) {
+                console.log("Updating latent!");
+                latentImage.src = latent;
+                this.previewContainer.classList.remove("hidden");
+            } else {
+                console.log("Resetting latent!");
+                const latentImage = document.createElement('img');
+                latentImage.src = latent;
+                latentImage.classList.add('latent-image');
+                this.previewContainer.appendChild(latentImage);
+                this.previewContainer.classList.remove("hidden");
+            }
+        } else {
+            this.previewContainer.classList.add("hidden");
+        }
+
         imageList.forEach(imageData => {
             const existingImage = this.primaryContainer.querySelector(`img[src="${imageData.src}"]`);
             const existingThumbnail = this.thumbnailContainer ? this.thumbnailContainer.querySelector(`img[src="${imageData.thumbnail || imageData.src}"]`) : null;
@@ -374,24 +394,6 @@ class InlineGallery {
                 return;
             }
 
-            // Preview
-            if (latent !== null) {
-                let latentImage = this.previewContainer.querySelector('.latent-image');
-                if (latentImage !== null) {
-                    console.log("Updating latent!");
-                    latentImage.src = latent;
-                } else {
-                    console.log("Resetting latent!");
-                    const latentImage = document.createElement('img');
-                    latentImage.src = latent;
-                    latentImage.classList.add('latent-image');
-                    this.previewContainer.appendChild(latentImage);
-                    this.previewContainer.classList.remove("hidden");
-                }
-            } else {
-                this.previewContainer.classList.add("hidden");
-                this.previewContainer.innerHTML = "";
-            }
 
             // Primary image
             const primaryImage = document.createElement('img');
