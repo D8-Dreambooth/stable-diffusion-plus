@@ -1,6 +1,7 @@
 import logging
 import os.path
 
+import tomesd
 import torch
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
     StableDiffusionControlNetPipeline, StableDiffusionSAGPipeline
@@ -20,7 +21,7 @@ def load_diffusers(model_data: ModelData):
     if controlnet_type:
         return load_diffusers_controlnet(model_data)
 
-    load_sag = model_data.data.get("enable_sag", True)
+    load_sag = model_data.data.get("enable_sag", False)
     pipeline = None
     if not os.path.exists(model_path):
         logger.debug(f"Unable to load model: {model_path}")
@@ -36,6 +37,7 @@ def load_diffusers(model_data: ModelData):
                 pipeline.unet = torch.compile(pipeline.unet)
             pipeline.enable_xformers_memory_efficient_attention()
             pipeline.vae.enable_tiling()
+            tomesd.apply_patch(pipeline, ratio=0.5)
             pipeline.scheduler.config["solver_type"] = "bh2"
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
 
@@ -102,6 +104,8 @@ def load_diffusers_inpaint(model_data: ModelData):
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
     return pipeline
+
+
 def load_diffusers_controlnet(model_data: ModelData):
     model_path = model_data.path
     load_sag = model_data.data.get("enable_sag", True)
@@ -127,15 +131,18 @@ def load_diffusers_controlnet(model_data: ModelData):
     try:
         controlnet = ControlNetModel.from_pretrained(controlnet_url, torch_dtype=torch.float16)
         if load_sag:
-            pipeline = StableDiffusionControlNetSAGPipeline.from_pretrained(model_path, torch_dtype=torch.float16, controlnet=controlnet)
+            pipeline = StableDiffusionControlNetSAGPipeline.from_pretrained(model_path, torch_dtype=torch.float16,
+                                                                            controlnet=controlnet)
         else:
-            pipeline = StableDiffusionControlNetPipeline.from_pretrained(model_path, torch_dtype=torch.float16, controlnet=controlnet)
+            pipeline = StableDiffusionControlNetPipeline.from_pretrained(model_path, torch_dtype=torch.float16,
+                                                                         controlnet=controlnet)
         pipeline.enable_model_cpu_offload()
         pipeline.unet.set_attn_processor(AttnProcessor2_0())
         if os.name != "nt":
             pipeline.unet = torch.compile(pipeline.unet)
         pipeline.enable_xformers_memory_efficient_attention()
         pipeline.vae.enable_tiling()
+        tomesd.apply_patch(pipeline, ratio=0.5)
         pipeline.scheduler.config["solver_type"] = "bh2"
         pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
 

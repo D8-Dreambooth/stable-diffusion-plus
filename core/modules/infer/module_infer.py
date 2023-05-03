@@ -52,7 +52,7 @@ async def _start_inference(msg):
     asyncio.create_task(start_inference(infer_data, user, target))
 
     # Immediately return a reply to the websocket
-    return {"name": "inference_started", "message": "Inference started.", "id": msg_id}
+    return {"name": "status", "message": "Inference started.", "id": msg_id}
 
 
 async def _get_controlnets(msg):

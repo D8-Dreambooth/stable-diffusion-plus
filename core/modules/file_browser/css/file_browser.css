@@ -3,7 +3,28 @@
     max-height: 100%;
 }
 
-#fbContainer, #fbCol, #fbRow, #fileCard, #fileCardBody, #fileContainer {
+
+#fbContainer, #fbCol, #fbRow {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+
+#fileCard {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#fileCardBody {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-height: calc(100% - var(--footer-height));
+}
+
+#fileContainer {
     position: relative;
     width: 100%;
     height: 100%;

@@ -20,6 +20,9 @@ class FileBrowser {
         this.currentParent = "";
         this.value = "";
         this.selectedLink = undefined;
+        this.sortType = "name";
+        this.sortOrder = "desc";
+        this.sortId = "fileSortButton" + Math.floor(Math.random() * 1000000);
 
         if (options["selectedElement"] !== undefined && options["selectedElement"] !== "") {
             const path = options["selectedElement"];
@@ -132,11 +135,11 @@ class FileBrowser {
             if (this.showInfo) {
                 this.onClickCallbacks.push(this.showFileInfo);
                 this.infoPanel = document.createElement("div");
-                this.infoPanel.classList.add("infoPanel", "closed", "col-sm-12", "col-md-6", "col-lg-4");
+                this.infoPanel.classList.add("infoPanel", "borderSection", "closed", "col-sm-12", "col-md-6", "col-lg-4");
                 this.parentElement.appendChild(this.infoPanel);
                 this.createImageModal("");
             }
-            this.attachEventHandlers();
+            //this.attachEventHandlers();
         });
         parentElement.dataset.fileBrowser = JSON.stringify(this);
     }
@@ -447,7 +450,7 @@ class FileBrowser {
         });
     }
 
-    async handleDirectoryEntry(directory, parentPath, fileData, files, root=false) {
+    async handleDirectoryEntry(directory, parentPath, fileData, files, root = false) {
         const dirReader = directory.createReader();
         const entries = await this.readEntries(dirReader);
 
@@ -685,47 +688,7 @@ class FileBrowser {
         if (this.dropdown) currentPath.classList.add("dropdown");
         currentPathCol.appendChild(currentPath);
 
-        let sortCol = document.createElement("div");
-        sortCol.classList.add("col-auto", "fileSortCol");
-
-        let sortButtonsRow = document.createElement("div");
-        sortButtonsRow.classList.add("row", "fileSortRow");
-
-        // Sort by name button
-        let sortByNameButton = document.createElement("button");
-        sortByNameButton.innerHTML = '<i class="bx bx-sort-a-z"></i>';
-        sortByNameButton.dataset["type"] = "name";
-        sortByNameButton.classList.add("btn", "btn-outline-primary", "fileSortButton", "active");
-        sortButtonsRow.appendChild(sortByNameButton);
-
-        // Sort by size button
-        let sortBySizeButton = document.createElement("button");
-        sortBySizeButton.innerHTML = '<i class="bx bxs-hdd"></i>';
-        sortBySizeButton.dataset["type"] = "size";
-        sortBySizeButton.classList.add("btn", "btn-outline-primary", "fileSortButton");
-        sortButtonsRow.appendChild(sortBySizeButton);
-
-        // Sort by date button
-        let sortByDateButton = document.createElement("button");
-        sortByDateButton.innerHTML = '<i class="bx bx-calendar"></i>';
-        sortByDateButton.dataset["type"] = "date";
-        sortByDateButton.classList.add("btn", "btn-outline-primary", "fileSortButton");
-        sortButtonsRow.appendChild(sortByDateButton);
-
-        // Sort by type button
-        let sortByTypeButton = document.createElement("button");
-        sortByTypeButton.innerHTML = '<i class="bx bxs-file-blank"></i>';
-        sortByTypeButton.dataset["type"] = "type";
-        sortByTypeButton.classList.add("btn", "btn-outline-primary", "fileSortButton");
-        sortButtonsRow.appendChild(sortByTypeButton);
-
-        let sortOrderIndicator = document.createElement("div");
-        sortOrderIndicator.innerHTML = '<i class="bx bx-sort-down"></i>';
-        sortOrderIndicator.dataset["type"] = "type";
-        sortOrderIndicator.classList.add("fileSortIndicator");
-        sortButtonsRow.appendChild(sortOrderIndicator);
-
-        sortCol.appendChild(sortButtonsRow);
+        let sortCol = this.createSortCol();
         currentPathContainer.appendChild(currentPathCol);
         currentPathContainer.appendChild(sortCol);
 
@@ -748,7 +711,88 @@ class FileBrowser {
         this.treeContainer.appendChild(upDiv);
 
         this.attachEventHandlers();
+        this.sortTree();
     }
+
+    createSortCol() {
+        let sortCol = document.createElement("div");
+        sortCol.classList.add("col-auto", "fileSortCol");
+        let sortDropdown = document.createElement("div");
+        sortDropdown.classList.add("dropdown", "fileSortDropdown");
+
+        let sortButton = document.createElement("button");
+        // Write a switch statement to set the current sortButton icon based on this.sortType
+        let sortIcon = "bx-text";
+        switch (this.sortType) {
+            case "name":
+                sortIcon = "bx-text";
+                break;
+            case "date":
+                sortIcon = "bx-calendar";
+                break;
+            case "size":
+                sortIcon = "bx-hdd";
+                break;
+            case "type":
+                sortIcon = "bx-file-blank";
+                break;
+        }
+        let orderIcon = "bx-sort-up";
+        if (this.sortOrder === "desc") {
+            orderIcon = "bx-sort-down";
+        }
+        sortButton.innerHTML = '<i class="bx ' + sortIcon + '"></i><i class="bx ' + orderIcon + '"></i>';
+        sortButton.classList.add("btn", "btn-outline-primary", "fileSortButton", "dropdown-toggle");
+        sortButton.dataset["type"] = "name";
+        sortButton.setAttribute("data-bs-toggle", "dropdown");
+        sortButton.setAttribute("aria-haspopup", "true");
+        sortButton.setAttribute("aria-expanded", "false");
+        // Random ID
+        sortButton.id = this.sortId;
+        sortDropdown.appendChild(sortButton);
+
+        let sortMenu = document.createElement("div");
+        sortMenu.classList.add("dropdown-menu", "fileSortMenu");
+        sortMenu.setAttribute("aria-labelledby", sortButton.id);
+
+        // Sort by name menu item
+        let sortByNameMenuItem = document.createElement("a");
+        sortByNameMenuItem.innerHTML = '<i class="bx bx-text"></i> Name';
+        sortByNameMenuItem.dataset["type"] = "name";
+        sortByNameMenuItem.classList.add("dropdown-item", "fileSortMenuItem");
+        if (this.sortType === "name") sortByNameMenuItem.classList.add("active");
+        sortMenu.appendChild(sortByNameMenuItem);
+
+        // Sort by size menu item
+        let sortBySizeMenuItem = document.createElement("a");
+        sortBySizeMenuItem.innerHTML = '<i class="bx bxs-hdd"></i> Size';
+        sortBySizeMenuItem.dataset["type"] = "size";
+        sortBySizeMenuItem.classList.add("dropdown-item", "fileSortMenuItem");
+        if (this.sortType === "size") sortBySizeMenuItem.classList.add("active");
+        sortMenu.appendChild(sortBySizeMenuItem);
+
+        // Sort by date menu item
+        let sortByDateMenuItem = document.createElement("a");
+        sortByDateMenuItem.innerHTML = '<i class="bx bx-calendar"></i> Date';
+        sortByDateMenuItem.dataset["type"] = "date";
+        sortByDateMenuItem.classList.add("dropdown-item", "fileSortMenuItem");
+        if (this.sortType === "date") sortByDateMenuItem.classList.add("active");
+        sortMenu.appendChild(sortByDateMenuItem);
+
+        // Sort by type menu item
+        let sortByTypeMenuItem = document.createElement("a");
+        sortByTypeMenuItem.innerHTML = '<i class="bx bxs-file-blank"></i> Type';
+        sortByTypeMenuItem.dataset["type"] = "type";
+        sortByTypeMenuItem.classList.add("dropdown-item", "fileSortMenuItem");
+        if (this.sortType === "type") sortByTypeMenuItem.classList.add("active");
+        sortMenu.appendChild(sortByTypeMenuItem);
+
+        sortDropdown.appendChild(sortMenu);
+        sortCol.appendChild(sortDropdown);
+
+        return sortCol;
+    }
+
 
     generateTree(response) {
         console.log("Generating tree: ", response);
@@ -852,32 +896,53 @@ class FileBrowser {
                 console.log("No path: ", link);
             }
         });
-        let sortButtons = this.treeContainer.querySelectorAll(".fileSortButton");
+        let sortButtons = this.treeContainer.querySelectorAll(".fileSortMenuItem");
         sortButtons.forEach(button => {
             button.addEventListener("click", event => {
-                let activeButton = this.treeContainer.querySelector(".fileSortButton.active");
+                event.preventDefault();
+                let activeButton = this.treeContainer.querySelector(".fileSortMenuItem.active");
                 activeButton.classList.remove("active");
-                let sortIndicator = this.treeContainer.querySelector(".fileSortIndicator").querySelector(".bx");
                 let type = event.currentTarget.dataset.type;
-                event.currentTarget.classList.add('active');
-                if (type === this.currentSort.type) {
-                    // Reverse the sort order if we're already sorting by this type
-                    this.currentSort.order = (this.currentSort.order === "asc") ? "desc" : "asc";
-                    sortIndicator.classList.toggle("bx-sort-down");
-                    sortIndicator.classList.toggle("bx-sort-up");
-                    if (type === "name") {
-                        let thisIcon = event.currentTarget.querySelector(".bx");
-                        thisIcon.classList.toggle("bx-sort-a-z");
-                        thisIcon.classList.toggle("bx-sort-z-a");
+                if (this.sortType === type) {
+                    if (this.sortOrder === "asc") {
+                        this.sortOrder = "desc";
+                    } else {
+                        this.sortOrder = "asc";
                     }
+                    console.log("Setting sort order to: ", this.sortOrder);
                 } else {
-                    // Sort by a new type
-                    this.currentSort.type = type;
-                    this.currentSort.order = "asc";
+                    this.sortType = type;
                 }
+                let sortButton = document.getElementById(this.sortId);
+                // Write a switch statement to set the current sortButton icon based on this.sortType
+                let sortIcon = "bx-text";
+                switch (this.sortType) {
+                    case "name":
+                        sortIcon = "bx-text";
+                        break;
+                    case "date":
+                        sortIcon = "bx-calendar";
+                        break;
+                    case "size":
+                        sortIcon = "bx-hdd";
+                        break;
+                    case "type":
+                        sortIcon = "bx-file-blank";
+                        break;
+                }
+                let orderIcon = "bx-sort-up";
+                if (this.sortOrder === "desc") {
+                    orderIcon = "bx-sort-down";
+                }
+                sortButton.innerHTML = '<i class="bx ' + sortIcon + '"></i><i class="bx ' + orderIcon + '"></i>';
+
+                
+                event.currentTarget.classList.add("active");
+
                 this.sortTree();
             });
         });
+
     }
 
     handleLinkDblClick(link) {
@@ -924,26 +989,26 @@ class FileBrowser {
 
         // Sort the remaining items
         treeItems.sort((a, b) => {
-            let aVal = a.dataset[this.currentSort.type];
-            let bVal = b.dataset[this.currentSort.type];
-            if (this.currentSort.type === "name") {
+            let aVal = a.dataset[this.sortType];
+            let bVal = b.dataset[this.sortType];
+            if (this.sortType === "name") {
                 aVal = a.dataset["path"];
                 bVal = b.dataset["path"];
-            } else if (this.currentSort.type === "size") {
+            } else if (this.sortType === "size") {
                 aVal = parseInt(aVal);
                 bVal = parseInt(bVal);
-            } else if (this.currentSort.type === "date") {
+            } else if (this.sortType === "date") {
                 aVal = parseFloat(aVal);
                 bVal = parseFloat(bVal);
             }
-            if (this.currentSort.type === "size" || this.currentSort.type === "date") {
-                if (this.currentSort.order === "asc") {
+            if (this.sortType === "size" || this.sortType === "date") {
+                if (this.sortOrder === "asc") {
                     return (aVal < bVal) ? -1 : (aVal > bVal) ? 1 : 0;
                 } else {
                     return (bVal < aVal) ? -1 : (bVal > aVal) ? 1 : 0;
                 }
             } else {
-                if (this.currentSort.order === "asc") {
+                if (this.sortOrder === "asc") {
                     return aVal.localeCompare(bVal);
                 } else {
                     return bVal.localeCompare(aVal);

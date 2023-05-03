@@ -117,7 +117,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     control_images.append(src_mask)
             else:
                 control_images.append(src_image if src_image else src_mask)
-
+        status_handler.update("status", "Preprocessing control images.")
         max_res = int(ch.get_item("max_resolution", "infer", 512))
         control_images, input_prompts = preprocess_image(control_images,
                                                          prompt=input_prompts,
@@ -129,12 +129,13 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
 
         model_data.data = {"type": inference_settings.controlnet_type}
-        status_handler.update("status", "Loading model.")
+
 
     else:
         input_prompts = [inference_settings.prompt]
         negative_prompts = [inference_settings.negative_prompt]
 
+    status_handler.update("status", "Loading model.")
     if inference_settings.mode == "txt2img":
         pipeline = model_handler.load_model("diffusers", model_data)
     elif inference_settings.mode == "inpaint":
@@ -224,6 +225,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 control_images = control_images[batch_size:]
             else:
                 batch_control = []
+            if initial_seed is None:
+                initial_seed = -1
             if initial_seed == -1:
                 seed = int(random.randrange(21474836147))
             else:
@@ -336,8 +339,6 @@ def parse_prompt(input_string):
                 weight = 0.9 ** stripped.count("[")
                 raw_word = stripped.replace("[", "").replace("]", "")
             weight = max(0.0, min(2.0, weight))
-            if matched:
-                logger.debug(f"Matched {stripped} to {raw_word} with weight {weight}")
             if weight != 1.0:
                 new_words.append(f"({raw_word}){weight}")
             else:

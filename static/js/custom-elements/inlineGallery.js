@@ -183,6 +183,7 @@ class InlineGallery {
         const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
         const captions = this.captionContainer ? this.captionContainer.querySelectorAll('.caption') : [];
         const thumbnails = this.thumbnailContainer ? this.thumbnailContainer.querySelectorAll('.thumbnail') : [];
+
         let currentIndex = 0;
 
         // Disable clicks on primaryImages
@@ -192,29 +193,21 @@ class InlineGallery {
             });
         });
         const updateGallery = (newIndex) => {
-            if (currentIndex < primaryImages.length) primaryImages[currentIndex].style.display = 'none';
+            // Hide all elements in primaryImages and captions
+            primaryImages.forEach((primaryImage) => {primaryImage.style.display = 'none';});
+            captions.forEach((caption) => {caption.style.display = 'none';});
+            thumbnails.forEach((thumbnail) => {thumbnail.classList.remove('active');});
+
             if (newIndex < primaryImages.length) primaryImages[newIndex].style.display = 'block';
 
-            if (this.options.showCaptions) {
-                if (currentIndex < captions.length) captions[currentIndex].style.display = 'none';
-                if (newIndex < captions.length) captions[newIndex].style.display = 'block';
-            }
+            if (this.options.showCaptions && newIndex < captions.length) captions[newIndex].style.display = 'block';
 
-            if (this.options.showThumbnails) {
-                if (currentIndex < thumbnails.length) thumbnails[currentIndex].classList.remove('active');
-                if (newIndex < thumbnails.length) {
-                    thumbnails[newIndex].classList.add('active');
-                    _scrollToThumbnail(newIndex);
-                }
-            }
+            if (this.options.showThumbnails && newIndex < thumbnails.length) _scrollToThumbnail(newIndex);
 
-            if (this.options.allowDownload) {
-                const downloadButton = this.primaryContainer.querySelector('.download-button');
-                downloadButton.href = this.options.data[newIndex].src;
-            }
-
+            if (this.options.allowDownload) downloadButton.href = this.options.data[newIndex].src;
             currentIndex = newIndex;
         };
+
         let totalImages = this.galleryContainer.querySelectorAll('.primary-image').length;
         const downloadButton = this.primaryContainer.querySelector('.download-button');
         const leftArrow = this.primaryContainer.querySelector('.left-arrow');
@@ -255,6 +248,7 @@ class InlineGallery {
                 return;
             }
 
+            thumbnail.classList.add('active');
             const containerWidth = this.thumbnailContainer.clientWidth;
             const containerScrollLeft = this.thumbnailContainer.scrollLeft;
             const thumbnailLeft = thumbnail.offsetLeft;
