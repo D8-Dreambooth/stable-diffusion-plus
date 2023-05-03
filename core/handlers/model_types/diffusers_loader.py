@@ -21,13 +21,14 @@ def load_diffusers(model_data: ModelData):
     if controlnet_type:
         return load_diffusers_controlnet(model_data)
 
-    load_sag = model_data.data.get("enable_sag", False)
+    use_sag = model_data.data.get("use_sag", False)
+    logger.debug(f"Use Sag: {use_sag}")
     pipeline = None
     if not os.path.exists(model_path):
         logger.debug(f"Unable to load model: {model_path}")
     else:
         try:
-            if load_sag:
+            if use_sag:
                 pipeline = StableDiffusionSAGPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
             else:
                 pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)

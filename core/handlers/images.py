@@ -27,7 +27,6 @@ async def _read_image_info(request):
         image = Image.open(BytesIO(base64.b64decode(data["image"])))
         image_data = image.info
         image_data = decode_dict(image_data)
-        logger.debug(f"Image data: {image_data}")
     return {"image_data": image_data}
 
 
@@ -178,7 +177,7 @@ class ImageHandler:
         dest_dir = os.path.join(self.user_dir, "outputs", directory)
         dest_dir = os.path.abspath(dest_dir)
         if self.user_dir not in dest_dir:
-            logger.debug("Exception saving to directory outside of user dir.")
+            logger.error("Exception saving to directory outside of user dir.")
             raise ValueError("Invalid directory for saving.")
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
@@ -210,11 +209,9 @@ class ImageHandler:
         thumb_size = data.get("thumb_size", 256)
         return_thumb = data.get("return_thumb", False)
         recurse = data.get("recurse", False)
-        logger.debug(f"Get image request: {request}")
         if "user" in request:
             dir_handler = DirectoryHandler(user_name=request["user"])
             user_dir = dir_handler.get_directory(request["user"])[0]
-            logger.debug(f"User: {user_dir}")
             self.user_dir = user_dir
         filename = None
         if os.path.isfile(directory):
@@ -259,7 +256,6 @@ class ImageHandler:
         if directory is None:
             directory = os.path.join(self.user_dir, "outputs")
         else:
-            logger.debug(f"Loading image, using user dir: {self.user_dir} and {directory}")
             if self.user_dir not in directory:
                 directory = os.path.abspath(os.path.join(self.user_dir, directory))
 

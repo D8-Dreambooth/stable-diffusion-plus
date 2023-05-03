@@ -1,5 +1,6 @@
 import base64
 import decimal
+import logging
 import re
 from dataclasses import dataclass
 from io import BytesIO
@@ -23,7 +24,6 @@ class InferSettings:
     controlnet_preprocess = True
     controlnet_type = None
     enable_controlnet = False
-    enable_sag = True
     height: int = 512
     infer_image = None
     infer_mask = None
@@ -34,7 +34,7 @@ class InferSettings:
     prompt: str = ""
     scale: float = 7.5
     seed: int = -1
-    self_attention_guidance = False
+    use_sag = False
     steps: int = 20
     width: int = 512
 
@@ -66,14 +66,21 @@ class InferSettings:
                         value = attribute_type(value)
                     except (ValueError, TypeError):
                         pass
-                elif attribute_type is bool and isinstance(value, str):
-                    if value.lower() == 'true':
-                        value = True
-                    elif value.lower() == 'false':
-                        value = False
-                    else:
+                elif attribute_type is bool:
+                    if isinstance(value, str):
+                        if value.lower() == 'true':
+                            value = True
+                        elif value.lower() == 'false':
+                            value = False
+                        else:
+                            pass
+                    elif isinstance(value, bool):
+                        setattr(self, key, value)
                         pass
-
+                    elif value is None:
+                        value = False
+                else:
+                    pass
             setattr(self, key, value)
 
     def get_controlnet_image(self) -> Union[Image.Image, None]:

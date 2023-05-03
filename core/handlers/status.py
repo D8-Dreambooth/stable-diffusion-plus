@@ -76,9 +76,9 @@ class StatusHandler:
         self.send()
 
     async def cancel(self, data):
+        self.end("Canceled")
         self.status.canceled = True
         shared.status.interrupted = True
-        self.end("Canceled")
 
     def update(self, key=None, value=None, items=None, send=True):
         """

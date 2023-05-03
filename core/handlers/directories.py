@@ -11,7 +11,7 @@ class DirectoryHandler:
     shared_path = None
     protected_path = None
     protected_dirs = ["cache", "config", "users"]
-    shared_dirs = ["models", "extensions", "output", "input", "css"]
+    shared_dirs = ["models", "extensions", "outputs", "input", "css"]
     combine_dirs = ["models", "extensions", "input"]
     logger = None
 

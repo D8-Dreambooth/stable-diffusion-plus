@@ -34,7 +34,6 @@ class FileHandler:
             app.mount("/static", StaticFiles(directory="static"), name="static")
             cls._instance.app = app
             user_dir = dir_handler.get_directory("users")[0]
-            cls._instance.logger.debug(f"USER DIR: {user_dir}")
             cls._instance.user_dir = user_dir
             socket_handler = SocketHandler()
             socket_handler.register("files", cls._instance.pass_dir_content)
@@ -49,7 +48,6 @@ class FileHandler:
                 user_instance.logger = logging.getLogger(f"{__name__}-{user_name}")
                 dir_handler = DirectoryHandler(user_name=user_name)
                 user_dir = dir_handler.get_directory(user_name)[0]
-                user_instance.logger.debug(f"USER DIR: {user_dir}")
                 user_instance.user_dir = user_dir
                 user_instance.app = cls._instance.app
                 socket_handler = SocketHandler()
@@ -66,7 +64,6 @@ class FileHandler:
         data = request["data"]
         thumbs = data["thumbs"] if "thumbs" in data else False
         thumb_size = data["thumb_size"] if "thumb_size" in data else 128
-        self.logger.debug(f"Dir request: {data}")
         res = self.get_dir_content(data["start_dir"], data["include_files"], data["recursive"], data["filter"])
         current_path = os.path.abspath(os.path.join(self.user_dir, data["start_dir"]))
 
@@ -76,9 +73,7 @@ class FileHandler:
             new_res = {}
             for item_path, value in res.items():
                 full_path = os.path.join(self.user_dir, item_path)
-                self.logger.debug(f"Checking if {full_path} is an image")
                 if is_image(full_path):
-                    self.logger.debug("It is an image")
                     value["thumb"], value["tag"] = await self.get_thumbnail(full_path, thumb_size)
                 new_res[item_path] = value
             res = new_res
@@ -94,14 +89,12 @@ class FileHandler:
         data = request["data"]
         # This is the root in which our current path can be combined
         base_dir = self.user_dir.rstrip(os.path.sep)
-        self.logger.debug(f"Base dir: {base_dir}")
         method = data["method"]
         files = data["files"]
         directory = data["dir"].lstrip(os.path.sep)
 
         # Combine the base dir with the directory to get the full path
         full_path = os.path.join(base_dir, directory)
-        self.logger.debug(f"Full path is: {full_path}, method is {method}")
 
         if method == "delete":
             for file in files:
@@ -133,7 +126,6 @@ class FileHandler:
         elif method == "new":
             for file in files:
                 file_path = os.path.join(full_path, file)
-                self.logger.debug(f"Making: {file_path}")
 
                 if not os.path.exists(file_path):
                     os.makedirs(file_path)
@@ -143,7 +135,6 @@ class FileHandler:
 
     async def get_file(self, request: Dict):
         data = request["data"]
-        self.logger.debug(f"File request: {data}")
         file = data["files"]
         thumbs = data["thumbs"] if "thumbs" in data else False
         thumb_size = data["thumb_size"] if "thumb_size" in data else 128
@@ -155,7 +146,6 @@ class FileHandler:
         if isinstance(file, list):
             for check in file:
                 full_file = os.path.abspath(os.path.join(self.user_dir, check))
-                self.logger.debug(f"Full file: {full_file}")
                 if os.path.exists(full_file) and full_file.startswith(self.user_dir):
                     files.append(full_file)
 
@@ -206,7 +196,6 @@ class FileHandler:
 
             # Encode image data in base64 if image can be opened with PIL
             if is_image(filename):
-                self.logger.debug(f"Encoding image: {filename}")
                 try:
                     tag_data = ""
                     with Image.open(filename) as img:
@@ -230,7 +219,6 @@ class FileHandler:
                             right = (width + thumb_size) / 2
                             bottom = (height + thumb_size) / 2
                             img = img.crop((left, top, right, bottom))
-                            self.logger.debug(f"Image size: {img.size} (thumb_size: {thumb_size})")
 
                         if return_pil:
                             file_dict["image"] = img
@@ -267,7 +255,7 @@ class FileHandler:
                         file_dict["data"] = data_data
 
                 except Exception as e:
-                    self.logger.debug(f"Unable to fetch png info: {e}")
+                    self.logger.warning(f"Unable to fetch png info: {e}")
                     traceback.print_exc()
                     pass
 
@@ -276,14 +264,12 @@ class FileHandler:
         return {"files": urls}
 
     def save_file(self, dest_dir, file_name, file_contents):
-        self.logger.debug(f"User dir: {self.user_dir}")
         dir_handler = DirectoryHandler(user_name=self.user_name)
         self.user_dir = dir_handler.get_directory(self.user_name)[0]
 
         # Normalize the dest_dir parameter before joining it with the user directory
         dest_dir = os.path.normpath(dest_dir)
         file_path = os.path.join(self.user_dir, dest_dir, file_name)
-        self.logger.debug(f"We need to save a file from {dest_dir}: {file_path}")
 
         # Open the file and write the contents to it
         with open(file_path, "wb") as f:
@@ -346,11 +332,9 @@ class FileHandler:
         start_dir = os.path.join(self.user_dir, start_dir)
         start_dir = os.path.abspath(start_dir)
         if not start_dir.startswith(self.user_dir) or not os.path.isdir(start_dir):
-            self.logger.error(f"INVALID PATH SPECIFIED: {start_dir}")
             start_dir = self.user_dir
 
         result = {}
-        self.logger.debug(f"Scanning directory: {start_dir}")
 
         for entry in os.scandir(start_dir):
             if filter is not None and entry.is_file():
@@ -358,7 +342,6 @@ class FileHandler:
                     if not entry.name.endswith(filter):
                         continue
                 elif isinstance(filter, list) and len(filter):
-                    self.logger.debug(f"Filtering files with extensions:{entry.name} {filter}")
                     if not any(entry.name.endswith(ext) for ext in filter):
                         continue
 
@@ -381,8 +364,6 @@ class FileHandler:
                 result[ui_path] = entry_data_2
 
         result[".."] = {"path": start_dir.replace(f"{self.user_dir}{os.path.sep}", "")}
-
-        self.logger.debug(f"RES: {result}")
 
         return result
 

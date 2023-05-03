@@ -96,24 +96,19 @@ class ModelHandler:
             return {"models": model_json, "loaded": loaded_model}
 
     async def find_model(self, model_type: str, value: str):
-        logger.debug(f"Trying to find model: {self.listed_models.keys()} and {self.load_params.keys()}")
         if model_type in self.listed_models:
             models = self.listed_models[model_type]
-            logger.debug(f"Using existing list: {models}")
         elif model_type in self.load_params:
             params = self.load_params[model_type]
             models = self.load_models(model_type, **params)
-            logger.debug(f"Loaded model list: {models}")
         else:
             self.logger.warning(f"Can't list models: {model_type}")
             models = self.load_models(model_type)
 
         for model in models:
             if model.name == value or model.hash == value or model.display_name == value or model.path == value:
-                logger.debug(f"Found model: {model}")
                 return model
 
-        logger.debug(f"Can't find model: {value}")
         return None
 
     async def _load_model(self, msg):
@@ -126,7 +121,7 @@ class ModelHandler:
             return {"message": "Unable to deserialize data."}
 
         if "model_type" not in data:
-            self.logger.debug(f"Invalid request: {data}")
+            self.logger.warning(f"Invalid request: {data}")
             return {"message": "Invalid data."}
         else:
             model_type = data["model_type"]
@@ -273,12 +268,11 @@ class ModelHandler:
                 output.append(md)
 
         if len(output) == 0:
-            dest_folder = os.path.join(self.models_path[1], "diffusers", "stable-diffusion-2-1")
+            dest_folder = os.path.join(self.models_path[1], "diffusers", "stable-diffusion-1-5")
             self.logger.info("No diffusion models found. Downloading default.")
-            repo_id = "stabilityai/stable-diffusion-2-1"
-            exclude_files = ["v2-1_768-ema-pruned.ckpt", "v2-1_768-ema-pruned.safetensors",
-                             "v2-1_768-nonema-pruned.ckpt",
-                             "v2-1_768-nonema-pruned.safetensors", "README.md", ".gitattributes", "*.bin", "*.ckpt"]
+            repo_id = "runwayml/stable-diffusion-v1-5"
+            exclude_files = ['.gitattributes', 'Upload', 'v1-5-pruned*', 'README.md', 'Update', 'README.md', "*.bin"]
+
             snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
                               local_dir_use_symlinks=False, ignore_patterns=exclude_files)
             output.append(dest_folder)
@@ -295,9 +289,10 @@ class ModelHandler:
             self.model_finders[model_type] = callback
 
     def load_model(self, model_type: str, model_data: ModelData):
-        self.logger.debug(f"Loading model: {model_data.serialize()}")
+        self.logger.debug(f"Loading model ({model_type}): {model_data.serialize()}")
         if model_type in self.loaded_models:
             loaded_model_data, model = self.loaded_models[model_type]
+            self.logger.debug(f"Loaded model: {loaded_model_data.serialize()} vs {model_data.serialize()}")
             if model_data != loaded_model_data:
                 self.logger.debug(f"Unloading model: {self.loaded_models[model_type]}")
                 del model
@@ -312,10 +307,10 @@ class ModelHandler:
         if model_type == "stable-diffusion":
             target_model = os.path.join(self.models_path, "diffusers", os.path.basename(model_data.path))
             if os.path.exists(target_model):
-                self.logger.debug("Model already extracted.")
+                self.logger.info("Model already extracted.")
                 return target_model
 
-            self.logger.debug("Converting sd model to diffusers.")
+            self.logger.info("Converting sd model to diffusers.")
 
             try:
                 results = extract_checkpoint("test", model_data.path, extract_ema=True, train_unfrozen=True)
@@ -328,7 +323,6 @@ class ModelHandler:
                         dest_path = os.path.join(self.models_path, "diffusers", os.path.basename(model_data.path))
                         if not os.path.exists(dest_path):
                             shutil.copytree(diffusers_path, dest_path)
-                            self.logger.debug("Diffusers copied.")
                     shutil.rmtree(model_dir)
 
             except Exception as e:
@@ -339,7 +333,6 @@ class ModelHandler:
             else:
                 loaded = self.model_loaders[model_type](model_data)
                 if loaded:
-                    self.logger.debug(f"Loaded {model_data}.")
                     if torch.has_cuda:
                         try:
                             loaded = loaded.to("cuda")

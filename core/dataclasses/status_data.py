@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import os.path
 from dataclasses import dataclass
 
 from PIL import Image
@@ -60,7 +61,6 @@ class StatusData:
         self.progress_1_current = self.progress_1_total
         self.progress_2_current = self.progress_2_total
         self.active = False
-        self.canceled = False
 
     def dict(self):
         obj = {}
@@ -87,9 +87,13 @@ class StatusData:
                         for img in value:
                             if isinstance(img, str):
                                 # If the item is a string, assume it's a file path
-                                with open(img, 'rb') as image_file:
-                                    image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                                images.append(f"data:image/jpeg;base64,{image_data}")
+                                try:
+                                    if os.path.exists(img):
+                                        with open(img, 'rb') as image_file:
+                                            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                                        images.append(f"data:image/jpeg;base64,{image_data}")
+                                except:
+                                    pass
                             elif isinstance(img, Image.Image):
                                 # If the item is a PIL image, convert it to bytes and encode as base64
                                 with io.BytesIO() as output:

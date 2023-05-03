@@ -3,7 +3,6 @@ import concurrent.futures
 import logging
 import os
 import random
-import re
 import traceback
 
 import torch
@@ -31,7 +30,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     status_handler = StatusHandler(user_name=user, target=target)
     image_handler = ImageHandler(user_name=user)
     ch = ConfigHandler()
-    logger.debug(f"Infer the things: {inference_settings}")
     status_handler.start(inference_settings.num_images * inference_settings.steps, "Starting inference.")
     # Check if our selected model is loaded, if not, loaded it.
     preprocess_src = None
@@ -51,6 +49,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     # Total images to process?
     total_images = 0
 
+    if inference_settings.use_sag:
+        model_data.data = {"use_sag": True}
+
     # If we're using controlnet, set up images and preprocessing
     if inference_settings.enable_controlnet and inference_settings.controlnet_type:
         for cd in controlnet_data:
@@ -58,14 +59,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 preprocess_src = cd["image_type"]
                 break
 
-        logger.debug("Using controlnet.")
-
-        if inference_settings.enable_sag:
-            model_data.data = {"enable_sag": True}
 
         if inference_settings.controlnet_batch:
             # List files in the batch directory
-            logger.debug("Controlnet batch, baby!")
             batch_dir = inference_settings.controlnet_batch_dir
             file_handler = FileHandler(user_name=user)
             files = file_handler.get_dir_content(batch_dir, True, False, None)
@@ -81,18 +77,15 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             for image in images:
                 file_req = {"data": {"files": image, "return_pil": True}}
                 image_data = await file_handler.get_file(file_req)
-                logger.debug(f"mage data: {image_data}")
                 image = image_data["files"][0]["image"]
                 img_prompt = image_data["files"][0]["data"] if "data" in image_data["files"][0] else None
                 if not img_prompt and inference_settings.controlnet_batch_use_prompt:
                     logger.warning("No prompt found for image, using UI prompt.")
                 else:
                     if inference_settings.controlnet_batch_find and inference_settings.controlnet_batch_replace:
-                        logger.debug("Prompt: " + img_prompt)
                         img_prompt = img_prompt.replace(inference_settings.controlnet_batch_find,
                                                         inference_settings.controlnet_batch_replace)
                         img_prompt = ",".join([img_prompt, inference_settings.prompt])
-                        logger.debug("Swapped Prompt: " + img_prompt)
 
                 control_images.append(image)
                 prompt_in = img_prompt if img_prompt else inference_settings.prompt
@@ -107,7 +100,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     logger.warning("No image to preprocess.")
                     return
                 else:
-                    logger.debug(f"Src res: {src_image.size}")
                     control_images.append(src_image)
             elif preprocess_src == "mask":
                 if not src_mask:
@@ -124,7 +116,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                                          model_name=inference_settings.controlnet_type,
                                                          max_res=max_res,
                                                          process=inference_settings.controlnet_preprocess)
-        logger.debug(f"Control images: {control_images}, prompts: {input_prompts}")
 
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
 
@@ -143,23 +134,22 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     elif inference_settings.mode == "img2img":
         pipeline = model_handler.load_model("diffusers_img2img", model_data)
 
+    if not pipeline:
+        logger.warning("No model selected.")
+        status_handler.update("status", "Unable to load inference pipeline.")
+        return [], []
+
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
 
     input_prompts = input_prompts * inference_settings.num_images
     negative_prompts = negative_prompts * inference_settings.num_images
 
     if len(control_images):
-        logger.debug("Clearing user height, using control image dims.")
         gen_height = 0
         gen_width = 0
         control_images = control_images * inference_settings.num_images
-    logger.debug(f"Final prompts: {input_prompts}")
     total_images = len(input_prompts)
 
-    if pipeline is None:
-        logger.warning("No model selected.")
-        status_handler.update("status", "Unable to load inference pipeline.")
-        return [], []
 
     out_images = []
     out_prompts = []
@@ -179,7 +169,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             # Move the latents tensor to CPU if it's on a different device
             latent = pipeline.decode_latents(latents)
             converted = pipeline.numpy_to_pil(latent)
-            logger.debug(f"Images are: {type(converted)}")
             # Update the progress status handler with the new items
             status_handler.update(items={
                 "latents": converted,
@@ -187,7 +176,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             status_handler.step(preview_steps)
 
         total_images = len(input_prompts)
-        logger.debug(f"We need {total_images} images.")
         original_controls = control_images
         while len(out_images) < total_images:
             batch_size = inference_settings.batch_size
@@ -271,7 +259,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     kwargs["height"] = gen_height
                 if gen_width > 0:
                     kwargs["width"] = gen_width
-                logger.debug(f"kwargs: {kwargs}")
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
 
             pbar.update(len(s_image))
@@ -292,7 +279,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             if current_total > total_images:
                 current_total = total_images
             status_handler.update(items={
-                "status": f"Generating {current_total}/{total_images} images.", "images": out_images, "prompts": out_prompts},
+                "status": f"Generating {current_total}/{total_images} images.", "images": s_image, "prompts": prompts},
                 send=True)
 
     except Exception as e:
