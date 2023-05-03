@@ -17,13 +17,12 @@ os.environ["SAFETENSORS_FAST_GPU"] = "1"
 # Set up logging
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger("launch")
-logging.getLogger('PIL').setLevel(logging.WARNING)
-logging.getLogger('accelerate').setLevel(logging.WARNING)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
+to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio"]
+for skip in to_skip:
+    logging.getLogger(skip).setLevel(logging.WARNING)
 
 # Set base path
 base_path = os.path.abspath(os.path.dirname(__file__))
-logger.debug(f"Script path: {base_path}")
 
 launch_settings_path = os.path.join(base_path, "launch_settings.json")
 
@@ -33,20 +32,18 @@ if not os.path.exists(launch_settings_path):
 
 # Check that we're on Python 3.10
 if sys.version_info < (3, 10):
-    logger.debug("Please upgrade your python version to 3.10 or higher.")
+    logger.error("Please upgrade your python version to 3.10 or higher.")
     sys.exit()
 
 
 # Placeholder functionality
 def install_extensions():
-    logger.debug("Checking extension installations...")
+    pass
 
 
 def run(command, desc=None, errdesc=None, custom_env=None, live=False):
-    logger.debug(f"Executing shell command: {command}")
     if desc:
         logger.debug(desc)
-
     try:
         if live:
             result = subprocess.run(command, shell=True, env=custom_env or os.environ, check=True)
@@ -152,24 +149,22 @@ def main():
     git_path = find_git()
 
     if git_path:
-        logger.debug(f"Got git git: {git_path}")
         if not os.path.exists(dreambooth_path):
-            logger.debug("Cloning dreambooth repository.")
+            logger.info("Cloning dreambooth repository...")
             # Clone dreambooth repository
             branch = launch_settings.get("dreambooth_branch", "dev")
             clone_command = [git_path, "clone", "-b", branch,
                              "https://github.com/d8ahazard/sd_dreambooth_extension.git",
                              dreambooth_path]
-            logger.debug(f"Clone command: {clone_command}")
             subprocess.run(clone_command, check=True)
         else:
-            logger.debug("Updating dreambooth repository.")
+            logger.info("Updating dreambooth repository...")
             # Fetch changes from dreambooth repository
             fetch_command = [git_path, "fetch", "origin"]
-            subprocess.run(fetch_command, cwd=dreambooth_path, check=True)
+            subprocess.run(fetch_command, cwd=dreambooth_path)
             # Pull changes from dreambooth repository
             pull_command = [git_path, "pull", "origin", "HEAD"]
-            subprocess.run(pull_command, cwd=dreambooth_path, check=True)
+            subprocess.run(pull_command, cwd=dreambooth_path)
     else:
         if not os.path.exists(dreambooth_path):
             logger.warning("Unable to find git, and dreambooth is not installed. Training will not be available.")
@@ -215,7 +210,6 @@ def main():
         do_install = False
 
     if do_install:
-        logger.info(f"Installing the things: {install_command}")
         run(install_command, "Installing the things.")
 
     return port, python, venv_dir

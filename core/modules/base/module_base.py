@@ -63,7 +63,6 @@ class BaseModule:
                     with open(full_file_path) as f:
                         file_key = file.replace(".json", "")
                         file_data = json.load(f)
-                        logger.debug(f"Check/set default config: {file_key}")
                         # Tries to set default values for a module if none exist
                         config_handler.set_default_config(file_data, file_key, False)
                 except Exception as e:

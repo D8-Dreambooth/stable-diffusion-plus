@@ -20,14 +20,12 @@ class SettingsModule(BaseModule):
         super().__init__(self.name, self.path)
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
-        logger.debug("Init settings module.")
         socket_handler = SocketHandler()
         socket_handler.register("get_settings", self.get_settings)
         socket_handler.register("set_settings", self.set_settings)
         socket_handler.register("change_password", self.update_password)
 
     async def get_settings(self, req):
-        logger.debug(f"Get settings request: {req}")
         user = req.get("user", None)
         ch = ConfigHandler()
         shared_config, protected_config = ch.get_all_protected()
@@ -36,12 +34,10 @@ class SettingsModule(BaseModule):
         if "users" in protected_config.keys():
             for user, ud in protected_config["users"].items():
                 users.append(ud)
-        logger.debug(f"Use data and user: {user_data} {user}")
         pc = {"users": [user_data]}
         if user:
             if user_data:
                 is_admin = user_data.get("admin", False)
-                logger.debug(f"USER: {user_data}")
                 if is_admin:
                     pc = protected_config
                     sorted_users = sorted(users, key=lambda u: u.get("name") != user)
@@ -52,11 +48,9 @@ class SettingsModule(BaseModule):
                         if u.get("name") == user:
                             u.pop("admin", None)
                             pc["users"].append(u)
-            logger.debug(f"USER: {user}")
         return {"status": "ACK ACK", "shared": shared_config, "protected": pc}
 
     async def set_settings(self, req):
-        logger.debug(f"Set settings request: {req}")
         data = req["data"] if "data" in req else {}
         section = data.get("section", None)
         key = data.get("key", None)
@@ -65,12 +59,9 @@ class SettingsModule(BaseModule):
         if section and key and value is not None:
             key = key.replace(" ", "_")
             section = section.replace(" ", "_")
-            logger.debug("We have all values...")
             if section == "core" or section == "users":
-                logger.debug(f"Set protected: {section}")
                 updated = self.config_handler.set_item_protected(key, value, section)
             else:
-                logger.debug(f"Set shared: {section}")
                 updated = self.config_handler.set_item(key, value, section)
 
         status = {"status": "Updated" if updated else "Invalid key or section", "key": key, "value": value}
@@ -81,8 +72,6 @@ class SettingsModule(BaseModule):
         ch = ConfigHandler()
         user_data = ch.get_item_protected(user, "users", None)
         is_admin = False
-        logger.debug(f"Use data and user: {user_data} {user}")
-        pc = {"users": [user_data]}
         if user:
             if user_data:
                 is_admin = user_data.get("admin", False)

@@ -21,7 +21,6 @@ class ImportExportModule(BaseModule):
         self._initialize_websocket(handler)
 
     def _initialize_websocket(self, handler: SocketHandler):
-        logger.debug("Initializing websocket for Tagger module...")
         super()._initialize_websocket(handler)
         handler.register("save_caption", _save_caption)
 
