@@ -1,3 +1,7 @@
+:root {
+    --inline-button-distance: 10px;
+}
+
 .inline-gallery {
     position: relative;
     width: 100%;
@@ -42,8 +46,8 @@
     max-height: 25%;
     opacity: 0.5;
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: var(--inline-button-distance);
+    right: var(--inline-button-distance);
     border: 1px solid var(--secondary-accent-color);
     border-radius: 5px;
 }
@@ -60,6 +64,7 @@
 
 .preview-container.hidden {
     display: none;
+    z-index: 0;
 }
 
 .gallery-container *:focus {
@@ -125,17 +130,17 @@
     font-family: 'boxicons';
 }
 
-.left-arrow {
-    left: 15px;
+.left-arrow, .fullscreen-button {
+    left: var(--inline-button-distance);
 }
 
-.right-arrow {
-    right: 15px;
+.right-arrow, .download-button {
+    right: var(--inline-button-distance);
 }
 
 .fullscreen-button,
 .download-button {
-    top: 10px;
+    top: var(--inline-button-distance);
 }
 
 .fullscreen-button::before {
@@ -148,13 +153,7 @@
     font-family: 'boxicons';
 }
 
-.fullscreen-button {
-    left: 10px;
-}
 
-.download-button {
-    right: 10px;
-}
 
 
 .thumbnail-container::-webkit-scrollbar {
