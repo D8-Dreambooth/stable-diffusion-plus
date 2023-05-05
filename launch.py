@@ -8,7 +8,6 @@ import subprocess
 import sys
 from multiprocessing import freeze_support
 
-import uvicorn
 
 sys.path.append(os.getcwd())
 
@@ -216,18 +215,7 @@ def main():
     return port, python, venv_dir
 
 
-def launch_server(lp):
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=lp,
-        reload=True,
-        workers=1,
-        app_dir=os.getcwd()
-    )
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     listen_port, python, base = main()
     # Prepend the venv's bin directory to the PATH environment variable if linux, otherwise prepend the Scripts
     # directory
@@ -255,6 +243,9 @@ if __name__ == '__main__':
     sys.real_prefix = sys.prefix
     sys.prefix = base
 
+    import uvicorn
     freeze_support()
-
-    launch_server(listen_port)
+    uvicorn.run("app.main:app", port=listen_port, reload=True, access_log=False, host="0.0.0.0")
+    logger.debug("Uvicorn run run?")
+else:
+    logger.debug(f"Uvicorn run not run: {__name__}")
