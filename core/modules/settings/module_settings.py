@@ -23,7 +23,6 @@ class SettingsModule(BaseModule):
         socket_handler = SocketHandler()
         socket_handler.register("get_settings", self.get_settings)
         socket_handler.register("set_settings", self.set_settings)
-        socket_handler.register("change_password", self.update_password)
 
     async def get_settings(self, req):
         user = req.get("user", None)

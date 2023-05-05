@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 import shutil
+import site
 import subprocess
 import sys
 from multiprocessing import freeze_support
@@ -215,18 +216,45 @@ def main():
     return port, python, venv_dir
 
 
-if __name__ == '__main__':
-    listen_port, python, venv = main()
-    if python != sys.executable:
-        # Relaunch this script with the correct python
-        logger.info(f"Relaunching with {python}")
-        os.execv(python, [python, __file__] + sys.argv[1:])
-    freeze_support()
+def launch_server(lp):
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=listen_port,
+        port=lp,
         reload=True,
-        workers=4,
+        workers=1,
         app_dir=os.getcwd()
     )
+
+
+if __name__ == '__main__':
+    listen_port, python, base = main()
+    # Prepend the venv's bin directory to the PATH environment variable if linux, otherwise prepend the Scripts
+    # directory
+    if sys.platform == "win32":
+        os.environ["PATH"] = os.pathsep.join([os.path.join(base, "Scripts"), os.environ.get("PATH", "")])
+    else:
+        os.environ["PATH"] = os.pathsep.join([os.path.join(base, "bin"), os.environ.get("PATH", "")])
+
+    # Set the VIRTUAL_ENV environment variable
+    os.environ["VIRTUAL_ENV"] = base
+
+    # Add the venv's site-packages directory to sys.path
+    prev_length = len(sys.path)
+    # If Windows, add Lib\site-packages to sys.path, otherwise add lib/pythonX.X/site-packages
+    if sys.platform == "win32":
+        site.addsitedir(os.path.join(base, "Lib", "site-packages"))
+    else:
+        lib_folders = ["lib/python{}".format(sys.version[:3]), "lib/python{}-packages".format(sys.version[:3])]
+        for lib in lib_folders:
+            path = os.path.join(base, lib)
+            site.addsitedir(path)
+    sys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]
+
+    # Set the sys.real_prefix and sys.prefix variables
+    sys.real_prefix = sys.prefix
+    sys.prefix = base
+
+    freeze_support()
+
+    launch_server(listen_port)

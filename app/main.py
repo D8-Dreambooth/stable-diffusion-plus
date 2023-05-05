@@ -8,12 +8,15 @@ import traceback
 from typing import Dict
 
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
+from fastapi.params import Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette import status
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
 
+from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 from core.handlers.cache import CacheHandler
 from core.handlers.config import ConfigHandler
 from core.handlers.directories import DirectoryHandler
@@ -24,10 +27,9 @@ from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
 from core.handlers.queues import QueueHandler
 from core.handlers.status import StatusHandler
+from core.handlers.users import UserHandler, User, get_current_active_user
 from core.handlers.websocket import SocketHandler
-from app.auth.auth_helpers import User, get_current_active_user, authenticate_user, create_access_token
 from .library.helpers import *
-from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 
 # If running linux, disable torch2 dynamo
 if os.name == "posix":
@@ -130,20 +132,19 @@ def load_settings():
     handlers = [
         logging.StreamHandler(sys.stdout)
     ]
-    logging.basicConfig(level=level, handlers=handlers, format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', force=True)
+    logging.basicConfig(level=level, handlers=handlers, format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s',
+                        force=True)
     config_handler = ConfigHandler()
     user_auth = config_handler.get_item_protected("user_auth", "core", False)
 
 
 def initialize_app():
     global config_handler, active_modules, active_extensions
-    user_auth = config_handler.get_item("user_auth", "core", False)
     # Create master config handler
     config_handler = ConfigHandler()
-    users = config_handler.get_config_protected("users")
-
     queue_handler = QueueHandler(10)
-    socket_handler = SocketHandler(app, user_auth)
+    user_handler = UserHandler(config_handler)
+    socket_handler = SocketHandler(app, user_handler)
 
     # Register config handler callbacks
     socket_handler.register("get_config", config_handler.socket_get_config)
@@ -151,21 +152,13 @@ def initialize_app():
     socket_handler.register("get_config_item", config_handler.socket_get_config_item)
     socket_handler.register("set_config_item", config_handler.socket_set_config_item)
 
-    status_handler = StatusHandler(socket_handler)
+    StatusHandler(socket_handler)
     # Now create the other handlers, which use our dirs vars from above
-    file_handler = FileHandler(app)
-    models_handler = ModelHandler()
-    image_handler = ImageHandler()
-    cache_handler = CacheHandler()
-
-    if users:
-        for user in users.keys():
-            DirectoryHandler(user_name=user)
-            StatusHandler(user_name=user)
-            FileHandler(user_name=user)
-            ModelHandler(user_name=user)
-            ImageHandler(user_name=user)
-
+    FileHandler(app)
+    ModelHandler()
+    ImageHandler()
+    CacheHandler()
+    user_handler.initialize(app, socket_handler)
     # Now that all the other handlers are alive, initialize modules and extensions
     module_handler = ModuleHandler(os.path.join(app_path, "core", "modules"), socket_handler)
     extension_handler = ExtensionHandler()
@@ -183,6 +176,8 @@ def initialize_app():
     for module_name, module in active_modules.items():
         logger.info(f"Initializing module: {module_name}")
         module.initialize(app, socket_handler)
+
+    return user_handler
 
 
 # Determine our absolute path
@@ -218,7 +213,8 @@ templates = Jinja2Templates(directory="templates")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-initialize_app()
+user_handler = initialize_app()
+logger.debug("App initialized")
 
 
 def get_session(request: Request):
@@ -238,13 +234,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, user_data: Dict = Depends(get_current_active_user)):
-    config_handler = ConfigHandler()
-    user_auth = config_handler.get_item_protected("user_auth", "core", False)
-    current_user = user_data.get("name", None) if user_data else None
+    logger.debug(f"Incoming request: {request}")
+    logger.debug(f"User data: {user_data}")
+    current_user = user_data["name"] if user_data else None
     dh = DirectoryHandler(current_user)
-    if user_auth:
-
-        if current_user:
+    if user_handler.user_auth:
+        if current_user and not user_data["disabled"]:
             # User is logged in, show the usual home page
             css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, user_data["admin"])
             timestamp = int(time.time())
@@ -285,10 +280,12 @@ async def handle_login(request: Request, response: Response, form_data: dict):
     username = form_data.get("username")
     password = form_data.get("password")
 
-    if authenticate_user(username, password):
-        access_token = create_access_token(data={"sub": username})
+    if user_handler.authenticate_user(username, password):
+        logger.debug("AUTHENTICATED")
+        access_token = user_handler.create_access_token(data={"sub": username})
+        logger.debug("TOKEN CREATED")
         response.set_cookie(key="access_token", value=access_token)
-
+        logger.debug(f"COOKIE SET, returning: {access_token}")
         # Get the URL for the home page
         return JSONResponse({"access_token": access_token})
 
@@ -321,6 +318,33 @@ async def login(request: Request):
             "css_files": css_files
         }
     )
+
+
+@app.post("/token")
+async def token(
+        grant_type: str = Form(...),
+        username: str = Form(...),
+        password: str = Form(...),
+):
+    if grant_type != "password":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid grant_type",
+        )
+    logger.debug(f"Verifying: {username} and {password}")
+    if user_handler.authenticate_user(username, password):
+        logger.debug("AUTHENTICATED")
+        access_token = user_handler.create_access_token(data={"sub": username})
+        logger.debug("TOKEN CREATED")
+        response = JSONResponse({"access_token": access_token, "token_type": "bearer"})
+        response.set_cookie(key="access_token", value=access_token)
+        logger.debug(f"COOKIE SET, returning: {access_token}")
+        return response
+
+    # Return a 401 if we don't return a token
+    response = JSONResponse({"error": "invalid_grant", "error_description": "Invalid username or password"})
+    response.status_code = 401
+    return response
 
 
 @app.get("/whoami")

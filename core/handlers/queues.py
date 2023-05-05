@@ -17,6 +17,7 @@ class QueueHandler:
             cls._instance.workers = []
 
             for i in range(num_workers):
+                
                 thread_logger = logging.getLogger(f"{__name__}.worker.{i}")
                 t = Thread(target=cls._instance.run_coroutine, args=(cls._instance.execute_jobs, thread_logger))
                 cls._instance.workers.append(t)

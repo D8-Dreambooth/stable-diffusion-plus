@@ -14,6 +14,7 @@ class OAuth2PasswordBearerCookie(OAuth2):
             scopes: dict = None,
             auto_error: bool = True,
     ):
+
         if not scopes:
             scopes = {}
         flows = OAuthFlowsModel(password={"tokenUrl": token_url, "scopes": scopes})

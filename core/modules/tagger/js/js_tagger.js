@@ -4,7 +4,7 @@ let lastSelected = null;
 
 const taggerModule = new Module("Tagger", "moduleTagger", "purchase-tag-alt", false, -1, initTagger);
 function initTagger() {
-    console.log("Loading tagger module.");
+    console.log("Loading module: ", taggerModule.name);
     imageFileBrowser = new FileBrowser(document.getElementById("tagImageFileSelect"), {
         "file_type": "image",
         "showSelectButton": true,

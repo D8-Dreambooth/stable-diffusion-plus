@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import traceback
+from contextlib import asynccontextmanager
 from typing import Dict, List
 
 import jwt
@@ -9,9 +10,9 @@ from jwt import PyJWTError
 from starlette.status import HTTP_403_FORBIDDEN
 from starlette.websockets import WebSocketDisconnect
 
-from app.auth.auth_helpers import get_user, TokenData, SECRET_KEY, ALGORITHM
 from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 from core.handlers.queues import QueueHandler
+from core.handlers.users import UserHandler, TokenData, get_user
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,8 @@ class ConnectionManager:
                 return
 
         disconnected = []
+        if "reload" in message["name"]:
+            logger.debug(f"Broadcasting: {message}")
         for connection in message_targets:
             try:
                 await connection.send_json(message)
@@ -82,15 +85,17 @@ class SocketHandler:
     manager = None
     queue = None
     _user_auth = False
+    user_handler = None
     queue_handler = None
     oauth2_scheme = OAuth2PasswordBearerCookie(token_url="/token")
 
-    def __new__(cls, app=None, user_auth=False):
+    def __new__(cls, app=None, user_handler: UserHandler = None):
         if cls._instance is None and app is not None:
             cls._instance = super(SocketHandler, cls).__new__(cls)
             cls._instance._init(app)
-            cls._instance._user_auth = user_auth
-            cls._instance.manager = ConnectionManager(user_auth)
+            cls._instance.user_handler = user_handler
+            cls._instance._user_auth = user_handler.user_auth
+            cls._instance.manager = ConnectionManager(user_handler.user_auth)
             cls._instance.queue = app.message_queue
 
             @app.on_event("startup")
@@ -98,7 +103,7 @@ class SocketHandler:
                 asyncio.create_task(cls._instance.consume_queue())
         return cls._instance
 
-    def __init__(self, app=None, user_auth=False):
+    def __init__(self, app=None, user_handler: UserHandler = None):
         if self.queue_handler is None:
             self.queue_handler = QueueHandler()
 
@@ -153,15 +158,17 @@ class SocketHandler:
                     username = None
                     if csrf_token:
                         csrf_token = csrf_token.split(" ")[1]
-                        payload = jwt.decode(csrf_token, SECRET_KEY, algorithms=[ALGORITHM])
+                        payload = jwt.decode(csrf_token, self.user_handler.secret,
+                                             algorithms=[self.user_handler.algorithm])
+                        logger.debug(f"Socket payload: {payload}")
                         username: str = payload.get("sub")
                     if username is None:
                         raise credentials_exception
-                    token_data = TokenData(username=username)
+                    token_data = TokenData(name=username)
                 except PyJWTError:
                     await websocket.close(code=1000, reason="Could not validate credentials")
                     return
-                user = get_user(username=token_data.username)
+                user = get_user(user=token_data.name)
                 if user is None:
                     await websocket.close(code=1000, reason="Could not validate credentials")
                     return

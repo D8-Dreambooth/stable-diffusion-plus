@@ -8,9 +8,9 @@ from huggingface_hub import snapshot_download
 from starlette.responses import JSONResponse
 
 from core.handlers.models import ModelHandler
+from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class ImportExportModule(BaseModule):
         self._initialize_websocket(handler)
 
     def _initialize_api(self, app: FastAPI):
-        @app.get(f"/{self.name}/import")
+        @app.get(f"/io/import")
         async def import_model(
                 api_key: str = Query("", description="If an API key is set, this must be present.", )) -> \
                 JSONResponse:
@@ -70,7 +70,8 @@ class ImportExportModule(BaseModule):
             exclude_files = ["*.md", ".gitattributes"]
             if model_type == "diffusers":
                 include_files = ["*.safetensors", "*.json", "*.txt", "*.yaml", "*.yml"]
-                exclude_files = ["*-pruned.ckpt", "*-pruned.safetensors", "README.md", ".gitattributes", "*.bin", "*.ckpt"]
+                exclude_files = ["*-pruned.ckpt", "*-pruned.safetensors", "README.md", ".gitattributes", "*.bin",
+                                 "*.ckpt"]
             snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
                               local_dir_use_symlinks=False, allow_patterns=include_files, ignore_patterns=exclude_files)
         else:
@@ -99,12 +100,18 @@ class ImportExportModule(BaseModule):
 async def _import_model(data):
     msg_id = data["id"]
     logger.debug(f"Model import: {data}")
-    model_data = data["data"] if "data" in data else None
+    model_data = data.get("data")
+    user = None
+    if "user" in data:
+        user = data["user"]
+
+    if user:
+        sh = StatusHandler(user_name=user)
+        sh.update("status", f"Extracting model {model_data}...")
     if model_data:
         from dreambooth.sd_to_diff import extract_checkpoint
         model_name = model_data["name"]
         model_path = model_data["path"]
-        is_512 = model_data["is_512"] if "is_512" in model_data else False
-        asyncio.create_task(extract_checkpoint(model_name, model_path, is_512=is_512, from_hub=False))
+        is_512 = model_data.get("is_512", False)
+        await asyncio.to_thread(extract_checkpoint, model_name, model_path, is_512=is_512, from_hub=False)
     return {"name": "extraction_started", "message": "Extraction started.", "id": msg_id}
-

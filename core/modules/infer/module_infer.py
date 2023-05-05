@@ -26,7 +26,7 @@ class InferenceModule(BaseModule):
         self._initialize_websocket(handler)
 
     def _initialize_api(self, app: FastAPI):
-        @app.get(f"/{self.name}/infer")
+        @app.get(f"/inference/infer")
         async def create_image(
                 api_key: str = Query("", description="If an API key is set, this must be present.", )) -> \
                 JSONResponse:

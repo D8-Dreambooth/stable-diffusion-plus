@@ -10,7 +10,7 @@ from core.modules.base.module_base import BaseModule
 logger = logging.getLogger(__name__)
 
 
-class ImportExportModule(BaseModule):
+class TaggerModule(BaseModule):
 
     def __init__(self):
         self.name: str = "Tagger"

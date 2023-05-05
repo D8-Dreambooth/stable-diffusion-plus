@@ -22,7 +22,7 @@ class ExtensionModule(BaseModule):
         self._initialize_websocket(handler)
 
     def _initialize_api(self, app: FastAPI):
-        @app.get(f"/{self.name}/extension")
+        @app.get(f"/extensions/test")
         async def extension_test(
                 api_key: str = Query("", description="If an API key is set, this must be present.", )) -> \
                 JSONResponse:

@@ -1,9 +1,11 @@
 class BootstrapSlider {
     constructor(parentElement, options) {
-        this.min = (options.hasOwnProperty("min")) ? parseInt(options.min) : 1;
-        this.max = (options.hasOwnProperty("max")) ? parseInt(options.max) : 150;
-        this.step = (options.hasOwnProperty("step")) ? parseFloat(options.step) : 1;
-        this.value = (options.hasOwnProperty("value")) ? parseInt(options.value) : this.min;
+
+        this.min = (options.hasOwnProperty("min")) ? (Number.isInteger(options.min) ? options.min : parseFloat(options.min)) : 1;
+        this.max = (options.hasOwnProperty("max")) ? (Number.isInteger(options.max) ? options.max : parseFloat(options.max)) : 150;
+        this.step = (options.hasOwnProperty("step")) ? (Number.isInteger(options.step) ? options.step : parseFloat(options.step)) : 1;
+        this.value = (options.hasOwnProperty("value")) ? (Number.isInteger(options.value) ? options.value : parseFloat(options.value)) : this.min;
+
         this.visible = (options.hasOwnProperty("visible")) ? options.visible : true;
         this.interactive = (options.hasOwnProperty("interactive")) ? options.interactive : true;
         this.label = (options.hasOwnProperty("label")) ? options.label : "";
@@ -119,16 +121,16 @@ class BootstrapSlider {
 
 $.fn.BootstrapSlider = function () {
     const defaultOptions = {
-        min: this.data.hasOwnProperty("min") ? this.data["min"] : 1,
-        max: this.data.hasOwnProperty("max") ? this.data["max"] : 150,
-        step: this.data.hasOwnProperty("step") ? this.data["step"] : 1,
-        value: this.data.hasOwnProperty("value") ? this.data["value"] : null,
+        min: this.data.hasOwnProperty("min") ? (Number.isInteger(this.data["min"]) ? this.data["min"] : parseFloat(this.data["min"])) : 1,
+        max: this.data.hasOwnProperty("max") ? (Number.isInteger(this.data["max"]) ? this.data["max"] : parseFloat(this.data["max"])) : 150,
+        step: this.data.hasOwnProperty("step") ? (Number.isInteger(this.data["step"]) ? this.data["step"] : parseFloat(this.data["step"])) : 1,
+        value: this.data.hasOwnProperty("value") ? (Number.isInteger(this.data["value"]) ? this.data["value"] : parseFloat(this.data["value"])) : this.data.hasOwnProperty("max") ? (Number.isInteger(this.data["max"]) ? this.data["max"] : parseFloat(this.data["max"])) : 150,
         visible: this.data.hasOwnProperty("visible") ? this.data["visible"] : true,
         interactive: this.data.hasOwnProperty("interactive") ? this.data["interactive"] : true,
         label: this.data.hasOwnProperty("label") ? this.data["label"] : "Sampling steps",
-        elem_id: this.data.hasOwnProperty("elem-id") ? this.data["elem-id"] : "item-" + generateRandomString(8),
-
+        elem_id: this.data.hasOwnProperty("elem-id") ? this.data["elem-id"] : "item-" + generateRandomString(8)
     };
+
 
     this.each(function () {
         const $this = $(this);

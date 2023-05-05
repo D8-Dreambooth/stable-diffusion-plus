@@ -158,12 +158,22 @@ class ModelHandler:
         output = []
 
         # Save these for later so when "refresh" is called, we can reload.
-        self.load_params[model_type] = {
-            "model_url": model_url,
-            "ext_include": ext_include,
-            "ext_exclude": ext_exclude,
-            "download_name": download_name
-        }
+        if "_" in model_type:
+            model_types = model_type.split("_")
+            for mt in model_types:
+                self.load_params[mt] = {
+                    "model_url": model_url,
+                    "ext_include": ext_include,
+                    "ext_exclude": ext_exclude,
+                    "download_name": download_name
+                }
+        else:
+            self.load_params[model_type] = {
+                "model_url": model_url,
+                "ext_include": ext_include,
+                "ext_exclude": ext_exclude,
+                "download_name": download_name
+            }
 
         if "diffusers" in model_type:
             diff_dirs = self.load_diffusion_models("dreambooth" in model_type)
@@ -218,18 +228,33 @@ class ModelHandler:
         return output
 
     def refresh(self, model_type: str):
-        if model_type not in self.load_params:
-            self.logger.warning("Unable to refresh model: ", model_type)
-        else:
-            params = self.load_params[model_type]
-            reloaded = self.load_models(model_type, **params)
-            msg = {
-                "name": "reload_models",
-                "model_type": model_type,
-                "models": reloaded,
-                "user": self.user_name
-            }
-            self.socket_handler.manager.broadcast(msg)
+        model_types = [model_type] if not "_" in model_type else model_type.split("_")
+        data = {}
+        model_json = []
+        loaded_model = None
+        for model_type in model_types:
+            if model_type in self.model_finders:
+                model_list = self.model_finders[model_type](data, self)
+            else:
+                model_list = self.load_models(model_type=model_type)
+
+            self.listed_models[model_type] = model_list
+            model_jsons = [model.serialize() for model in model_list]
+            model_json.extend(model_jsons)
+            if model_type in self.loaded_models:
+                model_data, _ = self.loaded_models[model_type]
+                loaded_model = model_data.hash
+        data = {"models": model_json, "loaded": loaded_model}
+        listed = self.list_models({"model_type": model_type})
+        msg = {
+            "name": "reload_models",
+            "model_type": model_type,
+            "data": data,
+            "listed": listed,
+            "user": self.user_name
+        }
+        logger.debug(f"Broadcasting: {msg}")
+        self.socket_handler.manager.broadcast(msg)
 
     def load_diffusion_models(self, load_dreambooth: bool = False) -> List[str]:
         model_directories = []

@@ -266,7 +266,6 @@ class FileHandler:
     def save_file(self, dest_dir, file_name, file_contents):
         dir_handler = DirectoryHandler(user_name=self.user_name)
         self.user_dir = dir_handler.get_directory(self.user_name)[0]
-
         # Normalize the dest_dir parameter before joining it with the user directory
         dest_dir = os.path.normpath(dest_dir)
         file_path = os.path.join(self.user_dir, dest_dir, file_name)
@@ -274,6 +273,7 @@ class FileHandler:
         # Open the file and write the contents to it
         with open(file_path, "wb") as f:
             f.write(file_contents)
+        return file_path
 
     async def get_thumbnail(self, filename, thumb_size):
         tag_data = ""

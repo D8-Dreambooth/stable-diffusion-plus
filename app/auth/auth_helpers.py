@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from typing import Dict, Union
+from typing import Optional
 
 import jwt
 from fastapi import Depends, HTTPException
@@ -15,7 +15,7 @@ from core.handlers.config import ConfigHandler
 basic_auth = BasicAuth(auto_error=False)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearerCookie(token_url="/token")
+oauth2_scheme = OAuth2PasswordBearerCookie(token_url="/login")
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -28,10 +28,9 @@ class Token(BaseModel):
 
 class User(BaseModel):
     username: str
-    email: str = None
-    full_name: str = None
-    disabled: bool = None
-
+    disabled: bool = False
+    admin: bool = False
+    password: Optional[str] = None
 
 class TokenData(BaseModel):
     username: str = None
@@ -45,14 +44,21 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(username: str) -> Union[Dict, None]:
+def get_user(username: str) -> Optional[User]:
     config_handler = ConfigHandler()
-    return config_handler.get_item_protected(username, "users", None)
+    user_dict = config_handler.get_item_protected(username, "users", None)
+    if user_dict is None:
+        return None
+    return User(**user_dict)
 
 
 def authenticate_user(username: str, password: str):
     user = get_user(username)
-    user_hash = user.get("pass", None)
+    if user is None:
+        return False
+    if password is None:
+        return False
+    user_hash = user.password
     if not user_hash:
         return False
     if not verify_password(password, user_hash):
