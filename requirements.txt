@@ -43,6 +43,6 @@ torch==2.0.0
 torchvision==0.15.1
 tqdm~=4.65.0
 transformers~=4.28.1
-uvicorn~=0.22.0
+uvicorn~=0.21.1
 websockets~=11.0.2
 xformers~=0.0.19
