@@ -8,32 +8,8 @@ import subprocess
 import sys
 from multiprocessing import freeze_support
 
-
-sys.path.append(os.getcwd())
-
-# Make safetensors faster
-os.environ["SAFETENSORS_FAST_GPU"] = "1"
-
-# Set up logging
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger("launch")
-to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio"]
-for skip in to_skip:
-    logging.getLogger(skip).setLevel(logging.WARNING)
-
-# Set base path
-base_path = os.path.abspath(os.path.dirname(__file__))
-
-launch_settings_path = os.path.join(base_path, "launch_settings.json")
-
-if not os.path.exists(launch_settings_path):
-    conf_src = os.path.join(base_path, "conf_src")
-    shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
-
-# Check that we're on Python 3.10
-if sys.version_info < (3, 10):
-    logger.error("Please upgrade your python version to 3.10 or higher.")
-    sys.exit()
 
 
 # Placeholder functionality
@@ -53,6 +29,7 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
                                     env=custom_env or os.environ, check=True)
             return result.stdout.decode(encoding='utf8', errors='ignore')
     except Exception as e:
+
         message = f"{errdesc or 'Error running command'}. Command: {command} Error code: {e.returncode}\n"
         message += f"stdout: {e.stdout.decode(encoding='utf8', errors='ignore') or '<empty>'}\n"
         message += f"stderr: {e.stderr.decode(encoding='utf8', errors='ignore') or '<empty>'}\n"
@@ -61,6 +38,29 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
 
 
 def main():
+    sys.path.append(os.getcwd())
+
+    # Make safetensors faster
+    os.environ["SAFETENSORS_FAST_GPU"] = "1"
+
+    # Set up logging
+    to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio"]
+    for skip in to_skip:
+        logging.getLogger(skip).setLevel(logging.WARNING)
+
+    # Set base path
+    base_path = os.path.abspath(os.path.dirname(__file__))
+    launch_settings_path = os.path.join(base_path, "launch_settings.json")
+
+    if not os.path.exists(launch_settings_path):
+        conf_src = os.path.join(base_path, "conf_src")
+        shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
+
+    # Check that we're on Python 3.10
+    if sys.version_info < (3, 10):
+        logger.error("Please upgrade your python version to 3.10 or higher.")
+        sys.exit()
+
     # Load launch settings
     with open(os.path.join(base_path, "launch_settings.json"), "r") as ls:
         launch_settings = json.load(ls)
@@ -76,7 +76,6 @@ def main():
     venv_dir = None
     python = sys.executable
 
-    user_venv = None
     default_venv = os.path.join(base_path, "venv")
     if "venv" in launch_settings:
         user_venv = launch_settings["venv"]
@@ -145,7 +144,6 @@ def main():
 
     # Define the dreambooth repository path
     dreambooth_path = os.path.join(base_path, "core", "modules", "dreambooth")
-    annotators_path = os.path.join(base_path, "core", "modules", "infer", "src", "annotators")
     git_path = find_git()
 
     if git_path:
@@ -161,10 +159,10 @@ def main():
             logger.info("Updating dreambooth repository...")
             # Fetch changes from dreambooth repository
             fetch_command = [git_path, "fetch", "origin"]
-            subprocess.run(fetch_command, cwd=dreambooth_path)
+            subprocess.run(fetch_command, cwd=dreambooth_path, check=True)
             # Pull changes from dreambooth repository
             pull_command = [git_path, "pull", "origin", "HEAD"]
-            subprocess.run(pull_command, cwd=dreambooth_path)
+            subprocess.run(pull_command, cwd=dreambooth_path, check=True)
     else:
         if not os.path.exists(dreambooth_path):
             logger.warning("Unable to find git, and dreambooth is not installed. Training will not be available.")
@@ -184,11 +182,6 @@ def main():
 
     if reqs.difference(frozen) and not os.path.exists("workspace/stable-diffusion-plus"):
         do_install = True
-
-    # Install torch stuff
-    torch_command = None
-    if "torch_command" in launch_settings:
-        torch_command = launch_settings["torch_command"]
 
     if sys.platform == "win32":
         activate = os.path.join(venv_dir, "Scripts", "activate.bat")
@@ -244,8 +237,6 @@ if __name__ == "__main__":
     sys.prefix = base
 
     import uvicorn
+
     freeze_support()
     uvicorn.run("app.main:app", port=listen_port, reload=True, access_log=False, host="0.0.0.0")
-    logger.debug("Uvicorn run run?")
-else:
-    logger.debug(f"Uvicorn run not run: {__name__}")

@@ -126,14 +126,6 @@ def load_settings():
         level = logging.DEBUG
         logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
     directory_handler = DirectoryHandler(app_path, launch_settings)
-    log_dir = os.path.join(directory_handler.protected_path, "logs")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    handlers = [
-        logging.StreamHandler(sys.stdout)
-    ]
-    logging.basicConfig(level=level, handlers=handlers, format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s',
-                        force=True)
     config_handler = ConfigHandler()
     user_auth = config_handler.get_item_protected("user_auth", "core", False)
 
@@ -142,7 +134,7 @@ def initialize_app():
     global config_handler, active_modules, active_extensions
     # Create master config handler
     config_handler = ConfigHandler()
-    queue_handler = QueueHandler(10)
+    queue_handler = QueueHandler(4)
     user_handler = UserHandler(config_handler)
     socket_handler = SocketHandler(app, user_handler)
 
@@ -333,12 +325,9 @@ async def token(
         )
     logger.debug(f"Verifying: {username} and {password}")
     if user_handler.authenticate_user(username, password):
-        logger.debug("AUTHENTICATED")
         access_token = user_handler.create_access_token(data={"sub": username})
-        logger.debug("TOKEN CREATED")
         response = JSONResponse({"access_token": access_token, "token_type": "bearer"})
         response.set_cookie(key="access_token", value=access_token)
-        logger.debug(f"COOKIE SET, returning: {access_token}")
         return response
 
     # Return a 401 if we don't return a token
