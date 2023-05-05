@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, FastAPI
 from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from starlette.responses import JSONResponse
 from starlette.status import HTTP_403_FORBIDDEN
 
 from app.auth.basic_auth import BasicAuth
@@ -141,27 +142,54 @@ class UserHandler:
         return cls._instance
 
     def initialize(self, app: FastAPI, handler):
-        from core.handlers.websocket import SocketHandler
         handler.register("change_password", self.update_password)
         logger.debug("Initializing user handler endpoint")
 
         # Add an endpoint to fastAPI for updating the user data
         @app.post("/users/user")
         async def update_user(user: User, current_user: User = Depends(get_current_user)):
-            if not current_user.admin or current_user.disabled:
+            if current_user.disabled:
                 raise HTTPException(status_code=403, detail="Not enough privileges")
             user_data = user.dict()
             logger.debug(f"Update user request: {user_data}")
+            existing_users = self.config_handler.get_config_protected("users")
+            existing_user = None
+            message = ""
+            updated_users = []
+            for ex_user in existing_users:
+                if ex_user["name"] == user_data["name"]:
+                    existing_user = ex_user
+                    break
+                updated_users.append(ex_user)
+
+            if not current_user.admin:
+                # Don't allow non-admins to create users
+                if not existing_user:
+                    raise HTTPException(status_code=403, detail="Not enough privileges")
+                # Don't allow non-admins to change the data of other users
+                if existing_user["name"] != current_user.name:
+                    raise HTTPException(status_code=403, detail="Not enough privileges")
+                # Don't allow non-admins to upgrade themselves to admin
+                if user.admin:
+                    raise HTTPException(status_code=403, detail="Not enough privileges")
+
             if "password" in user_data:
                 password = user_data.pop("password")
                 if not password.startswith("$2") and not password.startswith("$3"):
                     # if password is not already hashed, hash it using bcrypt
                     hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
                     user_data["password"] = hashed_password.decode()
-                else:
-                    user_data["password"] = password
-            # update user data in the database or elsewhere
-            return User(**user_data).__dict__
+                    message = f"User {user_data['name']} created"
+
+            if existing_user:
+                for key in existing_user:
+                    existing_user[key] = user_data[key]
+                user_data = existing_user
+                message = f"User {existing_user['name']} updated"
+
+            updated_users.append(user_data)
+            self.config_handler.set_item_protected("users", updated_users)
+            return JSONResponse(status_code=200, content={"message": message, "user": user_data})
 
         self.register_users()
 

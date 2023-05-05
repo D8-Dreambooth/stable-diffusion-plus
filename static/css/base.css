@@ -523,8 +523,7 @@ input[type="number"]:active::-webkit-inner-spin-button{
     }
 
     .loginCard {
-        width: 90%;
-        margin: 0 auto;
+        margin: 0 auto !important;
     }
 
     .loginCard .card-title {
