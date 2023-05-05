@@ -10,6 +10,7 @@ bitsandbytes @ https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bi
 bitsandbytes==0.38.1; os_name != 'nt'
 compel
 controlnet-aux~=0.0.3
+dadaptation==2.0
 deepface
 diffusers==0.16.1
 discord-webhook~=1.1.0
