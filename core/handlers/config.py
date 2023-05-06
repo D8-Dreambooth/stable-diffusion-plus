@@ -2,6 +2,7 @@ import inspect
 import os
 import json
 import logging
+import re
 import shutil
 from typing import Dict, Tuple
 
@@ -14,18 +15,58 @@ class ConfigHandler:
     _instance = None
     _shared_dir = None
     _protected_dir = None
+    _user_dir = None
+    _base_defaults = None
+    _user_defaults = None
     config_shared = {}
     config_protected = {}
+    user_instances = {}
 
-    def __new__(cls):
+    def __new__(cls, user_name=None):
         if cls._instance is None:
             cls._instance = super(ConfigHandler, cls).__new__(cls)
             dir_handler = DirectoryHandler()
             cls._instance._shared_dir = os.path.join(dir_handler.shared_path, "config")
             cls._instance._protected_dir = os.path.join(dir_handler.protected_path, "config")
+            cls._instance._base_defaults = os.path.join(dir_handler.protected_path, "defaults")
             cls._instance._create_directories()
             cls._instance._check_defaults(dir_handler.app_path)
             cls._instance._enumerate_configs()
+
+        if user_name is not None:
+            if user_name not in cls.user_instances:
+                valid_user = None
+                user_data = cls._instance.get_config_protected("users")
+                logger.debug(f"User data: {user_data}")
+                if user_name in user_data:
+                    valid_user = user_data[user_name]
+                if valid_user is None:
+                    logger.error(f"User {user_name} not found")
+                    return None
+                disabled = False if "disabled" not in valid_user else valid_user["disabled"]
+                if disabled:
+                    logger.error(f"User {user_name} is disabled")
+                    return None
+                user_instance = super(ConfigHandler, cls).__new__(cls)
+                dir_handler = DirectoryHandler()
+                user_instance._shared_dir = os.path.join(dir_handler.shared_path, "config")
+                if valid_user["admin"]:
+                    user_instance._protected_dir = os.path.join(dir_handler.protected_path, "config")
+                else:
+                    user_instance._protected_dir = None
+                user_instance._user_dir = os.path.join(dir_handler.protected_path, "users", user_name, "config")
+                user_instance._base_defaults = os.path.join(dir_handler.protected_path, "users", user_name, "defaults")
+                # Enumerate all files in cls._base_defaults and copy to user defaults if not already present
+                user_instance._create_directories()
+
+                for file in os.listdir(cls._instance._base_defaults):
+                    target = os.path.join(user_instance._base_defaults, file)
+                    if not os.path.isfile(target):
+                        shutil.copy(os.path.join(cls._instance._base_defaults, file), target)
+                user_instance._check_defaults(dir_handler.app_path)
+                user_instance._enumerate_configs()
+                cls.user_instances[user_name] = user_instance
+            return cls.user_instances[user_name]
 
         return cls._instance
 
@@ -75,6 +116,15 @@ class ConfigHandler:
             if not os.path.exists(dst_path):
                 shutil.copy(src_path, dst_path)
 
+    def set_module_default(self, file, module_name):
+        # Strip any characters from module_name that are not valid in a path
+        module_name = re.sub(r'[^a-zA-Z0-9]', '', module_name)
+        default_file = os.path.join(self._base_defaults, f"{module_name}.json")
+        # Copy file to default_file if it doesn't exist
+        if not os.path.exists(default_file):
+            logger.debug(f"Copying {file} to {default_file}")
+            shutil.copy(file, default_file)
+
     def _create_directories(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
@@ -83,7 +133,10 @@ class ConfigHandler:
             os.makedirs(self._shared_dir)
         if not os.path.exists(self._protected_dir):
             os.makedirs(self._protected_dir)
-
+        if self._user_dir and not os.path.exists(self._user_dir):
+            os.makedirs(self._user_dir)
+        if not os.path.exists(self._base_defaults):
+            os.makedirs(self._base_defaults)
         if os.path.samefile(self._shared_dir, self._protected_dir):
             raise ValueError("The shared and protected directories cannot be the same.")
 
@@ -232,4 +285,3 @@ class ConfigHandler:
         logger.debug(f"Writing: {target_file}")
         with open(target_file, "w") as cfg_out:
             json.dump(data, cfg_out, indent=4)
-

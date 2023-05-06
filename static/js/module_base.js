@@ -12,7 +12,7 @@ class Module {
         registerModule(this);
     }
 
-    async init(systemConfig, moduleDefaults) {
+    async init(systemConfig, moduleDefaults, locales) {
         this.systemConfig = systemConfig;
         this.moduleDefaults = moduleDefaults;
         let module_id = this.id;
@@ -81,7 +81,36 @@ class Module {
         if (this.init_method !== null) {
             this.init_method();
         }
+        this.localize(locales);
         console.log("Initialized module: ", module_id, systemConfig);
+    }
+
+    localize(module_locales) {
+        const container = document.getElementById(this.id);
+        const labelMap = {};
+        console.log("Localizing module: ", this.id, module_locales);
+        for (let i = 0; i < module_locales.length; i++) {
+            let locale = module_locales[i];
+            labelMap[locale.label] = {
+                title: locale.title,
+                description: locale.description,
+                translation: locale.translation || null,
+            };
+        }
+        console.log("MAP: ", labelMap);
+        const elements = container.querySelectorAll("*");
+        elements.forEach((element) => {
+            const label = element.innerHTML.trim();
+            if (label !== "" && labelMap[label]) {
+                let {title, description, translation} = labelMap[label];
+                console.log("Setting attributes: ", label, title, description, translation);
+                if (title) element.setAttribute("title", title);
+                if (description) element.setAttribute("data-description", description);
+                if (translation) {
+                    element.innerHTML = translation;
+                }
+            }
+        });
     }
 
     async reload() {

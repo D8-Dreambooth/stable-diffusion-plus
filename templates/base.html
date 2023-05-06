@@ -133,8 +133,7 @@
 {% for js in js_files %}
 <script src="{{ js }}?v={{ timestamp }}"></script>
 {% endfor %}
-
-
+<script type="application/json" id="locale-data">{{ locales|safe }}</script>
 {% endblock %}
 
 </body>

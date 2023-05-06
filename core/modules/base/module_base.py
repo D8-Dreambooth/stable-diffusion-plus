@@ -31,6 +31,21 @@ class BaseModule:
     def get_files(self):
         return self.css_files, self.js_files, self.custom_files, self.source
 
+    def get_locale(self, lang: str = "en"):
+        templates_dir = os.path.join(self.path, "templates")
+        locale_data = None
+        logger.debug("Looking for template dir: %s", templates_dir)
+        if os.path.exists(templates_dir):
+            locale_file = os.path.join(templates_dir, f"titles_{lang}.json")
+            logger.debug(f"Looking for locale file {locale_file}")
+            if os.path.exists(locale_file):
+                try:
+                    with open(locale_file, "r") as f:
+                        locale_data = json.load(f)
+                except Exception as e:
+                    logger.error(f"Failed to load locale file {locale_file}: {e}")
+        return locale_data
+
     def _enum_files(self):
         css_dir = os.path.join(self.path, "css")
         js_dir = os.path.join(self.path, "js")
@@ -48,11 +63,18 @@ class BaseModule:
                     continue
                 full_file = os.path.abspath(os.path.join(file_dir, file))
                 output.append(full_file)
+
         return css_files, js_files, custom_files
 
     def _set_defaults(self):
         config_dir = os.path.join(self.path, "config")
+        templates_dir = os.path.join(self.path, "templates")
+        # Get default system language
         config_handler = ConfigHandler()
+        if os.path.exists(templates_dir):
+            default_file = os.path.join(templates_dir, f"defaults.json")
+            if os.path.exists(default_file):
+                config_handler.set_module_default(default_file, self.name)
         if os.path.exists(config_dir):
             files = os.listdir(config_dir)
             for file in files:

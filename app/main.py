@@ -55,16 +55,18 @@ dirs = {}
 logger = logging.getLogger(__name__)
 
 
-def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
-    config_handler = ConfigHandler()
+def get_files(dir_handler: DirectoryHandler, theme_only=False, user_data: User = None):
+    file_config_handler = ConfigHandler(user_name=user_data["name"] if user_data is not None else None)
     css_files = []
     js_files = []
     js_files_ext = []
     custom_files = []
+    locales = {}
     html = []
     dict_idx = 0
+    is_admin = False if user_data is None else user_data["admin"]
 
-    theme = config_handler.get_item_protected("theme", default="theme-default")
+    theme = file_config_handler.get_item_protected("theme", default="theme-default")
     system_css = os.path.join(app_path, "static", "css")
     user_css = dir_handler.get_directory("css")[0]
 
@@ -77,13 +79,14 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
             css_files.append(os.path.join(mount_path, os.path.basename(theme_check)))
             app.mount(mount_path, StaticFiles(directory=file_dir), name="static")
     if theme_only:
-        return css_files, js_files, js_files_ext, custom_files, html
-
+        return css_files, js_files, js_files_ext, custom_files, html, locales
+    user_lang = file_config_handler.get_item("language", "core", default="en")
     for active_dict in (active_modules, active_extensions):
         for module_name, module in active_dict.items():
             if module_name == "Settings" and not is_admin:
                 continue
-
+            locale_data = getattr(module, "get_locale", user_lang)()
+            locales[module_name] = locale_data if locale_data is not None else {}
             for dest, attr in [(css_files, "css_files"), (js_files, "js_files"), (custom_files, "custom_files")]:
                 if attr == "js_files" and dict_idx == 1:
                     dest = js_files_ext
@@ -99,8 +102,8 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, is_admin=False):
                 with open(module.source, "r") as file:
                     html.append(file.read())
             dict_idx += 1
-
-    return css_files, js_files, js_files_ext, custom_files, html
+    locales = json.dumps(locales)
+    return css_files, js_files, js_files_ext, custom_files, html, locales
 
 
 def load_settings():
@@ -233,7 +236,7 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
     if user_handler.user_auth:
         if current_user and not user_data["disabled"]:
             # User is logged in, show the usual home page
-            css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, user_data["admin"])
+            css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, False, user_data)
             timestamp = int(time.time())
             return templates.TemplateResponse(
                 "base.html",
@@ -244,7 +247,8 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
                     "js_files_ext": js_files_ext,
                     "custom_files": custom_files,
                     "module_html": html,
-                    "timestamp": timestamp
+                    "timestamp": timestamp,
+                    "locales": locales
                 }
             )
         else:
@@ -253,7 +257,7 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
             return RedirectResponse(url="/login")
     else:
         # Authentication not required, show the usual home page
-        css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, True)
+        css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, False, None)
         return templates.TemplateResponse(
             "base.html",
             {
@@ -302,7 +306,7 @@ async def login(request: Request):
     # If user is not logged in, show login page
     # User is logged in, show the usual home page
     dh = DirectoryHandler()
-    css_files, js_files, js_files_ext, custom_files, html = get_files(dh, True)
+    css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, True)
     return templates.TemplateResponse(
         "login.html",
         {

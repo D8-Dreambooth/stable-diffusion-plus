@@ -43,8 +43,6 @@ class ModuleHandler:
             }
         return {"module_data": module_data}
 
-
-
     def initialize_modules(self):
         for root, dirs, files in os.walk(self.module_dir):
             for mod_dir in dirs:
