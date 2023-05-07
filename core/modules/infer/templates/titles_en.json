@@ -1,0 +1,111 @@
+{
+  "module": {
+    "label": "Infer",
+    "title": "Generate images using diffusion models."
+  },
+  "inferModel_select": {
+    "label": "Model Selection",
+    "description": "Select Inference Model",
+    "title": "Choose the pre-trained model to use for generating images."
+  },
+  "startInfer": {
+    "label": "Generate",
+    "description": "Start Inference",
+    "title": "Begin generating images based on the selected model and settings."
+  },
+  "stopInfer": {
+    "label": "Cancel",
+    "description": "Stop Inference",
+    "title": "Stop the current image generation process."
+  },
+  "aspectButtons": {
+    "label": "Aspect Ratio",
+    "description": "Choose Aspect Ratio",
+    "title": "Select the desired aspect ratio for the generated images."
+  },
+  "infer_prompt": {
+    "label": "Prompt",
+    "description": "Input Prompt",
+    "title": "Enter a prompt to guide the image generation process."
+  },
+  "infer_negative_prompt": {
+    "label": "Negative Prompt",
+    "description": "Input Negative Prompt",
+    "title": "Enter a negative prompt to guide the image generation process."
+  },
+  "infer_txt2img": {
+    "label": "Txt2Img",
+    "description": "Text-to-Image Generation",
+    "title": "Generate images from text prompts using a pre-trained model."
+  },
+  "infer_inpaint": {
+    "label": "Inpaint",
+    "description": "Image Inpainting",
+    "title": "Fill in missing or corrupted parts of an image using a pre-trained model."
+  },
+  "infer_img2img": {
+    "label": "Img2Img",
+    "description": "Image-to-Image Translation",
+    "title": "Translate images from one domain to another using a pre-trained model."
+  },
+  "inpaintEditor": {
+    "label": "Input Image:",
+    "description": "Upload Input Image",
+    "title": "Upload an image to use as input for the inpainting model."
+  },
+  "infer_seed": {
+    "label": "Seed",
+    "description": "Random Seed",
+    "title": "Enter a random seed value to use for the image generation process."
+  },
+  "infer_sag": {
+    "label": "Self-Attention-Guidance",
+    "description": "Enable Self-Attention Guidance",
+    "title": "Use self-attention guidance during the image generation process."
+  },
+  "enableControlNet": {
+    "label": "Enable ControlNet",
+    "description": "Enable Control Network",
+    "title": "Enable the use of a control network during the image generation process."
+  },
+  "controlnetType": {
+    "label": "Controlnet Type:",
+    "description": "Choose Control Network Type",
+    "title": "Select the type of control network to use for the image generation process."
+  },
+  "controlnetPreProcess": {
+    "label": "Preprocess",
+    "description": "Enable Control Network Preprocessing",
+    "title": "Enable preprocessing of the input images before using them with the control network."
+  },
+  "controlnetBatchInput": {
+    "label": "Batch Input",
+    "description": "Upload Batch Input Images",
+    "title": "Upload a batch of images to use as input for the control network."
+  },
+  "controlnetEditor": {
+    "label": "Input Image:",
+    "description": "Upload Input Image",
+    "title": "Upload an image to use as input for the control network."
+  },
+  "autoLoadResolutionOn": {
+    "label": "Auto-load resolution:",
+    "description": "Enable Auto-Loading Resolution",
+    "title": "Automatically load the input image's resolution to use as output resolution for the control network."
+  },
+  "controlnetBatchUsePrompt": {
+    "label": "Use prompt from input images:",
+    "description": "Use Prompt from Input Images",
+    "title": "Use the prompts specified in the input images for the image generation process."
+  },
+  "controlnetBatchFind": {
+    "label": "Find:",
+    "description": "Find Text",
+    "title": "Enter the text to search for in the control network's input images."
+  },
+  "controlnetBatchReplace": {
+    "label": "Replace:",
+    "description": "Replace Text",
+    "title": "Enter the replacement text for the control network's input images."
+  }
+}

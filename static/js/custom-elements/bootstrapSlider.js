@@ -33,6 +33,7 @@ class BootstrapSlider {
         this.labelWrapper.appendChild(this.labelElement);
 
         this.labelText = document.createElement("span");
+        this.labelText.setAttribute("for", this.elem_id);
         this.labelText.classList.add("text-gray-500", "mb-2", "col-11", "fit");
         this.labelText.title = options.title || "How many times to improve the generated image iteratively; higher values take longer; very low values can produce bad results";
         this.labelText.innerText = this.label;
@@ -54,8 +55,7 @@ class BootstrapSlider {
 
         this.rangeInput = document.createElement("input");
         this.rangeInput.type = "range";
-        this.rangeInput.id = "range_id_0";
-        this.rangeInput.name = "wtf";
+        this.rangeInput.id = this.elem_id;
         this.rangeInput.classList.add("w-full", "disabled:cursor-not-allowed");
         this.rangeInput.min = this.min;
         this.rangeInput.max = this.max;

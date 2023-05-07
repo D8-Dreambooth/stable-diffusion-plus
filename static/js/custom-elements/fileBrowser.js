@@ -992,8 +992,8 @@ class FileBrowser {
             let aVal = a.dataset[this.sortType];
             let bVal = b.dataset[this.sortType];
             if (this.sortType === "name") {
-                aVal = a.dataset["path"];
-                bVal = b.dataset["path"];
+                aVal = b.dataset["path"];
+                bVal = a.dataset["path"];
             } else if (this.sortType === "size") {
                 aVal = parseInt(aVal);
                 bVal = parseInt(bVal);

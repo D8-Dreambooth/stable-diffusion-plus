@@ -9,6 +9,7 @@ class Module {
         this.reload_method = reload_method;
         this.systemConfig = null;
         this.moduleDefaults = null;
+        this.moduleLink = null;
         registerModule(this);
     }
 
@@ -46,7 +47,7 @@ class Module {
         newModule.appendChild(icon);
         newModule.appendChild(name);
         navList.appendChild(newModule);
-
+        this.moduleLink = newModule;
         newModule.addEventListener("click", function () {
             showPane(module_id);
         });
@@ -87,30 +88,66 @@ class Module {
 
     localize(module_locales) {
         const container = document.getElementById(this.id);
-        const labelMap = {};
-        console.log("Localizing module: ", this.id, module_locales);
-        for (let i = 0; i < module_locales.length; i++) {
-            let locale = module_locales[i];
-            labelMap[locale.label] = {
-                title: locale.title,
-                description: locale.description,
-                translation: locale.translation || null,
-            };
-        }
-        console.log("MAP: ", labelMap);
         const elements = container.querySelectorAll("*");
+        console.log("Localizing module: ", this.id, module_locales);
+        let mapped = {};
+        if (module_locales["module"]) {
+            console.log("Got module locale: ", module_locales["module"]);
+            let {label, title} = module_locales["module"];
+            if (label) {
+                this.moduleLink.querySelector(".nav_name").innerHTML = label;
+            }
+            if (title) {
+                this.moduleLink.setAttribute("title", title);
+            }
+        }
         elements.forEach((element) => {
-            const label = element.innerHTML.trim();
-            if (label !== "" && labelMap[label]) {
-                let {title, description, translation} = labelMap[label];
-                console.log("Setting attributes: ", label, title, description, translation);
-                if (title) element.setAttribute("title", title);
-                if (description) element.setAttribute("data-description", description);
-                if (translation) {
-                    element.innerHTML = translation;
+            let elem_id = null;
+            if(element.hasAttribute("for")) {
+                elem_id = element.getAttribute("for");
+            }
+            if (elem_id === null) return;
+            console.log("Checking: ", elem_id);
+            let d = "";
+            let t = "";
+            let l = "";
+            let ls = element.innerHTML.split("\n");
+            let lt = [];
+            for (let i = 0; i < ls.length; i++) {
+                let line = ls[i];
+                if (line.trim() !== "") {
+                    lt.push(line.trim());
+                    break;
                 }
             }
+            l = lt.join(" ");
+            l = l.trim();
+            if (module_locales[elem_id]) {
+                let {label, title, description} = module_locales[elem_id];
+                console.log("Setting attributes: ", l, label, title, description);
+                if (title) {
+                    t = title;
+                    element.setAttribute("title", title);
+                }
+                if (description) {
+                    d = description;
+                    element.setAttribute("data-description", description);
+                }
+                if (label) {
+                    l = label;
+                    element.innerHTML = label;
+                }
+            }
+            if (l !== "" && l.indexOf("<") === -1) {
+                mapped[elem_id] = {
+                        label: l,
+                        title: t,
+                        description: d
+                    };
+            }
         });
+        localData[this.id] = mapped;
+        console.log("MAPPED: ", mapped);
     }
 
     async reload() {

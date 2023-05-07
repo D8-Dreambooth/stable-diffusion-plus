@@ -25,6 +25,39 @@ class BaseModule:
         icon_path = os.path.join(self.path, "logo.png")
         if not os.path.exists(icon_path):
             icon_path = None
+        templates_dir = os.path.join(self.path, "templates")
+        locale_data = None
+        logger.debug("Looking for template dir: %s", templates_dir)
+        if os.path.exists(templates_dir):
+            ch = ConfigHandler()
+            existing_locales = ch.get_item_protected(self.name, "locales", {})
+            updated = False
+            for file in os.listdir(templates_dir):
+                if ".json" not in file or "titles" not in file:
+                    continue
+                logger.debug("Loading locale file: %s", file)
+                with open(os.path.join(templates_dir, file), "r") as f:
+                    locale_data = json.load(f)
+                file_key = file.replace(".json", "")
+                file_key = file_key.replace("titles_", "")
+                # Loop through default locales and add missing keys, remove extra keys
+                if file_key in existing_locales:
+                    existing_locale = existing_locales[file_key]
+                    for key, value in locale_data.items():
+                        if key not in existing_locale:
+                            updated = True
+                            existing_locale[key] = value
+                    for key, value in existing_locale.items():
+                        if key not in locale_data:
+                            updated = True
+                            existing_locale.pop(key)
+                    existing_locales[file_key] = existing_locale
+                else:
+                    updated = True
+                    existing_locales[file_key] = locale_data
+            if updated:
+                ch.set_item_protected(self.name, existing_locales, "locales")
+
         self.icon = icon_path
         self._set_defaults()
 
@@ -32,18 +65,12 @@ class BaseModule:
         return self.css_files, self.js_files, self.custom_files, self.source
 
     def get_locale(self, lang: str = "en"):
-        templates_dir = os.path.join(self.path, "templates")
-        locale_data = None
-        logger.debug("Looking for template dir: %s", templates_dir)
-        if os.path.exists(templates_dir):
-            locale_file = os.path.join(templates_dir, f"titles_{lang}.json")
-            logger.debug(f"Looking for locale file {locale_file}")
-            if os.path.exists(locale_file):
-                try:
-                    with open(locale_file, "r") as f:
-                        locale_data = json.load(f)
-                except Exception as e:
-                    logger.error(f"Failed to load locale file {locale_file}: {e}")
+        ch = ConfigHandler()
+        locales_data = ch.get_item_protected(self.name, "locales", {})
+        logger.debug("Locales data: %s", locales_data)
+        locale_data = {}
+        if lang in locales_data:
+            locale_data = locales_data[lang]
         return locale_data
 
     def _enum_files(self):

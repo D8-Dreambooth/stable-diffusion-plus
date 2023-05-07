@@ -54,7 +54,7 @@ class ModelSelect {
     }
 
     async refresh() {
-        this.selectElement.innerHTML = "Loading...";
+        //this.selectElement.innerHTML = "Loading...";
         let modelList = await sendMessage("models", {
             model_type: this.model_type,
             ext_include: this.ext_include,

@@ -115,6 +115,8 @@ class ConfigHandler:
             dst_path = os.path.join(self._protected_dir, file)
             if not os.path.exists(dst_path):
                 shutil.copy(src_path, dst_path)
+            else:
+                self.update_keys(src_path, dst_path)
 
     def set_module_default(self, file, module_name):
         # Strip any characters from module_name that are not valid in a path
@@ -124,6 +126,31 @@ class ConfigHandler:
         if not os.path.exists(default_file):
             logger.debug(f"Copying {file} to {default_file}")
             shutil.copy(file, default_file)
+        else:
+            self.update_keys(file, default_file)
+
+    def update_keys(self, template_path, live_path):
+        # Load the template and live JSON data from files
+        with open(template_path, "r") as template_file:
+            template = json.load(template_file)
+        with open(live_path, "r") as live_file:
+            live = json.load(live_file)
+
+        # Create sets of keys for the template and live JSON objects
+        template_keys = set(template.keys())
+        live_keys = set(live.keys())
+
+        # Remove extra keys in the live JSON object that are not in the template
+        for key in live_keys - template_keys:
+            del live[key]
+
+        # Add missing keys to the live JSON object from the template
+        for key in template_keys - live_keys:
+            live[key] = template[key]
+
+        # Save the updated live JSON data to file
+        with open(live_path, "w") as live_file:
+            json.dump(live, live_file, indent=4)
 
     def _create_directories(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
@@ -250,19 +277,12 @@ class ConfigHandler:
 
         if section_key is None:
             section_key = "core"
-        logger.debug(f"Updating: {section_key} {key} {value} {is_protected}")
+        logger.debug(f"Updating: {section_key}-{key} {value} {is_protected}")
         if section_key not in config_dict:
-            return False
-        section_config = config_dict[section_key]
-        logger.debug(f"Section config: {section_config}")
-
-        if key in section_config.keys():
-            config_dict[section_key][key] = value
-            self._save_config_file(section_key, config_dict[section_key], is_protected)
-            return True
-        else:
-            logger.debug(f"Section key not in dict {section_key}: {config_dict}")
-            return False
+            config_dict[section_key] = {}
+        config_dict[section_key][key] = value
+        self._save_config_file(section_key, config_dict[section_key], is_protected)
+        return True
 
     def _set_config_dict(self, config, section_key, is_protected=False):
         self._enumerate_configs()

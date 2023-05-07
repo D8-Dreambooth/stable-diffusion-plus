@@ -1,17 +1,14 @@
-import asyncio
 import base64
-import os
 import logging
+import os
 from typing import Dict
 
 import cv2
-from PIL import Image
 from deepface import DeepFace
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from fastapi.params import Depends
 from starlette.responses import JSONResponse
 
-from core.handlers.file import FileHandler
 from core.handlers.images import ImageHandler
 from core.handlers.status import StatusHandler
 from core.handlers.users import User, get_current_active_user
@@ -26,7 +23,7 @@ class AnalyzeModule(BaseModule):
 
     def __init__(self):
         # Rename this variable to match your module name
-        self.name: str = "Analyze Module"
+        self.name: str = "Analyze"
         self.path = os.path.abspath(os.path.dirname(__file__))
         super().__init__(self.name, self.path)
 

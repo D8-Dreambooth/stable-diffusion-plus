@@ -130,6 +130,10 @@ def load_settings():
         logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
     directory_handler = DirectoryHandler(app_path, launch_settings)
     config_handler = ConfigHandler()
+    cpu_only = config_handler.get_item_protected("cpu_only", "core", False)
+    if cpu_only:
+        from dreambooth import shared
+        shared.force_cpu = True
     user_auth = config_handler.get_item_protected("user_auth", "core", False)
 
 

@@ -1,0 +1,26 @@
+{
+  "module": {
+    "label": "Analyze",
+    "title": "Analyze the output fidelity of generated images."
+  },
+  "analyzeFileSelect": {
+    "label": "Select Directory",
+    "title": "",
+    "description": ""
+  },
+  "analyzeFileContent": {
+    "label": "Target Image",
+    "title": "",
+    "description": ""
+  },
+  "analyzeFileButton": {
+    "label": "Analyze",
+    "title": "",
+    "description": ""
+  },
+  "analyzeFileOutput": {
+    "label": "Output",
+    "title": "",
+    "description": ""
+  }
+}

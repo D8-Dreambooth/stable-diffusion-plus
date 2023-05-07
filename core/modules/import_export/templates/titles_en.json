@@ -1,0 +1,41 @@
+{
+  "module": {
+    "label": "Import/Export",
+    "title": "Import Diffusion Models, Convert Checkpoints"
+  },
+  "convUse512": {
+    "label": "Model is 512x",
+    "title": "",
+    "description": ""
+  },
+  "startExtract": {
+    "label": "Extract",
+    "title": "",
+    "description": ""
+  },
+  "startCompile": {
+    "label": "Compile",
+    "title": "",
+    "description": ""
+  },
+  "downloadModelUrl": {
+    "label": "Model Name",
+    "title": "",
+    "description": ""
+  },
+  "downloadModelType": {
+    "label": "Model Type",
+    "title": "",
+    "description": ""
+  },
+  "downloadModelName": {
+    "label": "Model Name",
+    "title": "",
+    "description": ""
+  },
+  "startModelDownload": {
+    "label": "Download",
+    "title": "",
+    "description": ""
+  }
+}

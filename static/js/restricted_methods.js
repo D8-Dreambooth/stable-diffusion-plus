@@ -2,6 +2,7 @@
 let moduleIds = {};
 let modules = [];
 let loadDiv = $(".loading");
+let localData = {};
 // region ModuleHandling
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -45,7 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         }
-
+        console.log("Local data: ", localData);
         fitty(".fit",
             {
                 minSize: 10,

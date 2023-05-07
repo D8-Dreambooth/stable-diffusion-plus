@@ -1,0 +1,21 @@
+{
+  "module": {
+    "label": "Tagger",
+    "title": "Rapid editing of image captions."
+  },
+  "imageRecurse": {
+    "label": "Recurse",
+    "title": "Recurse Subdirectories",
+    "description": "If checked, this option will search for images in subdirectories of the selected directory."
+  },
+  "autoSave": {
+    "label": "Auto-Save",
+    "title": "Auto-Save Captions",
+    "description": "If checked, this option will automatically save any captions applied to the images."
+  },
+  "imageCaption": {
+    "label": "Caption",
+    "title": "Apply Captions",
+    "description": "Enter captions for the selected images in the text box provided"
+  }
+}
