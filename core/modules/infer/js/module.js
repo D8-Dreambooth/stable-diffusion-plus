@@ -218,13 +218,14 @@ function inferInit() {
             controlnetSelect.add(option);
         }
     });
+    getInferSettings();
+    console.log("Infer settings: ", inferSettings);
 }
 
 
 function getSelectedText(input) {
     return input.value.substring(input.selectionStart, input.selectionEnd);
 }
-
 
 
 function increaseWeight() {
@@ -327,7 +328,6 @@ function addRatioCards() {
     });
 }
 
-
 function setResolution(ratio) {
     const maxRes = userConfig["max_resolution"];
     const [widthRatio, heightRatio] = ratio.split(":");
@@ -357,61 +357,7 @@ async function startInference() {
     } else {
         let promptEl = document.getElementById("infer_prompt");
         let negEl = document.getElementById("infer_negative_prompt");
-        let seedEl = document.getElementById("infer_seed");
-        let enableControlNet = document.getElementById("enableControlNet");
-        let controlnetType = document.getElementById("controlnetType");
-        let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
-        let enableSag = document.getElementById("infer_sag");
-        let controlnet_mask = controlnetImageEditor.getMask();
-        let controlnet_image = controlnetImageEditor.getDropped();
-        let infer_mask = inpaintImageEditor.getMask();
-        let infer_image = inpaintImageEditor.getDropped();
-
-        const radioButtons = document.getElementsByName('inferMode');
-        let inferMode = 'txt2img';
-
-        for (let i = 0; i < radioButtons.length; i++) {
-            if (radioButtons[i].checked) {
-                inferMode = radioButtons[i].value;
-                break;
-            }
-        }
-        inferSettings.mode = inferMode;
-        inferSettings.model = model;
-        inferSettings.prompt = promptEl.value;
-        inferSettings.negative_prompt = negEl.value;
-        inferSettings.seed = parseInt(seedEl.value);
-        inferSettings.scale = scaleTest.value;
-        inferSettings.use_sag = enableSag.checked;
-        inferSettings.steps = parseInt(stepTest.value);
-        inferSettings.num_images = parseInt(numImages.value);
-        inferSettings.batch_size = parseInt(batchSize.value);
-        inferSettings.controlnet_mask = controlnet_mask;
-        inferSettings.controlnet_image = controlnet_image;
-        inferSettings.infer_mask = infer_mask;
-        inferSettings.infer_image = infer_image;
-        inferSettings.enable_controlnet = enableControlNet.checked;
-        inferSettings.controlnet_type = controlnetType.value;
-        inferSettings.controlnet_preprocess = document.getElementById("controlnetPreProcess").checked;
-        inferSettings.controlnet_batch = document.getElementById("controlnetBatchInput").checked;
-        inferSettings.controlnet_batch_dir = controlnetFileBrowser.value;
-        inferSettings.controlnet_batch_find = document.getElementById("controlnetBatchFind").value;
-        inferSettings.controlnet_batch_replace = document.getElementById("controlnetBatchReplace").value;
-        inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnetBatchUsePrompt").checked;
-
-        if (enableControlNet.checked && autoLoadResolution.checked && inferSettings.image !== undefined) {
-            inferSettings.width = controlnetImageEditor.originalResolution.width;
-            inferSettings.height = controlnetImageEditor.originalResolution.height
-            inferSettings.image = controlnetImageEditor.imageSource;
-        } else {
-            if (userConfig["show_aspect_ratios"]) {
-                const selectedRatio = document.querySelector(".aspectButton.btn-selected");
-                setResolution(selectedRatio.dataset.ratio);
-            } else {
-                inferSettings.width = parseInt(widthSlider.value);
-                inferSettings.height = parseInt(heightSlider.value);
-            }
-        }
+        getInferSettings();
 
         historyTracker.storeHistory(promptEl);
         historyTracker.storeHistory(negEl);
@@ -474,4 +420,64 @@ function applyInferSettings(decodedSettings) {
     document.getElementById("controlnetBatchFind").value = decodedSettings.controlnet_batch_find;
     document.getElementById("controlnetBatchReplace").value = decodedSettings.controlnet_batch_replace;
     document.getElementById("controlnetBatchUsePrompt").checked = decodedSettings.controlnet_batch_use_prompt;
+}
+
+function getInferSettings() {
+    let promptEl = document.getElementById("infer_prompt");
+    let negEl = document.getElementById("infer_negative_prompt");
+    let seedEl = document.getElementById("infer_seed");
+    let enableControlNet = document.getElementById("enableControlNet");
+    let controlnetType = document.getElementById("controlnetType");
+    let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
+    let enableSag = document.getElementById("infer_sag");
+    let controlnet_mask = controlnetImageEditor.getMask();
+    let controlnet_image = controlnetImageEditor.getDropped();
+    let infer_mask = inpaintImageEditor.getMask();
+    let infer_image = inpaintImageEditor.getDropped();
+
+    const radioButtons = document.getElementsByName('inferMode');
+    let inferMode = 'txt2img';
+
+    for (let i = 0; i < radioButtons.length; i++) {
+        if (radioButtons[i].checked) {
+            inferMode = radioButtons[i].value;
+            break;
+        }
+    }
+    inferSettings.mode = inferMode;
+    inferSettings.model = model;
+    inferSettings.prompt = promptEl.value;
+    inferSettings.negative_prompt = negEl.value;
+    inferSettings.seed = parseInt(seedEl.value);
+    inferSettings.scale = scaleTest.value;
+    inferSettings.use_sag = enableSag.checked;
+    inferSettings.steps = parseInt(stepTest.value);
+    inferSettings.num_images = parseInt(numImages.value);
+    inferSettings.batch_size = parseInt(batchSize.value);
+    inferSettings.controlnet_mask = controlnet_mask;
+    inferSettings.controlnet_image = controlnet_image;
+    inferSettings.infer_mask = infer_mask;
+    inferSettings.infer_image = infer_image;
+    inferSettings.enable_controlnet = enableControlNet.checked;
+    inferSettings.controlnet_type = controlnetType.value;
+    inferSettings.controlnet_preprocess = document.getElementById("controlnet_preprocess").checked;
+    inferSettings.controlnet_batch = document.getElementById("controlnet_batch").checked;
+    inferSettings.controlnet_batch_dir = controlnetFileBrowser.value;
+    inferSettings.controlnet_batch_find = document.getElementById("controlnet_batch_find").value;
+    inferSettings.controlnet_batch_replace = document.getElementById("controlnet_batch_replace").value;
+    inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnet_batch_use_prompt").checked;
+
+    if (enableControlNet.checked && autoLoadResolution.checked && inferSettings.image !== undefined) {
+        inferSettings.width = controlnetImageEditor.originalResolution.width;
+        inferSettings.height = controlnetImageEditor.originalResolution.height
+        inferSettings.image = controlnetImageEditor.imageSource;
+    } else {
+        if (userConfig["show_aspect_ratios"]) {
+            const selectedRatio = document.querySelector(".aspectButton.btn-selected");
+            setResolution(selectedRatio.dataset.ratio);
+        } else {
+            inferSettings.width = parseInt(widthSlider.value);
+            inferSettings.height = parseInt(heightSlider.value);
+        }
+    }
 }

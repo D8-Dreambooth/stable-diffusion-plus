@@ -118,26 +118,26 @@
                         <div class="accordion-body">
                             <div class="form-group">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="enableControlNet">
-                                    <label class="form-check-label" for="enableControlNet">Enable ControlNet</label>
+                                    <input class="form-check-input" type="checkbox" id="enable_controlnet">
+                                    <label class="form-check-label" for="enable_controlnet">Enable ControlNet</label>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="controlnetType">Controlnet Type:</label>
-                                <select class="form-control" id="controlnetType"></select>
+                                <label for="controlnet_type">Controlnet Type:</label>
+                                <select class="form-control" id="controlnet_type"></select>
                             </div>
                             <div class="form-group">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="controlnetPreProcess"
+                                    <input class="form-check-input" type="checkbox" id="controlnet_preprocess"
                                            checked>
-                                    <label class="form-check-label" for="controlnetPreProcess">Preprocess
+                                    <label class="form-check-label" for="controlnet_preprocess">Preprocess
                                         Input</label>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="controlnetBatchInput">
-                                    <label class="form-check-label" for="controlnetBatchInput">Batch Input</label>
+                                    <input class="form-check-input" type="checkbox" id="controlnet_batch">
+                                    <label class="form-check-label" for="controlnet_batch">Batch Input</label>
                                 </div>
                             </div>
                             <div class="form-group controlnetSingle">
@@ -153,21 +153,21 @@
                             </div>
                             <div class="form-group controlnetBatch" style="display: none">
                                 <div class="form-check form-switch">
-                                    <input type="checkbox" class="form-check-input" id="controlnetBatchUsePrompt"
+                                    <input type="checkbox" class="form-check-input" id="controlnet_batch_use_prompt"
                                            checked>
-                                    <label for="controlnetBatchUsePrompt">Use prompt from input images:</label>
+                                    <label for="controlnet_batch_use_prompt">Use prompt from input images:</label>
                                 </div>
                             </div>
                             <div class="form-group controlnetBatch" style="display: none">
                                 <div class="col-12" id="controlnetBatchFileSelect"></div>
                             </div>
                             <div class="form-group controlnetBatch" style="display: none">
-                                <label for="controlnetBatchFind">Find:</label>
-                                <input type="text" class="form-control" id="controlnetBatchFind" placeholder="Find">
+                                <label for="controlnet_batch_find">Find:</label>
+                                <input type="text" class="form-control" id="controlnet_batch_find" placeholder="Find">
                             </div>
                             <div class="form-group controlnetBatch" style="display: none">
-                                <label for="controlnetBatchReplace">Replace:</label>
-                                <input type="text" class="form-control" id="controlnetBatchReplace"
+                                <label for="controlnet_batch_replace">Replace:</label>
+                                <input type="text" class="form-control" id="controlnet_batch_replace"
                                        placeholder="Replace">
                             </div>
                             <div class="form-group">

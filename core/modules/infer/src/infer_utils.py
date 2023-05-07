@@ -265,6 +265,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     kwargs["height"] = gen_height
                 if gen_width > 0:
                     kwargs["width"] = gen_width
+                if inference_settings.use_sag:
+                    kwargs["sag_scale"] = 1.0
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
 
             pbar.update(len(s_image))

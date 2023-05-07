@@ -35,13 +35,12 @@ python-dotenv~=1.0.0
 python-multipart~=0.0.6
 requests~=2.30.0
 safetensors~=0.3.1
-tensorboard==2.13.0; sys_platform != 'darwin' or platform_machine != 'arm64'
-tensorboard==2.11.2; sys_platform == 'darwin' and platform_machine == 'arm64'
+tensorboard
 tomesd
 torch==2.0.0
 torchvision==0.15.1
 tqdm~=4.65.0
 transformers~=4.28.1
 uvicorn~=0.21.1
-websockets~=11.0.2
+websockets~=11.0.3
 xformers~=0.0.19
