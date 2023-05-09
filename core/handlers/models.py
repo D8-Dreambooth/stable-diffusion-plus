@@ -297,7 +297,7 @@ class ModelHandler:
         if model_type not in self.model_finders:
             self.model_finders[model_type] = callback
 
-    def load_model(self, model_type: str, model_data: ModelData, unload: bool = False):
+    def load_model(self, model_type: str, model_data: ModelData, unload: bool = True):
         self.logger.debug(f"Loading model ({model_type}): {model_data.serialize()}")
         if model_type in self.loaded_models:
             loaded_model_data, model = self.loaded_models[model_type]
