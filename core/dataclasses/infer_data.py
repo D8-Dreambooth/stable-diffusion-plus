@@ -4,7 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 from PIL import Image
 
@@ -29,6 +29,7 @@ class InferSettings:
     infer_mask = None
     mode: str = "infer"
     model: ModelData = "None"
+    loras: List[ModelData] = None
     negative_prompt: str = ""
     num_images: int = 1
     prompt: str = ""

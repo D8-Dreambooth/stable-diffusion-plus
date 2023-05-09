@@ -2,6 +2,7 @@ import importlib
 import inspect
 import logging
 import os
+import traceback
 from typing import Dict
 
 from core.handlers.config import ConfigHandler
@@ -74,6 +75,7 @@ class ModuleHandler:
                                     break
                                 except Exception as e:
                                     logging.warning(f"Failed to instantiate module {module_name}: {e}")
+                                    traceback.print_exc()
                             if module_obj:
                                 self.active_modules[module_name] = module_obj
 

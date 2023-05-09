@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import glob
 import importlib
@@ -5,7 +6,7 @@ import logging
 import os
 import shutil
 import traceback
-from typing import List
+from typing import List, Dict, Union
 from urllib.parse import urlparse
 
 import torch
@@ -95,7 +96,7 @@ class ModelHandler:
                     loaded_model = model_data.hash
             return {"models": model_json, "loaded": loaded_model}
 
-    async def find_model(self, model_type: str, value: str):
+    async def find_model(self, model_type: str, value: Union[str, Dict]):
         if model_type in self.listed_models:
             models = self.listed_models[model_type]
         elif model_type in self.load_params:
@@ -106,8 +107,12 @@ class ModelHandler:
             models = self.load_models(model_type)
 
         for model in models:
-            if model.name == value or model.hash == value or model.display_name == value or model.path == value:
-                return model
+            if isinstance(value, dict):
+                if model.hash == value["hash"]:
+                    return model
+            else:
+                if model.name == value or model.hash == value or model.display_name == value or model.path == value:
+                    return model
 
         return None
 
@@ -160,14 +165,9 @@ class ModelHandler:
         # Save these for later so when "refresh" is called, we can reload.
         if "_" in model_type:
             model_types = model_type.split("_")
-            for mt in model_types:
-                self.load_params[mt] = {
-                    "model_url": model_url,
-                    "ext_include": ext_include,
-                    "ext_exclude": ext_exclude,
-                    "download_name": download_name
-                }
         else:
+            model_types = [model_type]
+        for model_type in model_types:
             self.load_params[model_type] = {
                 "model_url": model_url,
                 "ext_include": ext_include,
@@ -175,86 +175,70 @@ class ModelHandler:
                 "download_name": download_name
             }
 
-        if "diffusers" in model_type:
-            diff_dirs = self.load_diffusion_models("dreambooth" in model_type)
-            for diff_dir in diff_dirs:
-                name = None
-                if "working" in diff_dir:
-                    # Set model data.name to the parent directory of diff_dir
-                    name = os.path.basename(os.path.dirname(diff_dir))
-                model_data = ModelData(diff_dir, name=name)
-                output.append(model_data)
-            return output
+            if "diffusers" == model_type:
+                diff_dirs = self.load_diffusion_models("dreambooth" in model_type)
+                for diff_dir in diff_dirs:
+                    name = None
+                    if "working" in diff_dir:
+                        # Set model data.name to the parent directory of diff_dir
+                        name = os.path.basename(os.path.dirname(diff_dir))
+                    model_data = ModelData(diff_dir, name=name)
+                    output.append(model_data)
+                return output
 
-        if ext_include is None:
-            ext_include = []
+            if ext_include is None:
+                ext_include = []
 
-        try:
-            for mp in self.models_path:
-                model_path = os.path.join(mp, model_type)
-                if not os.path.exists(model_path):
-                    os.makedirs(model_path)
+            try:
+                for mp in self.models_path:
+                    model_path = os.path.join(mp, model_type)
+                    if not os.path.exists(model_path):
+                        os.makedirs(model_path)
 
-                for file in glob.iglob(model_path + '**/**', recursive=True):
-                    full_path = file
-                    if os.path.isdir(full_path):
-                        continue
-                    if os.path.islink(full_path) and not os.path.exists(full_path):
-                        continue
-                    if ext_exclude is not None and any([full_path.endswith(x) for x in ext_exclude]):
-                        continue
-                    if len(ext_include) != 0:
-                        model_type, extension = os.path.splitext(file)
-                        if extension not in ext_include:
+                    for file in glob.iglob(model_path + '**/**', recursive=True):
+                        full_path = file
+                        if os.path.isdir(full_path):
                             continue
-                    model_data = ModelData(full_path)
-                    if model_data not in output:
-                        output.append(model_data)
+                        if os.path.islink(full_path) and not os.path.exists(full_path):
+                            continue
+                        if ext_exclude is not None and any([full_path.endswith(x) for x in ext_exclude]):
+                            continue
+                        if len(ext_include) != 0:
+                            model_type, extension = os.path.splitext(file)
+                            if extension not in ext_include:
+                                continue
+                        model_data = ModelData(full_path)
+                        if model_data not in output:
+                            output.append(model_data)
 
-                if model_url is not None and len(output) == 0:
-                    if download_name is not None:
-                        dl = load_file_from_url(model_url, model_path, True, download_name)
-                        model_data = ModelData(dl)
-                        output.append(model_data)
-                    else:
-                        model_data = ModelData(model_url)
-                        output.append(model_data)
+                    if model_url is not None and len(output) == 0:
+                        if download_name is not None:
+                            dl = load_file_from_url(model_url, model_path, True, download_name)
+                            model_data = ModelData(dl)
+                            output.append(model_data)
+                        else:
+                            model_data = ModelData(model_url)
+                            output.append(model_data)
 
-        except Exception as e:
-            self.logger.warning(f"Exception: {e}")
-            traceback.print_exc()
-            pass
+            except Exception as e:
+                self.logger.warning(f"Exception: {e}")
+                traceback.print_exc()
+                pass
 
         return output
 
-    def refresh(self, model_type: str):
-        model_types = [model_type] if not "_" in model_type else model_type.split("_")
-        data = {}
-        model_json = []
-        loaded_model = None
-        for model_type in model_types:
-            if model_type in self.model_finders:
-                model_list = self.model_finders[model_type](data, self)
-            else:
-                model_list = self.load_models(model_type=model_type)
-
-            self.listed_models[model_type] = model_list
-            model_jsons = [model.serialize() for model in model_list]
-            model_json.extend(model_jsons)
-            if model_type in self.loaded_models:
-                model_data, _ = self.loaded_models[model_type]
-                loaded_model = model_data.hash
-        data = {"models": model_json, "loaded": loaded_model}
-        listed = self.list_models({"model_type": model_type})
+    def refresh(self, model_type: str, to_load=None):
+        model_data = None
+        if to_load:
+            model_data = ModelData(to_load)
         msg = {
             "name": "reload_models",
             "model_type": model_type,
-            "data": data,
-            "listed": listed,
-            "user": self.user_name
+            "user": self.user_name,
+            "to_load": model_data
         }
         logger.debug(f"Broadcasting: {msg}")
-        self.socket_handler.manager.broadcast(msg)
+        self.socket_handler.queue.put_nowait(msg)
 
     def load_diffusion_models(self, load_dreambooth: bool = False) -> List[str]:
         model_directories = []
@@ -313,12 +297,12 @@ class ModelHandler:
         if model_type not in self.model_finders:
             self.model_finders[model_type] = callback
 
-    def load_model(self, model_type: str, model_data: ModelData):
+    def load_model(self, model_type: str, model_data: ModelData, unload: bool = False):
         self.logger.debug(f"Loading model ({model_type}): {model_data.serialize()}")
         if model_type in self.loaded_models:
             loaded_model_data, model = self.loaded_models[model_type]
             self.logger.debug(f"Loaded model: {loaded_model_data.serialize()} vs {model_data.serialize()}")
-            if model_data != loaded_model_data:
+            if model_data != loaded_model_data and unload:
                 self.logger.debug(f"Unloading model: {self.loaded_models[model_type]}")
                 del model
                 del self.loaded_models[model_type]
@@ -369,8 +353,8 @@ class ModelHandler:
                             loaded = loaded.to("ddp")
                         except:
                             self.logger.debug("Couldn't load model to DDP.")
-
-                    self.loaded_models[model_type] = (model_data, loaded)
+                    if unload:
+                        self.loaded_models[model_type] = (model_data, loaded)
                     return loaded
         return None
 

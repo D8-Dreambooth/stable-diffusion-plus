@@ -294,6 +294,14 @@ input[type="number"]:active::-webkit-inner-spin-button{
     color: var(--secondary-accent-text-color);
 }
 
+.form-group {
+    margin-bottom: 1rem!important;
+}
+
+.form-group > label {
+    margin-bottom: 0.25rem!important;
+}
+
 .sectionLabel:not([class*="col-"]) {
     width: 100%;
     font-size: 20px;

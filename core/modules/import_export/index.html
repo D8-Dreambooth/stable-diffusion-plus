@@ -3,67 +3,126 @@
         <div class="row">
             <div class="col-12">
                 <div class="card shadow">
+                    <div class="card-body">
+                        <div class="progressGroup" id="importProgressGroup"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow">
                     <div class="card-header">
                         Extract Checkpoint
                     </div>
                     <div class="card-body">
-                        <div class="form-group text-center">
-                            <div class="d-inline-block">
-                                <div id="modelSelect"></div>
-                            </div>
-                        </div>
-                        <div class="row justify-content-center">
-                            <div class="col-12 text-center">
-                                <div class="form-group mt-3">
+                        <div class="row">
+                                <div class="form-group text-center">
+                                    <div class="d-inline-block">
+                                        <div id="modelSelect"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="convUse512">
                                         <label class="form-check-label" for="convUse512">Model is 512x</label>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 text-center">
-                                <button class="btn btn-primary" id="startExtract">Extract</button>
+                                <div class="form-group">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="extract_save_shared">
+                                        <label class="form-check-label" for="extract_save_shared">Save to Shared
+                                            Models</label>
+                                    </div>
+                                </div>
+                                <div class="form-group text-center mt-3">
+                                    <button class="btn btn-primary" id="startExtract">Extract</button>
+                                </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
-            </div>
-            <div class="col-12">
-                <div class="card">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow">
                     <div class="card-header">
                         Compile Checkpoint
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-6" id="modelExportSelect"></div>
-                            <div class="col-md-6">
-                                <button class="btn btn-primary form-control" id="startCompile">Compile</button>
+                            <div class="form-group">
+                                <div id="modelExportSelect"></div>
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-primary" id="startCompile">Compile</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow">
+                    <h5 class="card-header">Extract LoRA</h5>
+                    <div class="card-body">
+                        <form>
+                            <div class="row">
+                                <div class="form-group">
+                                    <div id="io_lora_src" class="modelSelect" data-model_type="diffusers"
+                                         data-label="Tuned Model"></div>
+                                </div>
+                                <div class="form-group">
+                                    <div id="io_lora_base" class="modelSelect" data-model_type="diffusers"
+                                         data-label="Base Model"></div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="form-group mb-3">
+                                    <label for="io_lora_precision">Save precision</label>
+                                    <select class="form-control" id="io_lora_precision">
+                                        <option>fp16</option>
+                                        <option>bf16</option>
+                                        <option selected>float</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="form-group">
+                                        <div class="db-slider dbInput" data-elem_id="io_lora_network_dimension"
+                                             data-max="1024" data-min="4"
+                                             data-value="128" data-label="Network Dimension (Rank)"></div>
+                                    </div>
+                                <div class="form-group">
+                                        <div class="db-slider dbInput" data-elem_id="io_lora_conv_dimension"
+                                             data-max="1024" data-min="4"
+                                             data-value="128" data-label="Conv Dimension (Rank)"></div>
+                                    </div>
+                                <div class="form-grop text-center">
+                                    <button class="btn btn-primary" id="startExtractLora">Extract LORA</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow">
                     <div class="card-header">
                         Download Model
                     </div>
                     <div class="card-body">
-                        <div class="progressGroup" id="importProgressGroup"></div>
                         <div class="form-group">
                             <label for="downloadModelUrl">Model Name</label>
-                            <input type="text" class="form-control" id="downloadModelUrl" placeholder="Model URL">
+                            <input type="text" class="form-control" id="downloadModelUrl"
+                                   placeholder="Model URL">
                         </div>
                         <div class="form-group">
                             <label for="downloadModelType">Model Type</label>
-                            <input type="text" class="form-control" id="downloadModelType" placeholder="Model Type">
+                            <input type="text" class="form-control" id="downloadModelType"
+                                   placeholder="Model Type">
                         </div>
                         <div class="form-group">
                             <label for="downloadModelName">Model Name</label>
-                            <input type="text" class="form-control" id="downloadModelName" placeholder="Model Name (Optional)">
+                            <input type="text" class="form-control" id="downloadModelName"
+                                   placeholder="Model Name (Optional)">
                         </div>
-                        <div class="form-group text-center">
+                        <div class="form-group text-center mt-3">
                             <button class="btn btn-primary" id="startModelDownload">Download</button>
                         </div>
                     </div>

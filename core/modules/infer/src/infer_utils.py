@@ -133,6 +133,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     logger.debug("Sending status(2)")
 
     await status_handler.send_async()
+    if len(inference_settings.loras):
+        model_data.data["loras"] = inference_settings.loras
     logger.debug("Sent")
     if inference_settings.mode == "txt2img":
         pipeline = model_handler.load_model("diffusers", model_data)
@@ -272,8 +274,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             pbar.update(len(s_image))
             paths = []
             prompts = []
+            images = []
             for i in range(len(s_image)):
                 img = s_image[i]
+                images.append(img)
                 prompt = batch_prompts[i]
                 infer_settings = inference_settings
                 infer_settings.prompt = prompt
@@ -281,7 +285,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 paths.extend(img_path)
                 prompts.append(prompt)
 
-            out_images.extend(paths)
+            out_images.extend(images)
             out_prompts.extend(prompts)
             current_total = len(out_images) + (1 * inference_settings.batch_size)
             if current_total > total_images:

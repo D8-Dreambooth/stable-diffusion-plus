@@ -31,6 +31,7 @@ class ConnectionManager:
         await websocket.send_json(message)
 
     async def broadcast(self, message: Dict):
+        message["broadcast"] = True
         message_targets = self.active_connections
         if self.user_auth:
             user = message.get("user", None)

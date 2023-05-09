@@ -5,6 +5,7 @@ let userConfig;
 let controlnetImageEditor;
 let controlnetFileBrowser;
 const moduleSelect = $("#inferModel").modelSelect();
+const lorasSelect = $("#inferLoraModels").modelSelect();
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
@@ -24,6 +25,7 @@ let inferSettings = {
     "width": 512,
     "height": 512,
     "model": undefined,
+    "loras": undefined,
     "infer_mask": undefined,
     "infer_image": undefined,
     "controlnet_mask": undefined,
@@ -180,7 +182,7 @@ function inferInit() {
         });
     });
 
-    $("#controlnetBatchInput").change(function () {
+    $("#controlnet_batch").change(function () {
         console.log("Controlnet changed", this.checked);
         if (this.checked) {
             $(".controlnetSingle").hide();
@@ -205,7 +207,7 @@ function inferInit() {
     loadSettings(moduleSettings);
     sendMessage("get_controlnets", {}, true).then((data) => {
         console.log("Controlnets: ", data);
-        let controlnetSelect = document.getElementById("controlnetType");
+        let controlnetSelect = document.getElementById("controlnet_type");
         let option = document.createElement("option");
         option.value = "None";
         option.text = "";
@@ -370,8 +372,8 @@ function applyInferSettings(decodedSettings) {
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
-    let enableControlNet = document.getElementById("enableControlNet");
-    let controlnetType = document.getElementById("controlnetType");
+    let enableControlNet = document.getElementById("enable_controlnet");
+    let controlnetType = document.getElementById("controlnet_type");
     let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
     let enableSag = document.getElementById("infer_sag");
     let controlnet_mask = controlnetImageEditor.getMask();
@@ -414,27 +416,27 @@ function applyInferSettings(decodedSettings) {
     stepTest.value = decodedSettings.steps.toString();
     numImages.value = decodedSettings.num_images.toString();
     batchSize.value = decodedSettings.batch_size.toString();
-    document.getElementById("controlnetPreProcess").checked = decodedSettings.controlnet_preprocess;
-    document.getElementById("controlnetBatchInput").checked = decodedSettings.controlnet_batch;
+    document.getElementById("controlnet_preprocess").checked = decodedSettings.controlnet_preprocess;
+    document.getElementById("controlnet_batch").checked = decodedSettings.controlnet_batch;
     controlnetFileBrowser.value = decodedSettings.controlnet_batch_dir;
-    document.getElementById("controlnetBatchFind").value = decodedSettings.controlnet_batch_find;
-    document.getElementById("controlnetBatchReplace").value = decodedSettings.controlnet_batch_replace;
-    document.getElementById("controlnetBatchUsePrompt").checked = decodedSettings.controlnet_batch_use_prompt;
+    document.getElementById("controlnet_batch_find").value = decodedSettings.controlnet_batch_find;
+    document.getElementById("controlnet_batch_replace").value = decodedSettings.controlnet_batch_replace;
+    document.getElementById("controlnet_batch_use_prompt").checked = decodedSettings.controlnet_batch_use_prompt;
 }
 
 function getInferSettings() {
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
-    let enableControlNet = document.getElementById("enableControlNet");
-    let controlnetType = document.getElementById("controlnetType");
+    let enableControlNet = document.getElementById("enable_controlnet");
+    let controlnetType = document.getElementById("controlnet_type");
     let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
     let enableSag = document.getElementById("infer_sag");
     let controlnet_mask = controlnetImageEditor.getMask();
     let controlnet_image = controlnetImageEditor.getDropped();
     let infer_mask = inpaintImageEditor.getMask();
     let infer_image = inpaintImageEditor.getDropped();
-
+    const loras = lorasSelect[0].val();
     const radioButtons = document.getElementsByName('inferMode');
     let inferMode = 'txt2img';
 
@@ -444,8 +446,11 @@ function getInferSettings() {
             break;
         }
     }
+    const model = moduleSelect[0].val();
+
     inferSettings.mode = inferMode;
     inferSettings.model = model;
+    inferSettings.loras = loras;
     inferSettings.prompt = promptEl.value;
     inferSettings.negative_prompt = negEl.value;
     inferSettings.seed = parseInt(seedEl.value);

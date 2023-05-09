@@ -240,26 +240,33 @@ function connectSocket() {
             } else {
                 message = event.data; // use the received object as-is
             }
-            const index = messages.indexOf(message.id);
-            if (index > -1) {
+            if (!message.hasOwnProperty("name")) {
+                console.log("Event has no name property, cannot process: ", event);
                 return;
             }
-            if (message.hasOwnProperty("name")) {
-                let method_name = message.name;
-                if (method_name === "Received") {
-                    console.log("Message received: ", event);
-                } else {
-                    if (socketMethods.hasOwnProperty(method_name)) {
-                        console.log("Forwarding method: ", method_name, message);
-                        for (let i = 0; i < socketMethods[method_name].length; i++) {
-                            socketMethods[method_name][i](message);
-                        }
-                    } else {
-                        console.log("Unknown message name: ", method_name, event);
-                    }
-                }
+            const name = message.name;
+            if (name !== "status") {
+                console.log("Got message: ", name, message);
+            }
+            const index = messages.indexOf(message.id);
+            if (index > -1 && !message.hasOwnProperty("broadcast")) {
+                console.log("NO message ID or broadcast: ", message);
+                return;
+            }
+
+            let method_name = message.name;
+            console.log("Got message: ", method_name);
+            if (method_name === "Received") {
+                console.log("Message received: ", event);
             } else {
-                console.log("Event has no name property, can't process: ", event);
+                if (socketMethods.hasOwnProperty(method_name)) {
+                    console.log("Forwarding method: ", method_name, message);
+                    for (let i = 0; i < socketMethods[method_name].length; i++) {
+                        socketMethods[method_name][i](message);
+                    }
+                } else {
+                    console.log("Unknown message name: ", method_name, event);
+                }
             }
         };
         globalSocket.onerror = function (event) {

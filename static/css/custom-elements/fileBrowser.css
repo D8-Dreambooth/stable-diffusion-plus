@@ -153,11 +153,11 @@ li.fileLi * {
     }
 
     .fileSortCol {
-        width: 150px !important;
+        width: 84px !important;
     }
 
     .fileTitleCol {
-        width: calc(100% - 150px) !important;
+        width: calc(100% - 84px) !important;
     }
 
     .fileCurrent {

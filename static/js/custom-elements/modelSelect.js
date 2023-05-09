@@ -7,16 +7,21 @@ class ModelSelect {
         if (existingInstance) {
             return existingInstance;
         }
-        registerSocketMethod(container, "reload_models", this.modelSocketUpdate);
+        registerSocketMethod(container, "reload_models", this.modelSocketUpdate.bind(this));
         this.container = container;
         this.model_type = options.model_type || "stable-diffusion";
         this.ext_include = options.ext_include || [".safetensors"];
         this.ext_exclude = options.ext_exclude || [];
+        console.log("Model select options:", options);
+        this.multiple = options.multiple || false;
         this.load_on_select = options.load_on_select || false;
         this.modelList = [];
         this.selectElement = document.createElement("select");
         this.selectElement.classList.add("form-control");
         this.selectElement.classList.add("model-select");
+        if (this.multiple) {
+            this.selectElement.setAttribute("multiple", "true");
+        }
         this.selectElement.dataset["ModelSelect"] = this;
         this.selectElement.dataset["key"] = options.key || container.id;
         const addClass = options.addClass || "";
@@ -40,7 +45,9 @@ class ModelSelect {
         this.container.appendChild(wrapper);
         this.setOnChangeHandler((selectedModel) => {
             console.log("Selected model (chang):", selectedModel);
-            if (selectedModel.hasOwnProperty("hash")) {
+            if (this.multiple) {
+                this.currentModel = selectedModel;
+            } else if (selectedModel.hasOwnProperty("hash")) {
                 this.currentModel = selectedModel.hash;
             }
         });
@@ -51,15 +58,53 @@ class ModelSelect {
 
     modelSocketUpdate(data) {
         console.log("Model socket update:", data);
+        const modelType = data.model_type;
+        const to_load = data["to_load"];
+        let modelTypes = [modelType];
+        if (this.model_type.indexOf("_") !== -1) {
+            modelTypes = this.model_type.split("_");
+        }
+        let doRefresh = false;
+        for (let i = 0; i < modelTypes.length; i++) {
+            if (modelTypes[i] === modelType) {
+                doRefresh = true;
+                break;
+            }
+        }
+        if (doRefresh) {
+            this.refresh().then(() => {
+                console.log("Refreshed model list");
+                if (to_load) {
+                    console.log("Selecting model:", to_load);
+                    // Check if the hash of to_load matches one of our options, and if so, select it
+                    let found = false;
+                    for (let i = 0; i < this.selectElement.options.length; i++) {
+                        const option = this.selectElement.options[i];
+                        if (option.value === to_load["hash"]) {
+                            option.selected = true;
+                            found = true;
+                        } else {
+                            option.selected = false;
+                        }
+                    }
+                    if (!found) {
+                        this.selectElement.options[0].selected = true;
+                    }
+                }
+            });
+        }
     }
 
     async refresh() {
-        //this.selectElement.innerHTML = "Loading...";
+        // Display "Loading..." in the select element
+        this.selectElement.innerHTML = '<option value="" selected>Loading...</option>';
+
         let modelList = await sendMessage("models", {
             model_type: this.model_type,
             ext_include: this.ext_include,
             ext_exclude: this.ext_exclude
         });
+
         this.modelList = modelList;
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");
@@ -73,14 +118,15 @@ class ModelSelect {
         }
 
         this.selectElement.appendChild(blankOption);
+
         if (modelList.models) {
             modelList.models.forEach(model => {
                 let option = document.createElement("option");
                 option.value = (model.hasOwnProperty("hash") ? model.hash : "none");
                 if (this.currentModel !== "none" && this.currentModel !== undefined) {
-                if (this.currentModel === option.value) {
-                    option.selected = true;
-                }
+                    if (this.currentModel === option.value) {
+                        option.selected = true;
+                    }
                 }
                 option.textContent = model.display_name;
                 this.selectElement.appendChild(option);
@@ -88,7 +134,9 @@ class ModelSelect {
         }
     }
 
+
     getModel() {
+        if (this.multiple) return this.currentModel;
         const selectedOption = this.selectElement.options[this.selectElement.selectedIndex];
 
         if (selectedOption.value === "none") {
@@ -129,18 +177,30 @@ class ModelSelect {
 
     setOnChangeHandler(callback) {
         this.selectElement.onchange = () => {
-            let selectedOption = this.selectElement.options[
-                this.selectElement.selectedIndex
-                ];
-            if (selectedOption.value !== "none") {
-                let selectedModel = this.modelList.models.find(
-                    model => model.hash === selectedOption.value
-                );
-                if (this.load_on_select) {
-                    selectedModel["model_type"] = this.model_type;
-                    let result = sendMessage("load_model", selectedModel);
+            // Get the selected options from the select element
+            const selectedOptions = Array.from(this.selectElement.options)
+                .filter(option => option.selected && option.value !== "none");
+            if (selectedOptions.length > 0) {
+                let selectedModels = selectedOptions.map(selectedOption => {
+                    // Find the model that matches the selected option value
+                    return this.modelList.models.find(
+                        model => model.hash === selectedOption.value
+                    );
+                });
+                if (this.load_on_select && !this.multiple) {
+                    // Add the model type to each selected model
+                    selectedModels.forEach(selectedModel => {
+                        selectedModel["model_type"] = this.model_type;
+                        sendMessage("load_model", selectedModel);
+                    });
                 }
-                callback(selectedModel);
+
+                if (!this.multiple && selectedModels.length > 0) {
+                    selectedModels = selectedModels[0];
+                }
+                callback(selectedModels);
+
+
             } else {
                 this.currentModel = "none";
             }
@@ -163,6 +223,7 @@ class ModelSelect {
                 value: (data && data.value) || (options && options.value) || "none",
                 label: (data && data.label) || (options && options.label) || "",
                 key: (data && data.key) || (options && options.key) || $(element.id),
+                multiple: (data && data.multiple) || (options && options.multiple) || false,
                 addClass: (data && data.add_class) || (options && options.addClass) || ""
             };
 
