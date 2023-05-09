@@ -7,7 +7,6 @@ class cancelButton {
 
     async onClick() {
         const result = await sendMessage("cancel", {}, true);
-        console.log(result);
     }
 
     static init() {

@@ -10,6 +10,10 @@ from multiprocessing import freeze_support
 
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger("launch")
+# Set up logging
+to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio"]
+for skip in to_skip:
+    logging.getLogger(skip).setLevel(logging.WARNING)
 
 
 # Placeholder functionality
@@ -42,11 +46,6 @@ def main():
 
     # Make safetensors faster
     os.environ["SAFETENSORS_FAST_GPU"] = "1"
-
-    # Set up logging
-    to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio"]
-    for skip in to_skip:
-        logging.getLogger(skip).setLevel(logging.WARNING)
 
     # Set base path
     base_path = os.path.abspath(os.path.dirname(__file__))

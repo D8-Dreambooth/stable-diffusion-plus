@@ -26,7 +26,6 @@ class FileBrowser {
 
         if (options["selectedElement"] !== undefined && options["selectedElement"] !== "") {
             const path = options["selectedElement"];
-            console.log("We should be setting a path here: ", path);
             const lastSeparatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
             if (lastSeparatorIndex !== -1) {
                 const parentDirectory = path.slice(0, lastSeparatorIndex);
@@ -241,9 +240,7 @@ class FileBrowser {
         switch (method) {
             case "refresh":
                 // call the async this.refresh() method
-                this.refresh().then(() => {
-                    console.log("Refreshed!");
-                });
+                this.refresh().then(() => {});
                 break;
             case "delete":
                 // Send the list of selected files
@@ -251,10 +248,7 @@ class FileBrowser {
                     if (confirm(`Are you sure you want to delete these ${selectedFiles.length} file(s)? This action is irreversible.`)) {
                         const data = {dir: fileCurrent.innerHTML, files: selectedFiles, method: method};
                         sendMessage("handleFile", data).then(() => {
-                            this.refresh().then(() => {
-                                console.log("Deleted and refreshed!");
-                            })
-                        });
+                            this.refresh().then(() => {})});
                     }
                 }
                 break;
@@ -271,12 +265,7 @@ class FileBrowser {
                             method: method,
                             newName: newFileName
                         };
-                        sendMessage("handleFile", data).then(() => {
-                            this.refresh().then(() => {
-                                console.log("Renamed and refreshed!");
-                            })
-                        });
-                    }
+                        sendMessage("handleFile", data).then(() => {this.refresh().then(() => {})});}
                 } else {
                     alert("Please select only one file to rename.");
                 }
@@ -317,11 +306,7 @@ class FileBrowser {
                 const folderName = prompt("Enter the folder name:");
                 if (folderName) {
                     const data = {dir: fileCurrent.innerHTML, files: [folderName], method: method};
-                    sendMessage("handleFile", data).then(() => {
-                        this.refresh().then(() => {
-                            console.log("Created folder!");
-                        });
-                    });
+                    sendMessage("handleFile", data).then(() => {this.refresh().then(() => {});});
                 }
                 break;
         }
@@ -466,7 +451,6 @@ class FileBrowser {
                 }
                 const file = await this.getFile(entry);
                 files.push(file);
-                console.log("Setting dest to:", dirPath, file.name);
                 fileData.push({name: file.name, dest: dirPath});
             }
         }
@@ -795,7 +779,6 @@ class FileBrowser {
 
 
     generateTree(response) {
-        console.log("Generating tree: ", response);
         const root = document.createElement("ul");
         root.classList.add("treeRoot");
         const listItem = document.createElement("li");
@@ -909,7 +892,6 @@ class FileBrowser {
                     } else {
                         this.sortOrder = "asc";
                     }
-                    console.log("Setting sort order to: ", this.sortOrder);
                 } else {
                     this.sortType = type;
                 }
@@ -1149,7 +1131,6 @@ class FileBrowser {
             files: file
         };
         const response = await sendMessage("file", data);
-        console.log("Response: ", response);
         if (response.hasOwnProperty("files")) {
             return response.files;
         }

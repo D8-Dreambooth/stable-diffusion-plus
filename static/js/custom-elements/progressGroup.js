@@ -84,19 +84,14 @@ class ProgressGroup {
     update(options) {
         if (options.hasOwnProperty("target")) {
             if (this.id !== options.target) {
-                console.log("Target does not match",this.id, options.target);
                 return;
             }
-        } else {
-            console.log("No target!", this.id, options.target);
         }
 
         // If options has a status property and it's not a string, assume it's a status object
         if (options.hasOwnProperty("status") && typeof options.status !== "string") {
             options = options.status;
         }
-
-        console.log("Updating progress group: ", options, this.id);
 
         // Merge user options with default options
         this.options = {...this.options, ...options};

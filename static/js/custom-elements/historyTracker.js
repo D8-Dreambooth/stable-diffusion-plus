@@ -10,12 +10,10 @@ class HistoryTracker {
         const id = textfield.id;
 
         if (!this.registeredElements.has(id)) {
-            console.log("Registering textfield...", id);
             const history = this.loadHistory(id) || [];
             let index = history.length;
 
             textfield.addEventListener("keydown", (event) => {
-                console.log("keydown", event.key, event.shiftKey);
                 if (event.altKey && event.key === "ArrowUp") {
                     index = Math.max(0, index - 1);
                     textfield.value = history[index] || "";

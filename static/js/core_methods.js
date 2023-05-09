@@ -3,7 +3,6 @@ let socketMethods = {};
 
 const keyListener = new KeyListener();
 const historyTracker = new HistoryTracker();
-console.log("History tracker initialized.");
 let messages = [];
 // region Initialization
 
@@ -49,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function loadCoreSettings(data) {
-    console.log("Got core settings: ", data);
     const settingsButton = $("#settingsButton");
     if (data["show_settings"]) {
         settingsButton.hide();
@@ -163,7 +161,6 @@ function sendMessage(name, data, await = true, target = null) {
             } else {
                 retryCount++;
                 if (retryCount <= maxRetries) {
-                    console.log("Connecting socket: " + retryCount + "/" + maxRetries);
                     connectSocket();
                     setTimeout(send, 500);
                 } else {
@@ -245,9 +242,6 @@ function connectSocket() {
                 return;
             }
             const name = message.name;
-            if (name !== "status") {
-                console.log("Got message: ", name, message);
-            }
             const index = messages.indexOf(message.id);
             if (index > -1 && !message.hasOwnProperty("broadcast")) {
                 console.log("NO message ID or broadcast: ", message);
@@ -255,7 +249,6 @@ function connectSocket() {
             }
 
             let method_name = message.name;
-            console.log("Got message: ", method_name);
             if (method_name === "Received") {
                 console.log("Message received: ", event);
             } else {

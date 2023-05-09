@@ -39,7 +39,6 @@ class TokenData(BaseModel):
 def get_user(user: str) -> Optional[Dict]:
     config_handler = ConfigHandler()
     user_dict = config_handler.get_item_protected(user, "users", None)
-    logger.debug(f"User dict: {user_dict}")
     if user_dict is None:
         return None
     # Enumerate key/values in user_dict and set attributes of a new User object
@@ -51,7 +50,6 @@ def get_user(user: str) -> Optional[Dict]:
             setattr(user, key, value)
         except:
             logger.error(f"Failed to set attribute: {key}")
-    logger.debug(f"Returning user: {user}")
     return user.__dict__
 
 
@@ -143,7 +141,6 @@ class UserHandler:
 
     def initialize(self, app: FastAPI, handler):
         handler.register("change_password", self.update_password)
-        logger.debug("Initializing user handler endpoint")
 
         # Add an endpoint to fastAPI for updating the user data
         @app.post("/users/user")
@@ -151,7 +148,6 @@ class UserHandler:
             if current_user.disabled:
                 raise HTTPException(status_code=403, detail="Not enough privileges")
             user_data = user.dict()
-            logger.debug(f"Update user request: {user_data}")
             existing_users = self.config_handler.get_config_protected("users")
             existing_user = None
             message = ""
@@ -195,14 +191,13 @@ class UserHandler:
 
     def register_users(self):
         users = self.config_handler.get_config_protected("users")
-        logger.debug(f"Users: {users}")
         from core.handlers.status import StatusHandler
         from core.handlers.file import FileHandler
         from core.handlers.models import ModelHandler
         from core.handlers.images import ImageHandler
 
         for user in users:
-            logger.debug(f"Registering handlers for user: {user}")
+            logger.info(f"Registering handlers for user: {user}")
             DirectoryHandler(user_name=user)
             StatusHandler(user_name=user)
             FileHandler(user_name=user)
@@ -236,7 +231,6 @@ class UserHandler:
             return {"status": "Unable to update password."}
 
     def authenticate_user(self, user: str, password: str):
-        logger.debug(f"User auth request: {user}")
         user = get_user(user)
         if user is None:
             return False
@@ -247,7 +241,6 @@ class UserHandler:
             return False
         if not self.verify_password(password, user_hash):
             return False
-        logger.debug("User is authorized?")
         return True
 
     def create_access_token(self, *, data: dict, expires_delta: timedelta = None):
@@ -261,12 +254,9 @@ class UserHandler:
         return encoded_jwt
 
     async def get_current_active_user(self, user) -> Optional[Dict]:
-        logger.debug("GCAU")
         config_handler = ConfigHandler()
-        logger.debug(f"Lookup {user}")
         user_auth = config_handler.get_item_protected("user_auth", "core", False)
         if not user_auth:
             return None
         active_user = await get_current_user(user)
-        logger.debug(f"No, really, returning user: {active_user}")
         return active_user

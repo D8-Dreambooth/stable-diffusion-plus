@@ -21,7 +21,6 @@ class Module {
         let module_icon = this.icon;
         let is_default = this.is_default;
         let index = this.index;
-        console.log("Initializing module: ", module_id, systemConfig);
         let navList = document.getElementById("navList");
         let existingModule = document.getElementById(module_id + "_link");
         let newModule;
@@ -83,16 +82,13 @@ class Module {
             this.init_method();
         }
         this.localize(locales);
-        console.log("Initialized module: ", module_id, systemConfig);
     }
 
     localize(module_locales) {
         const container = document.getElementById(this.id);
         const elements = container.querySelectorAll("*");
-        console.log("Localizing module: ", this.id, module_locales);
         let mapped = {};
         if (module_locales["module"]) {
-            console.log("Got module locale: ", module_locales["module"]);
             let {label, title} = module_locales["module"];
             if (label) {
                 this.moduleLink.querySelector(".nav_name").innerHTML = label;
@@ -107,7 +103,6 @@ class Module {
                 elem_id = element.getAttribute("for");
             }
             if (elem_id === null) return;
-            console.log("Checking: ", elem_id);
             let d = "";
             let t = "";
             let l = "";
@@ -124,7 +119,6 @@ class Module {
             l = l.trim();
             if (module_locales[elem_id]) {
                 let {label, title, description} = module_locales[elem_id];
-                console.log("Setting attributes: ", l, label, title, description);
                 if (title) {
                     t = title;
                     element.setAttribute("title", title);
@@ -147,7 +141,6 @@ class Module {
             }
         });
         localData[this.id] = mapped;
-        console.log("MAPPED: ", mapped);
     }
 
     async reload() {
@@ -158,7 +151,6 @@ class Module {
 
     async unload() {
         deregisterModule(this.id);
-        console.log("Deregister module: ", this.id);
         let navList = document.getElementById("navList");
         let existingModule = document.getElementById(this.id + "_link");
         if (existingModule) {

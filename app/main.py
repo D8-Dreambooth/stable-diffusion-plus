@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os.path
-import sys
 import time
 import traceback
 from typing import Dict
@@ -213,7 +212,6 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 user_handler = initialize_app()
-logger.debug("App initialized")
 
 
 def get_session(request: Request):

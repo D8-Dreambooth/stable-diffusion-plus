@@ -66,7 +66,6 @@ class ImageEditor {
     }
 
     getDropped() {
-        console.log("Finding dropped: ", this.undoStack);
         for (let i = 1; i < this.undoStack.length; i++) {
             if (this.undoStack[i].type === 'drop') {
                 return this.dropCanvas.toDataURL('image/png');
@@ -76,7 +75,6 @@ class ImageEditor {
     }
 
     getMask() {
-        console.log("Finding mask: ", this.undoStack);
         for (let i = 1; i < this.undoStack.length; i++) {
             if (this.undoStack[i].type === 'draw') {
                 return this.canvas.toDataURL('image/png');
@@ -246,7 +244,6 @@ class ImageEditor {
         // add a listener to the document for any click that is not on the newBrushSizeDialog element
         const onDocumentClick = (n_event) => {
             if (!newBrushSizeDialog.contains(n_event.target) && n_event !== event) {
-                console.log("Hiding brush dialog.", n_event, event);
                 document.removeEventListener('click', onDocumentClick);
                 document.body.removeChild(newBrushSizeDialog);
             }
@@ -293,7 +290,6 @@ class ImageEditor {
         // add a listener to the document for any click that is not on the newColorPickerDialog element
         const onDocumentClick = (n_event) => {
             if (!newColorPickerDialog.contains(n_event.target) && n_event !== event) {
-                console.log("Closing color picker.");
                 document.removeEventListener('click', onDocumentClick);
                 if (newColorPickerDialog) {
                     document.body.removeChild(newColorPickerDialog);
@@ -387,7 +383,6 @@ class ImageEditor {
 
     undo() {
         if (this.undoStack.length === 0) {
-            console.log("Nothing to undo!");
             return;
         }
 

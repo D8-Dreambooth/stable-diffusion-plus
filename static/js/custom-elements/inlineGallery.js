@@ -368,14 +368,11 @@ class InlineGallery {
 
         // Preview
         if (latent !== null) {
-            console.log("We have a latent...")
             let latentImage = this.previewContainer.querySelector('.latent-image');
             if (latentImage !== null) {
-                console.log("Updating latent!");
                 latentImage.src = latent;
                 this.previewContainer.classList.remove("hidden");
             } else {
-                console.log("Resetting latent!");
                 const latentImage = document.createElement('img');
                 latentImage.src = latent;
                 latentImage.classList.add('latent-image');

@@ -27,7 +27,6 @@ class BaseModule:
             icon_path = None
         templates_dir = os.path.join(self.path, "templates")
         locale_data = None
-        logger.debug("Looking for template dir: %s", templates_dir)
         if os.path.exists(templates_dir):
             ch = ConfigHandler()
             existing_locales = ch.get_item_protected(self.name, "locales", {})
@@ -35,7 +34,6 @@ class BaseModule:
             for file in os.listdir(templates_dir):
                 if ".json" not in file or "titles" not in file:
                     continue
-                logger.debug("Loading locale file: %s", file)
                 with open(os.path.join(templates_dir, file), "r") as f:
                     locale_data = json.load(f)
                 file_key = file.replace(".json", "")
@@ -67,7 +65,6 @@ class BaseModule:
     def get_locale(self, lang: str = "en"):
         ch = ConfigHandler()
         locales_data = ch.get_item_protected(self.name, "locales", {})
-        logger.debug("Locales data: %s", locales_data)
         locale_data = {}
         if lang in locales_data:
             locale_data = locales_data[lang]

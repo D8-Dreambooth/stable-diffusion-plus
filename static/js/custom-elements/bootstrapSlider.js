@@ -80,14 +80,12 @@ class BootstrapSlider {
         this.numberInput.value = this.value;
         this.rangeInput.value = this.value;
         if (this.onChangeCallback) {
-            console.log("Callback?")
             this.onChangeCallback(this.value);
         }
     }
 
 
     setOnChange(callback) {
-        console.log("Callback set...")
         this.onChangeCallback = callback;
         this.rangeInput.addEventListener("input", (event) => {
             const value = parseInt(event.target.value, 10);

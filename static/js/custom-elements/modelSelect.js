@@ -12,7 +12,6 @@ class ModelSelect {
         this.model_type = options.model_type || "stable-diffusion";
         this.ext_include = options.ext_include || [".safetensors"];
         this.ext_exclude = options.ext_exclude || [];
-        console.log("Model select options:", options);
         this.multiple = options.multiple || false;
         this.load_on_select = options.load_on_select || false;
         this.modelList = [];
@@ -44,7 +43,6 @@ class ModelSelect {
         wrapper.appendChild(this.selectElement);
         this.container.appendChild(wrapper);
         this.setOnChangeHandler((selectedModel) => {
-            console.log("Selected model (chang):", selectedModel);
             if (this.multiple) {
                 this.currentModel = selectedModel;
             } else if (selectedModel.hasOwnProperty("hash")) {
@@ -57,7 +55,6 @@ class ModelSelect {
     }
 
     modelSocketUpdate(data) {
-        console.log("Model socket update:", data);
         const modelType = data.model_type;
         const to_load = data["to_load"];
         let modelTypes = [modelType];
@@ -75,7 +72,6 @@ class ModelSelect {
             this.refresh().then(() => {
                 console.log("Refreshed model list");
                 if (to_load) {
-                    console.log("Selecting model:", to_load);
                     // Check if the hash of to_load matches one of our options, and if so, select it
                     let found = false;
                     for (let i = 0; i < this.selectElement.options.length; i++) {
@@ -109,7 +105,6 @@ class ModelSelect {
         this.selectElement.innerHTML = "";
         let blankOption = document.createElement("option");
         blankOption.value = "none";
-        console.log("Got model list: ", modelList);
         const loaded = modelList["loaded"];
         this.currentModel = (loaded === undefined || loaded === null ? "none" : loaded);
 
@@ -150,7 +145,6 @@ class ModelSelect {
         );
 
         if (!selectedModel) {
-            console.log("Model not found with hash:", selectedHash);
             return undefined;
         }
 
