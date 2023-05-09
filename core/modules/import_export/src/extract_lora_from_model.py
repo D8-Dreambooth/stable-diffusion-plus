@@ -1,7 +1,7 @@
 # extract approximating LoRA by svd from two SD models
 # The code is based on https://github.com/cloneofsimo/lora/blob/develop/lora_diffusion/cli_svd.py
 # Thanks to cloneofsimo!
-
+import gc
 import os
 
 import torch
@@ -66,6 +66,7 @@ async def extract_lora(model_org: ModelData, model_tuned: ModelData, model_handl
     lora_network_o = lora.create_network(1.0, dim, dim, None, text_encoder_o, unet_o, **kwargs)
     sh.update(f"creating LoRA network 2")
     lora_network_t = lora.create_network(1.0, dim, dim, None, text_encoder_t, unet_t, **kwargs)
+
     assert len(lora_network_o.text_encoder_loras) == len(
         lora_network_t.text_encoder_loras), f"model version is different (SD1.x vs SD2.x) / " \
                                             f"それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース）"
@@ -183,5 +184,15 @@ async def extract_lora(model_org: ModelData, model_tuned: ModelData, model_handl
                 "ss_network_alpha": str(dim)}
 
     lora_network_save.save_weights(save_to, save_dtype, metadata)
+    del tuned_pipe
+    del org_pipe
+    del lora_network_o
+    del lora_network_t
+    del lora_network_save
+    del lora_sd
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
+    
     sh.end(desc="LoRA weights are saved to: " + save_to)
     print(f"LoRA weights are saved to: {save_to}")
