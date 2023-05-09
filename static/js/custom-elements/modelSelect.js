@@ -106,15 +106,14 @@ class ModelSelect {
         const loaded = modelList["loaded"];
         this.currentModel = (loaded === undefined || loaded === null ? "none" : loaded);
 
-        if (!this.multiple) {
-            let blankOption = document.createElement("option");
-            blankOption.value = "none";
+        let blankOption = document.createElement("option");
+        blankOption.value = "none";
 
-            if (this.currentModel === "none") {
-                blankOption.selected = true;
-            }
-            this.selectElement.appendChild(blankOption);
+        if (this.currentModel === "none") {
+            blankOption.selected = true;
         }
+        this.selectElement.appendChild(blankOption);
+
         if (modelList.models) {
             modelList.models.forEach(model => {
                 let option = document.createElement("option");
