@@ -193,6 +193,6 @@ async def extract_lora(model_org: ModelData, model_tuned: ModelData, model_handl
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     gc.collect()
-    
+
     sh.end(desc="LoRA weights are saved to: " + save_to)
     print(f"LoRA weights are saved to: {save_to}")

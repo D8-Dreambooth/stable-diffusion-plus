@@ -677,11 +677,8 @@ class LoRANetwork(torch.nn.Module):
 
                         if is_linear or is_conv2d:
                             lora_name = prefix + "." + name + "." + child_name
-                            og_name = lora_name
                             lora_name = lora_name.replace(".", "_")
-                            logging.getLogger(__name__).debug(f"create LoRA module: {og_name}")
-                            lora_name = og_name
-
+                            
                             dim = None
                             alpha = None
                             if modules_dim is not None:
