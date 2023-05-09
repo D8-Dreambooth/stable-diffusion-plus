@@ -130,27 +130,30 @@ class ConfigHandler:
             self.update_keys(file, default_file)
 
     def update_keys(self, template_path, live_path):
-        # Load the template and live JSON data from files
-        with open(template_path, "r") as template_file:
-            template = json.load(template_file)
-        with open(live_path, "r") as live_file:
-            live = json.load(live_file)
+        try:
+            # Load the template and live JSON data from files
+            with open(template_path, "r") as template_file:
+                template = json.load(template_file)
+            with open(live_path, "r") as live_file:
+                live = json.load(live_file)
 
-        # Create sets of keys for the template and live JSON objects
-        template_keys = set(template.keys())
-        live_keys = set(live.keys())
+            # Create sets of keys for the template and live JSON objects
+            template_keys = set(template.keys())
+            live_keys = set(live.keys())
 
-        # Remove extra keys in the live JSON object that are not in the template
-        for key in live_keys - template_keys:
-            del live[key]
+            # Remove extra keys in the live JSON object that are not in the template
+            for key in live_keys - template_keys:
+                del live[key]
 
-        # Add missing keys to the live JSON object from the template
-        for key in template_keys - live_keys:
-            live[key] = template[key]
+            # Add missing keys to the live JSON object from the template
+            for key in template_keys - live_keys:
+                live[key] = template[key]
 
-        # Save the updated live JSON data to file
-        with open(live_path, "w") as live_file:
-            json.dump(live, live_file, indent=4)
+            # Save the updated live JSON data to file
+            with open(live_path, "w") as live_file:
+                json.dump(live, live_file, indent=4)
+        except Exception as e:
+            pass
 
     def _create_directories(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
