@@ -52,8 +52,9 @@ def load_diffusers(model_data: ModelData):
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
             if len(loras):
                 for lora in loras:
-                    pipeline = apply_lora(pipeline, lora['path'])
-                    logger.debug(f"Loading lora: {lora['name']}")
+                    if "path" in lora:
+                        pipeline = apply_lora(pipeline, lora['path'], 0.5)
+                        logger.debug(f"Loading lora: {lora['name']}")
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
