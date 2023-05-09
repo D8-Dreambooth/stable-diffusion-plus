@@ -41,7 +41,7 @@ def load_diffusers(model_data: ModelData):
                 pipeline = StableDiffusionSAGPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
             else:
                 pipeline = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
-            pipeline.enable_model_cpu_offload()
+                pipeline.enable_model_cpu_offload()
             pipeline.unet.set_attn_processor(AttnProcessor2_0())
             if os.name != "nt":
                 pipeline.unet = torch.compile(pipeline.unet)

@@ -208,6 +208,7 @@ class UserHandler:
         return self.pwd_context.verify(plain_password, hashed_password)
 
     def get_password_hash(self, password):
+
         return self.pwd_context.hash(password)
 
     async def update_password(self, req):
