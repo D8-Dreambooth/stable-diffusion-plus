@@ -234,7 +234,9 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
     logger.debug(f"Incoming request: {request}")
     logger.debug(f"User data: {user_data}")
     current_user = user_data["name"] if user_data else None
-    dh = DirectoryHandler(current_user)
+    dh = DirectoryHandler(user_name=current_user)
+    ch = ConfigHandler(user_name=current_user)
+    page_title = ch.get_item_protected("title", "core", "Stable-Diffusion Plus")
     if user_handler.user_auth:
         if current_user and not user_data["disabled"]:
             # User is logged in, show the usual home page
@@ -243,6 +245,7 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
             return templates.TemplateResponse(
                 "base.html",
                 {
+                    "title": page_title,
                     "request": request,
                     "css_files": css_files,
                     "js_files": js_files,
@@ -308,10 +311,13 @@ async def login(request: Request):
     # If user is not logged in, show login page
     # User is logged in, show the usual home page
     dh = DirectoryHandler()
+    ch = ConfigHandler()
+    page_title = ch.get_item_protected("title", "core", "Stable-Diffusion Plus")
     css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, True)
     return templates.TemplateResponse(
         "login.html",
         {
+            "title": page_title,
             "request": request,
             "css_files": css_files
         }
