@@ -52,7 +52,7 @@ def load_diffusers(model_data: ModelData):
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
             if len(loras):
                 for lora in loras:
-                    apply_lora(pipeline, lora['path'])
+                    pipeline = apply_lora(pipeline, lora['path'])
                     logger.debug(f"Loading lora: {lora['name']}")
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
@@ -184,61 +184,78 @@ def apply_lora(pipeline, checkpoint_path, alpha=0.75):
     state_dict = load_file(checkpoint_path)
 
     visited = []
-
+    errors = 0
+    total = 0
+    bad_keys = []
     # directly update weight in diffusers model
     for key in state_dict:
-        # it is suggested to print out the key, it usually will be something like below
-        # "lora_te_text_model_encoder_layers_0_self_attn_k_proj.lora_down.weight"
+        try:
+            if ".alpha" in key or key in visited:
+                continue
+            total += 1
 
-        # as we have set the alpha beforehand, so just skip
-        if ".alpha" in key or key in visited:
-            continue
+            if "text" in key:
+                layer_infos = key.split(".")[0].split(lora_prefix_text_encoder + "_")[-1].split("_")
+                curr_layer = pipeline.text_encoder
+            else:
+                layer_infos = key.split(".")[0].split(lora_prefix_unet + "_")[-1].split("_")
+                curr_layer = pipeline.unet
 
-        if "text" in key:
-            layer_infos = key.split(".")[0].split(lora_prefix_text_encoder + "_")[-1].split("_")
-            curr_layer = pipeline.text_encoder
-        else:
-            layer_infos = key.split(".")[0].split(lora_prefix_unet + "_")[-1].split("_")
-            curr_layer = pipeline.unet
+            temp_name = layer_infos.pop(0)
+            while len(layer_infos) > -1:
+                try:
+                    curr_layer = curr_layer.__getattr__(temp_name)
+                    if len(layer_infos) > 0:
+                        temp_name = layer_infos.pop(0)
+                    elif len(layer_infos) == 0:
+                        break
+                except Exception:
+                    if len(temp_name) > 0:
+                        temp_name += "_" + layer_infos.pop(0)
+                    else:
+                        temp_name = layer_infos.pop(0)
 
-        # find the target layer
-        temp_name = layer_infos.pop(0)
-        while len(layer_infos) > -1:
-            try:
-                curr_layer = curr_layer.__getattr__(temp_name)
-                if len(layer_infos) > 0:
-                    temp_name = layer_infos.pop(0)
-                elif len(layer_infos) == 0:
-                    break
-            except Exception:
-                if len(temp_name) > 0:
-                    temp_name += "_" + layer_infos.pop(0)
-                else:
-                    temp_name = layer_infos.pop(0)
+            pair_keys = []
+            if "lora_down" in key:
+                pair_keys.append(key.replace("lora_down", "lora_up"))
+                pair_keys.append(key)
+            else:
+                pair_keys.append(key)
+                pair_keys.append(key.replace("lora_up", "lora_down"))
 
-        pair_keys = []
-        if "lora_down" in key:
-            pair_keys.append(key.replace("lora_down", "lora_up"))
-            pair_keys.append(key)
-        else:
-            pair_keys.append(key)
-            pair_keys.append(key.replace("lora_up", "lora_down"))
+            # update weight
+            if len(state_dict[pair_keys[0]].shape) == 4:
+                weight_up = state_dict[pair_keys[0]].to(torch.float32).reshape(state_dict[pair_keys[0]].shape[0], -1)
+                weight_down = state_dict[pair_keys[1]].to(torch.float32).transpose(-1, -2).reshape(
+                    state_dict[pair_keys[1]].shape[0], -1)
 
-        # update weight
-        if len(state_dict[pair_keys[0]].shape) == 4:
-            weight_up = state_dict[pair_keys[0]].squeeze(3).squeeze(2).to(torch.float32)
-            weight_down = state_dict[pair_keys[1]].squeeze(3).squeeze(2).to(torch.float32)
-            curr_layer.weight.data += alpha * torch.mm(weight_up, weight_down).unsqueeze(2).unsqueeze(3)
-        else:
-            weight_up = state_dict[pair_keys[0]].to(torch.float32)
-            weight_down = state_dict[pair_keys[1]].to(torch.float32)
-            curr_layer.weight.data += alpha * torch.mm(weight_up, weight_down)
+                # Calculate the reshaping dimensions for the output tensor
+                out_channels, in_channels, kernel_height, kernel_width = curr_layer.weight.shape
 
-        # update visited list
-        for item in pair_keys:
-            visited.append(item)
+                updated_weight = torch.matmul(weight_up, weight_down).reshape(out_channels, in_channels, kernel_height,
+                                                                              kernel_width)
+                curr_layer.weight.data += alpha * updated_weight
+            else:
+                weight_up = state_dict[pair_keys[0]].to(torch.float32)
+                weight_down = state_dict[pair_keys[1]].to(torch.float32)
+                curr_layer.weight.data += alpha * torch.matmul(weight_up, weight_down)
 
+            # update visited list
+            for item in pair_keys:
+                visited.append(item)
+
+        except Exception as e:
+            errors += 1
+            logger.debug(f"Exception loading LoRA key {key}: {e} {traceback.format_exc()}")
+            bad_keys.append(key)
+
+    logger.debug(f"LoRA loaded {total - errors} / {total} keys")
+    logger.debug(f"BadKeys: {bad_keys}")
     return pipeline
+
+
+
+
 
 
 def register_function(model_handler):
