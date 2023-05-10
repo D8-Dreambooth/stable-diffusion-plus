@@ -98,7 +98,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)):
+async def get_current_active_user(current_user: Dict = Depends(get_current_user)):
     config_handler = ConfigHandler()
     user_auth = config_handler.get_item_protected("user_auth", "core", False)
     if not user_auth:
@@ -144,26 +144,26 @@ class UserHandler:
 
         # Add an endpoint to fastAPI for updating the user data
         @app.post("/users/user")
-        async def update_user(user: User, current_user: User = Depends(get_current_user)):
+        async def update_user(user: User, current_user: Dict = Depends(get_current_user)):
             if current_user["disabled"]:
                 raise HTTPException(status_code=403, detail="Not enough privileges")
             user_data = user.dict()
             existing_users = self.config_handler.get_config_protected("users")
             existing_user = None
             message = ""
-            updated_users = []
+            updated_users = {}
             for ex_user in existing_users:
-                if ex_user["name"] == user_data["name"]:
+                if ex_user == user_data["name"]:
                     existing_user = ex_user
                     break
-                updated_users.append(ex_user)
+                updated_users[ex_user] = existing_users[ex_user]
 
-            if not current_user.admin:
+            if not current_user["admin"]:
                 # Don't allow non-admins to create users
                 if not existing_user:
                     raise HTTPException(status_code=403, detail="Not enough privileges")
                 # Don't allow non-admins to change the data of other users
-                if existing_user["name"] != current_user.name:
+                if existing_user["name"] != current_user:
                     raise HTTPException(status_code=403, detail="Not enough privileges")
                 # Don't allow non-admins to upgrade themselves to admin
                 if user.admin:
@@ -182,9 +182,11 @@ class UserHandler:
                     existing_user[key] = user_data[key]
                 user_data = existing_user
                 message = f"User {existing_user['name']} updated"
+            else:
+                self.register_user(user_data["name"])
 
-            updated_users.append(user_data)
-            self.config_handler.set_item_protected("users", updated_users)
+            updated_users[user_data["name"]] = user_data
+            self.config_handler.set_config_protected(updated_users, "users")
             return JSONResponse(status_code=200, content={"message": message, "user": user_data})
 
         self.register_users()
@@ -203,6 +205,18 @@ class UserHandler:
             FileHandler(user_name=user)
             ModelHandler(user_name=user)
             ImageHandler(user_name=user)
+
+    def register_user(self, user):
+        from core.handlers.status import StatusHandler
+        from core.handlers.file import FileHandler
+        from core.handlers.models import ModelHandler
+        from core.handlers.images import ImageHandler
+        logger.info(f"Registering handlers for user: {user}")
+        DirectoryHandler(user_name=user)
+        StatusHandler(user_name=user)
+        FileHandler(user_name=user)
+        ModelHandler(user_name=user)
+        ImageHandler(user_name=user)
 
     def verify_password(self, plain_password, hashed_password):
         return self.pwd_context.verify(plain_password, hashed_password)
