@@ -7,7 +7,7 @@ from fastapi import FastAPI, Depends, UploadFile, File, Form
 from starlette.responses import JSONResponse
 
 from core.handlers.file import FileHandler
-from core.handlers.users import UserHandler, User
+from core.handlers.users import UserHandler, User, get_current_active_user
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 
@@ -40,12 +40,12 @@ class FileBrowserModule(BaseModule):
         async def create_upload_files(
                 files: List[UploadFile] = File(...),
                 file_data: str = Form(...),
-                current_user: User = Depends(self.user_handler.get_current_active_user)
+                current_user: User = Depends(get_current_active_user)
         ):
             logger.debug(f"Current user: {current_user}")
             user_name = None
             if current_user:
-                user_name = current_user.name
+                user_name = current_user["name"]
             file_handler = FileHandler(user_name=user_name)
             user_dir = file_handler.user_dir
 
@@ -58,5 +58,6 @@ class FileBrowserModule(BaseModule):
             for i, file in enumerate(files):
                 contents = await file.read()
                 data = json.loads(file_data)[i]
+                logger.debug(f"Saving file {data['name']} to {data['dest']}")
                 file_handler.save_file(data["dest"], data["name"], contents)
             return {"message": "Files uploaded successfully"}

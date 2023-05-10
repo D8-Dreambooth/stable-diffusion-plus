@@ -289,8 +289,8 @@ li.fileLi * {
     position: absolute;
     width: 100%;
     height: 50px;
-    top: 38px;
-    left: 28px;
+    top: 15px;
+    left: 10px;
     color: var(--primary-accent-text-color);
     display: none;
     animation: fade-in-out 2s ease-in-out infinite;
