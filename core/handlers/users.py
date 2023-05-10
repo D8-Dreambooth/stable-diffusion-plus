@@ -145,7 +145,7 @@ class UserHandler:
         # Add an endpoint to fastAPI for updating the user data
         @app.post("/users/user")
         async def update_user(user: User, current_user: User = Depends(get_current_user)):
-            if current_user.disabled:
+            if current_user["disabled"]:
                 raise HTTPException(status_code=403, detail="Not enough privileges")
             user_data = user.dict()
             existing_users = self.config_handler.get_config_protected("users")
