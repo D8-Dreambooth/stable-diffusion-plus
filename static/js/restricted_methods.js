@@ -8,7 +8,6 @@ let localData = {};
 document.addEventListener("DOMContentLoaded", function () {
     sendMessage("get_modules", {}).then(function (response) {
         let module_data = response["module_data"];
-        console.log("Mod data: ", module_data);
         loadDiv.addClass("loaded");
         let enabled_modules = [];
         // Parse module data, which is a dict of lists where the key is the module ID, and the value is a list with two
@@ -59,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // Register a UI Module in the menu
 function registerModule(module) {
     if (modules.indexOf(module) !== -1) {
-        console.log("Module already registered: ", module);
+        console.log ("Module already registered: ", module);
         return;
     }
     modules.push(module);

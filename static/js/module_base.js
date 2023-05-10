@@ -16,7 +16,6 @@ class Module {
     async init(systemConfig, moduleDefaults, locales) {
         this.systemConfig = systemConfig;
         this.moduleDefaults = moduleDefaults;
-        console.log("Defaults: ", this.moduleDefaults);
         let module_id = this.id;
         let module_name = this.name;
         let module_icon = this.icon;
@@ -82,8 +81,11 @@ class Module {
         if (this.init_method !== null) {
             this.init_method();
         }
-        this.populateInputs(this.moduleDefaults);
+
         this.localize(locales);
+        setTimeout(() => {
+            this.populateInputs(this.moduleDefaults);
+        },500);
     }
 
     localize(module_locales) {
@@ -210,7 +212,6 @@ class Module {
 
         for (const inputId in inputDict) {
             if (inputId === "") continue;
-            console.log("Populating input " + inputId + " in module " + this.id + ".");
             let inputElements;
             try {
                 inputElements = element.querySelectorAll('#' + inputId);
@@ -231,28 +232,24 @@ class Module {
                     inputElement.max = inputData.max;
                     inputElement.step = inputData.step;
                 } else if (inputElement.tagName.toLowerCase() === 'select') {
-                    while (inputElement.firstChild) {
-                        inputElement.removeChild(inputElement.firstChild);
-                    }
-
+                    const values = new Set(Array.from(inputElement.options).map(option => option.value));
                     for (const value in inputData.options) {
-                        const option = document.createElement('option');
-                        option.value = value;
-                        option.text = inputData.options[value];
-                        inputElement.add(option);
-                    }
-                    // Select the item from the input options if it exists
-                    let options = inputElement.querySelectorAll('option');
-                    for (let j = 0; j < options.length; j++) {
-                        const option = options[j];
-                        if (option.value === inputData.value) {
-                            option.selected = true;
-                            break;
+                        if (!values.has(value)) {
+                            const option = document.createElement('option');
+                            option.value = value;
+                            option.text = inputData.options[value];
+                            inputElement.add(option);
                         }
                     }
-                    inputElement.value = inputData.value;
+                    // Select the item from the input options if it exists
+                    const selectedOption = inputElement.querySelector(`option[value="${inputData.value}"]`);
+                    if (selectedOption) {
+                        console.log("Selected option", inputData.value, inputElement.id);
+                        selectedOption.selected = true;
+                    } else {
+                        console.log("Can't Select option", inputData.value, inputElement.id);
+                    }
                 } else {
-                    console.log("Setting input " + inputId + " to " + inputData.value + ".");
                     inputElement.value = inputData.value;
                 }
             }

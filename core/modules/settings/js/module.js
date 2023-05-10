@@ -3,7 +3,6 @@ const settingsModule = new Module("Settings", "moduleSettings", "cog", false, 10
 function initSettings() {
     // Register the module with the UI. Icon is from boxicons by default.
     sendMessage("get_settings", {}, true).then((res) => {
-        console.log("Got settings res: ", res);
         parseObject(res);
     });
 }
@@ -14,16 +13,12 @@ function parseObject(obj) {
     const otherSections = Object.entries(obj.shared).filter(
         ([key]) => key !== 'core'
     );
-    console.log("SYS: ", systemSection);
     const systemForm = createForm(systemSection, 'System');
-    console.log("US: ", usersSection);
     let usersForm;
     if (usersSection !== undefined && usersSection[0] !== null) {
         usersForm = createUserForm(usersSection);
     }
-    console.log("OS: ", otherSections);
     const otherForms = otherSections.map(([key, value]) => {
-        console.log("MAP: ", key, value);
         const titleCaseKey = key.replace(/_/g, ' ').toTitleCase();
         const form = createForm(value, titleCaseKey);
         return {name: titleCaseKey, content: form};
@@ -46,7 +41,6 @@ function parseObject(obj) {
 function createForm(section, sectionName) {
     const form = document.createElement('form');
     form.setAttribute('data-section', sectionName);
-    console.log("PARSE: ", section);
     Object.entries(section).forEach(([key, value]) => {
         const label = key.replace(/_/g, ' ').toTitleCase();
         let input;
@@ -141,10 +135,7 @@ function createTabs(sections, parent) {
         }
 
         timeoutId = setTimeout(() => {
-            console.log(`Section: ${sectionName}, Parameter Name: ${paramName}, Value: ${paramValue}`);
-            sendMessage("set_settings", {"section": sectionName, "key": paramName, "value": paramValue}).then((res) => {
-                console.log("Setting updated: ", res);
-            });
+            sendMessage("set_settings", {"section": sectionName, "key": paramName, "value": paramValue}).then((res) => {});
             timeoutId = null;
         }, 500);
     });
@@ -202,7 +193,6 @@ function createUserForm(users) {
             event.preventDefault();
             const password = passwordInput.querySelector("input").value;
             sendMessage("change_password", {"user": username, "password": password}).then((res) => {
-                console.log("Response: ", res);
                 if (res.status === "Password updated successfully.") {
                     cancelButton.click();
                 }
@@ -222,7 +212,6 @@ function createUserForm(users) {
             timeoutId = setTimeout(() => {
                 const password = passwordInput.querySelector("input").value;
                 const confirmPassword = confirmPasswordInput.querySelector("input").value;
-                console.log("PW Change: ", password, confirmPassword);
 
                 if (password === confirmPassword && password !== "" && confirmPassword !== "") {
                     // Passwords match
@@ -244,7 +233,6 @@ function createUserForm(users) {
             timeoutId = setTimeout(() => {
                 const password = passwordInput.querySelector("input").value;
                 const confirmPassword = confirmPasswordInput.querySelector("input").value;
-                console.log("PW Change: ", password, confirmPassword);
 
                 if (password === confirmPassword && password !== "" && confirmPassword !== "") {
                     // Passwords match

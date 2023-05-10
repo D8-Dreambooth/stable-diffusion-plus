@@ -243,8 +243,8 @@ function connectSocket() {
             }
             const name = message.name;
             const index = messages.indexOf(message.id);
+            // If it's not in the message queue or has a broadcast flag, then it's not a response to a request
             if (index > -1 && !message.hasOwnProperty("broadcast")) {
-                console.log("NO message ID or broadcast: ", message);
                 return;
             }
 
