@@ -85,7 +85,7 @@ class Module {
         this.localize(locales);
         setTimeout(() => {
             this.populateInputs(this.moduleDefaults);
-        },500);
+        },1000);
     }
 
     localize(module_locales) {
