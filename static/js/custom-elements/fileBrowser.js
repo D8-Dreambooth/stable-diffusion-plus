@@ -188,30 +188,31 @@ class FileBrowser {
         let uploadButton = document.createElement("button");
         uploadButton.innerHTML = '<i class="bx bx-upload"></i>';
         uploadButton.classList.add("btn", "btn-primary");
+        uploadButton.title = "Upload a file to the current directory";
         uploadButton.dataset["function"] = "upload";
 
         let refreshButton = document.createElement("button");
         refreshButton.innerHTML = '<i class="bx bx-refresh"></i>';
         refreshButton.classList.add("btn", "btn-secondary");
-        refreshButton.title = "Refresh the current directory.";
+        refreshButton.title = "Refresh the current directory";
         refreshButton.dataset["function"] = "refresh";
 
         let newButton = document.createElement("button");
         newButton.innerHTML = '<i class="bx bx-plus"></i>';
         newButton.classList.add("btn", "btn-secondary");
-        newButton.title = "Create a new directory.";
+        newButton.title = "Create a new directory";
         newButton.dataset["function"] = "new";
 
         let renameButton = document.createElement("button");
         renameButton.innerHTML = '<i class="bx bx-rename"></i>';
         renameButton.classList.add("btn", "btn-secondary");
-        renameButton.title = "Rename the selected file or directory.";
+        renameButton.title = "Rename the selected file or directory";
         renameButton.dataset["function"] = "rename";
 
         let deleteButton = document.createElement("button");
         deleteButton.innerHTML = '<i class="bx bx-trash"></i>';
         deleteButton.classList.add("btn", "btn-danger");
-        deleteButton.title = "Delete the selected file or directory.";
+        deleteButton.title = "Delete the selected file or directory";
         deleteButton.dataset["function"] = "delete";
 
         buttonGroup.appendChild(uploadButton);
@@ -255,7 +256,7 @@ class FileBrowser {
             sharedButton.innerHTML = '<i class="bx bx-share-alt"></i>';
             sharedButton.classList.add("btn", "btn-secondary", "pathBtn");
             sharedButton.dataset["base"] = "shared";
-            sharedButton.title = "View shared files.";
+            sharedButton.title = "View shared files";
             pathGroup.appendChild(sharedButton);
         }
 
@@ -264,7 +265,7 @@ class FileBrowser {
             protectedButton.innerHTML = '<i class="bx bx-lock"></i>';
             protectedButton.classList.add("btn", "btn-secondary", "pathBtn");
             protectedButton.dataset["base"] = "protected";
-            protectedButton.title = "View protected files.";
+            protectedButton.title = "View protected files";
             pathGroup.appendChild(protectedButton);
         }
 
