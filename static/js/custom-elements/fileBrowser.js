@@ -48,6 +48,9 @@ class FileBrowser {
         this.treeParent.classList.add("tree-container", "col", "borderSection");
         this.showTitle = options["showTitle"] !== undefined ? options["showTitle"] : true;
         this.showInfo = options["showInfo"] !== undefined ? options["showInfo"] : true;
+        this.allowShared = options["allowShared"] !== undefined ? options["allowShared"] : false;
+        this.allowProtected = options["allowProtected"] !== undefined ? options["allowProtected"] : false;
+        this.baseDir = "user";
         this.style = options["style"] !== undefined ? options["style"] : "";
         this.placeholder = options["placeholder"] || "Select something...";
         this.showSelectButton = options["showSelectButton"] || false;
@@ -55,6 +58,7 @@ class FileBrowser {
         this.expanded = options["expand"] || false;
         this.multiselect = options["multiselect"] || false;
         this.dropdown = options["dropdown"] !== undefined ? options["dropdown"] : false;
+        this.editor = null;
         if (this.dropdown) {
             this.parentElement.classList.add("dropdown");
             this.treeParent.classList.add("dropdown");
@@ -127,6 +131,11 @@ class FileBrowser {
                 parentElement.append(fileButtons);
             }
 
+            if (this.allowProtected || this.allowShared) {
+                const pathButtons = this.buildPathButtons();
+                parentElement.append(pathButtons);
+            }
+
             parentElement.appendChild(wrapper);
 
             this.parentElement.append(this.treeParent);
@@ -137,6 +146,7 @@ class FileBrowser {
                 this.infoPanel.classList.add("infoPanel", "borderSection", "closed", "col-sm-12", "col-md-6", "col-lg-4");
                 this.parentElement.appendChild(this.infoPanel);
                 this.createImageModal("");
+                this.createTextModal("");
             }
             //this.attachEventHandlers();
         });
@@ -145,7 +155,6 @@ class FileBrowser {
 
     async refresh() {
         await this.buildTree();
-        this.parentElement.dataset.fileBrowser = JSON.stringify(this);
     }
 
     setCurrentPath(path) {
@@ -184,21 +193,25 @@ class FileBrowser {
         let refreshButton = document.createElement("button");
         refreshButton.innerHTML = '<i class="bx bx-refresh"></i>';
         refreshButton.classList.add("btn", "btn-secondary");
+        refreshButton.title = "Refresh the current directory.";
         refreshButton.dataset["function"] = "refresh";
 
         let newButton = document.createElement("button");
         newButton.innerHTML = '<i class="bx bx-plus"></i>';
         newButton.classList.add("btn", "btn-secondary");
+        newButton.title = "Create a new directory.";
         newButton.dataset["function"] = "new";
 
         let renameButton = document.createElement("button");
         renameButton.innerHTML = '<i class="bx bx-rename"></i>';
         renameButton.classList.add("btn", "btn-secondary");
+        renameButton.title = "Rename the selected file or directory.";
         renameButton.dataset["function"] = "rename";
 
         let deleteButton = document.createElement("button");
         deleteButton.innerHTML = '<i class="bx bx-trash"></i>';
         deleteButton.classList.add("btn", "btn-danger");
+        deleteButton.title = "Delete the selected file or directory.";
         deleteButton.dataset["function"] = "delete";
 
         buttonGroup.appendChild(uploadButton);
@@ -222,6 +235,61 @@ class FileBrowser {
         return btnRow;
     }
 
+    buildPathButtons() {
+        let pathCol = document.createElement("div");
+        pathCol.classList.add("col-12", "text-center", "pathCol");
+
+        let pathGroup = document.createElement("div");
+        pathGroup.classList.add("btn-group", "btn-group-sm");
+
+        let userButton = document.createElement("button");
+        userButton.innerHTML = '<i class="bx bx-user"></i>';
+        userButton.classList.add("btn", "btn-secondary", "active", "pathBtn");
+        userButton.dataset["base"] = "user";
+        userButton.title = "View user files.";
+        pathGroup.appendChild(userButton);
+
+
+        if (this.allowShared) {
+            let sharedButton = document.createElement("button");
+            sharedButton.innerHTML = '<i class="bx bx-share-alt"></i>';
+            sharedButton.classList.add("btn", "btn-secondary", "pathBtn");
+            sharedButton.dataset["base"] = "shared";
+            sharedButton.title = "View shared files.";
+            pathGroup.appendChild(sharedButton);
+        }
+
+        if (this.allowProtected) {
+            let protectedButton = document.createElement("button");
+            protectedButton.innerHTML = '<i class="bx bx-lock"></i>';
+            protectedButton.classList.add("btn", "btn-secondary", "pathBtn");
+            protectedButton.dataset["base"] = "protected";
+            protectedButton.title = "View protected files.";
+            pathGroup.appendChild(protectedButton);
+        }
+
+        pathGroup.querySelectorAll("button").forEach(button => {
+            // Get the data-base attribute of the selected element
+            button.addEventListener("click", () => {
+                this.setCurrentPath("");
+                let newBase = button.dataset.base;
+                if (this.baseDir !== newBase) {
+                    this.baseDir = newBase;
+                    console.log("New base dir: " + this.baseDir);
+                    $(".pathBtn.active").removeClass("active");
+                    button.classList.add("active");
+                    this.refresh();
+                }
+            });
+        });
+
+        pathCol.appendChild(pathGroup);
+        let pathRow = document.createElement("div");
+        pathRow.classList.add("row", "pathRow");
+        pathRow.appendChild(pathCol);
+        return pathRow;
+    }
+
     handleFileMethod(method) {
         // Get data-path attribute of each of these elements
         const selected = this.treeContainer.querySelectorAll(".fileLi.selected");
@@ -233,6 +301,8 @@ class FileBrowser {
         // If the method is upload, we can .
         // Otherwise, we need to call the async 'sendMessage("handleFile", {dir=CURRENT_PATH, files={selected_files}),
         // populating files as described below.
+        let show_shared = this.baseDir === "shared";
+        let show_protected = this.baseDir === "protected";
         const selectedFiles = [];
         selected.forEach((item) => {
             selectedFiles.push(item.dataset.fullPath);
@@ -240,15 +310,24 @@ class FileBrowser {
         switch (method) {
             case "refresh":
                 // call the async this.refresh() method
-                this.refresh().then(() => {});
+                this.refresh().then(() => {
+                });
                 break;
             case "delete":
                 // Send the list of selected files
                 if (selectedFiles.length > 0) {
                     if (confirm(`Are you sure you want to delete these ${selectedFiles.length} file(s)? This action is irreversible.`)) {
-                        const data = {dir: fileCurrent.innerHTML, files: selectedFiles, method: method};
+                        const data = {
+                            dir: fileCurrent.innerHTML,
+                            files: selectedFiles,
+                            method: method,
+                            shared: show_shared,
+                            protected: show_protected
+                        };
                         sendMessage("handleFile", data).then(() => {
-                            this.refresh().then(() => {})});
+                            this.refresh().then(() => {
+                            })
+                        });
                     }
                 }
                 break;
@@ -263,9 +342,15 @@ class FileBrowser {
                             dir: fileCurrent.innerHTML,
                             files: selectedFiles,
                             method: method,
-                            newName: newFileName
+                            newName: newFileName,
+                            shared: show_shared,
+                            protected: show_protected
                         };
-                        sendMessage("handleFile", data).then(() => {this.refresh().then(() => {})});}
+                        sendMessage("handleFile", data).then(() => {
+                            this.refresh().then(() => {
+                            })
+                        });
+                    }
                 } else {
                     alert("Please select only one file to rename.");
                 }
@@ -305,8 +390,17 @@ class FileBrowser {
                 // Open a dialog asking for the folder name, then sendMessage to handleFile with the user input for the dir name under "files".
                 const folderName = prompt("Enter the folder name:");
                 if (folderName) {
-                    const data = {dir: fileCurrent.innerHTML, files: [folderName], method: method};
-                    sendMessage("handleFile", data).then(() => {this.refresh().then(() => {});});
+                    const data = {
+                        dir: fileCurrent.innerHTML,
+                        files: [folderName],
+                        method: method,
+                        shared: show_shared,
+                        protected: show_protected
+                    };
+                    sendMessage("handleFile", data).then(() => {
+                        this.refresh().then(() => {
+                        });
+                    });
                 }
                 break;
         }
@@ -507,6 +601,7 @@ class FileBrowser {
             dataPanel.classList.add("mt-2", "dataPanel");
             const pre = document.createElement("pre");
             pre.classList.add("bg-light", "p-3", "border");
+            pre.id = "dataPanelText";
             pre.textContent = fileInfo.data;
             dataPanel.appendChild(pre);
             if (fileInfo.src) {
@@ -555,6 +650,90 @@ class FileBrowser {
         link.href = src;
         link.download = name;
         link.click();
+    }
+
+    createTextModal(src) {
+        const modal = document.createElement('div');
+        modal.classList.add('modal', 'fade');
+        modal.id = 'jsonEditModal';
+        modal.setAttribute('tabindex', '-1');
+        modal.setAttribute('aria-labelledby', 'jsonEditModalLabel');
+        modal.setAttribute('aria-hidden', 'true');
+
+        const modalDialog = document.createElement('div');
+        modalDialog.classList.add('modal-dialog', 'modal-fullscreen');
+        modal.appendChild(modalDialog);
+
+        const modalContent = document.createElement('div');
+        modalContent.classList.add('modal-content');
+        modalDialog.appendChild(modalContent);
+
+        const modalHeader = document.createElement('div');
+        modalHeader.classList.add('modal-header');
+        modalContent.appendChild(modalHeader);
+
+        const modalTitle = document.createElement('h5');
+        modalTitle.classList.add('modal-title');
+        modalTitle.id = 'exampleModalLabel';
+        modalTitle.innerText = 'File Editor';
+        modalHeader.appendChild(modalTitle);
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.classList.add('btn-close');
+        closeButton.setAttribute('data-bs-dismiss', 'modal');
+        closeButton.setAttribute('aria-label', 'Close');
+        modalHeader.appendChild(closeButton);
+
+        const modalBody = document.createElement('div');
+        modalBody.classList.add('modal-body');
+        modalContent.appendChild(modalBody);
+
+        // Add your own custom code here for the modal body
+
+        const modalFooter = document.createElement('div');
+        modalFooter.classList.add('modal-footer');
+        modalContent.appendChild(modalFooter);
+
+        const closeButton2 = document.createElement('button');
+        closeButton2.type = 'button';
+        closeButton2.classList.add('btn', 'btn-secondary');
+        closeButton2.setAttribute('data-bs-dismiss', 'modal');
+        closeButton2.innerText = 'Close';
+        modalFooter.appendChild(closeButton2);
+
+
+        const options = {};
+        const modalEditor = document.createElement('div');
+        modalEditor.classList.add('textEditor');
+        modalBody.appendChild(modalEditor);
+        this.editor = new JSONEditor(modalEditor, options);
+        const saveButton = document.createElement('button');
+        saveButton.type = 'button';
+        saveButton.classList.add('btn', 'btn-primary');
+        saveButton.innerText = 'Save changes';
+        modalFooter.appendChild(saveButton);
+        saveButton.addEventListener('click', () => {
+            let data = this.editor.get();
+            let show_protected = false;
+        let show_shared = false;
+        console.log("Fetching", this.baseDir);
+        if (this.baseDir === "shared") show_shared = true;
+        if (this.baseDir === "protected") show_protected = true;
+            console.log("We should save this: ", data);
+            let saveData = {
+                path: this.editFile,
+                file_data: data,
+                protected: show_protected,
+                shared: show_shared
+            }
+            console.log("Saving", saveData);
+            sendMessage("saveFile", saveData,true).then((response) => {
+                console.log("Saved?", response);
+            });
+        });
+
+        document.body.appendChild(modal);
+        this.textModal = new bootstrap.Modal(document.getElementById('jsonEditModal'), options);
     }
 
 
@@ -648,6 +827,16 @@ class FileBrowser {
 
     async buildTree() {
         const response = await this.fetchFileTreeData(this.currentPath);
+        console.log("Response: " + response);
+        if (!response.hasOwnProperty("items")) {
+            console.log("No items found");
+            return;
+        }
+        let show_shared = response["show_shared"] || false;
+        let show_protected = response["show_protected"] || false;
+        this.allowProtected = show_protected;
+        this.allowShared = show_shared;
+        console.log("Show shared/protected: " + show_shared + "/" + show_protected);
         let items = response["items"] || [];
         this.currentParent = response["current"] || "";
         this.separator = response["separator"] || "\\";
@@ -918,7 +1107,7 @@ class FileBrowser {
                 }
                 sortButton.innerHTML = '<i class="bx ' + sortIcon + '"></i><i class="bx ' + orderIcon + '"></i>';
 
-                
+
                 event.currentTarget.classList.add("active");
 
                 this.sortTree();
@@ -955,6 +1144,29 @@ class FileBrowser {
                 img.src = infoImg.src;
                 img.dataset["name"] = infoImg.dataset["name"];
                 $("#imageInfoModal").addClass("show");
+            }
+        } else if (link.dataset.type === ".txt" || link.dataset.type === ".json") {
+            if (this.showInfo) {
+                console.log("Link data: ", link.dataset);
+                this.fetchFileData(link.dataset.path).then((data) => {
+                    console.log("File data: ", data);
+                    if (data.length > 0) {
+                        let fileData = data[0];
+                        if (fileData.hasOwnProperty("data")) {
+                            let fileText = fileData.data;
+                            try {
+                                fileText = JSON.parse(fileText);
+                            } catch (e) {
+                                console.log("Not JSON");
+                            }
+                            this.editor.set(fileText);
+                            this.editFile = link.dataset.fullPath;
+                            this.textModal.toggle();
+
+                        }
+                    }
+
+                });
             }
         }
         this.onDoubleClickCallbacks.forEach((callback) =>
@@ -1083,11 +1295,18 @@ class FileBrowser {
     }
 
     async fetchFileTreeData(directory, recursive = false, filter = []) {
+        let show_protected = false;
+        let show_shared = false;
+        console.log("Fetching", this.baseDir);
+        if (this.baseDir === "shared") show_shared = true;
+        if (this.baseDir === "protected") show_protected = true;
         const data = {
             start_dir: directory,
             include_files: this.listFiles,
             recursive: recursive,
-            filter: filter
+            filter: filter,
+            protected: show_protected,
+            shared: show_shared
         };
         const response = await sendMessage("files", data);
         this.setCurrentPath(response["current"]);
@@ -1128,7 +1347,9 @@ class FileBrowser {
 
     async fetchFileData(file) {
         const data = {
-            files: file
+            files: file,
+            protected: this.baseDir === "protected",
+            shared: this.baseDir === "shared"
         };
         const response = await sendMessage("file", data);
         if (response.hasOwnProperty("files")) {

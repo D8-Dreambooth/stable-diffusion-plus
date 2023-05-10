@@ -230,6 +230,12 @@ li.fileLi * {
     height: 50px;
 }
 
+.pathRow {
+    position: absolute;
+    right: 5px;
+    top: 10px;
+}
+
 
 .fileTitleCol, .fileCurrent {
     border: none !important;

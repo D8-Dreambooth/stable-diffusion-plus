@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import os
 import shutil
@@ -12,6 +13,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from core.handlers.directories import DirectoryHandler
+from core.handlers.users import get_user
 from core.handlers.websocket import SocketHandler
 
 
@@ -19,10 +21,14 @@ class FileHandler:
     _instance = None
     _instances = {}
     user_dir = None
+    shared_dir = None
+    protected_dir = None
     user_name = None
     current_dir = None
     socket_handler = None
     logger = None
+    show_protected = False
+    show_shared = True
     templates = Jinja2Templates(directory="templates")
     app = None
 
@@ -33,12 +39,14 @@ class FileHandler:
             cls._instance.logger = logging.getLogger(f"{__name__}-shared")
             app.mount("/static", StaticFiles(directory="static"), name="static")
             cls._instance.app = app
-            user_dir = dir_handler.get_directory("users")[0]
+            user_dir = None
+            cls._instance.shared_dir = dir_handler.shared_path
             cls._instance.user_dir = user_dir
             socket_handler = SocketHandler()
             socket_handler.register("files", cls._instance.pass_dir_content)
             socket_handler.register("file", cls._instance.get_file)
             socket_handler.register("handleFile", cls._instance.handle_file)
+            socket_handler.register("saveFile", cls._instance.save_file_async)
 
         if user_name is not None:
             if user_name in cls._instances:
@@ -47,6 +55,12 @@ class FileHandler:
                 user_instance = super(FileHandler, cls).__new__(cls)
                 user_instance.logger = logging.getLogger(f"{__name__}-{user_name}")
                 dir_handler = DirectoryHandler(user_name=user_name)
+                user_data = get_user(user_name)
+                if user_data:
+                    if user_data["admin"] and not user_data["disabled"]:
+                        user_instance.show_protected = True
+                        user_instance.protected_dir = dir_handler.protected_path
+                user_instance.shared_dir = dir_handler.shared_path
                 user_dir = dir_handler.get_directory(user_name)[0]
                 user_instance.user_dir = user_dir
                 user_instance.app = cls._instance.app
@@ -54,6 +68,7 @@ class FileHandler:
                 socket_handler.register("files", user_instance.pass_dir_content, user_name)
                 socket_handler.register("file", user_instance.get_file, user_name)
                 socket_handler.register("handleFile", user_instance.handle_file, user_name)
+                socket_handler.register("saveFile", user_instance.save_file_async, user_name)
                 user_instance.user_name = user_name
                 cls._instances[user_name] = user_instance
                 return user_instance
@@ -62,33 +77,67 @@ class FileHandler:
 
     async def pass_dir_content(self, request):
         data = request["data"]
+        self.logger.debug(f"Passing dir content: {data}")
+        protected = data["protected"] if "protected" in data else False
+        shared = data["shared"] if "shared" in data else False
+        user = request["user"] if "user" in request else None
+        user_data = get_user(user)
+        show_protected = user_data["admin"] if user_data else False
+        show_shared = True
+        base_path = self.user_dir
+        if shared:
+            base_path = self.shared_dir
+        elif protected:
+            if user is None:
+                return {"error": "User not specified, required for protected directories."}
+            if user_data is None:
+                return {"error": "User not found, required for protected directories."}
+            if not user_data["admin"]:
+                return {"error": "User is not admin, required for protected directories."}
+            base_path = self.protected_dir
+        self.logger.debug(f"Base path: {base_path}")
         thumbs = data["thumbs"] if "thumbs" in data else False
         thumb_size = data["thumb_size"] if "thumb_size" in data else 128
-        res = self.get_dir_content(data["start_dir"], data["include_files"], data["recursive"], data["filter"])
-        current_path = os.path.abspath(os.path.join(self.user_dir, data["start_dir"]))
+        res = self.get_dir_content(base_path, data["start_dir"], data["include_files"], data["recursive"], data["filter"])
+        current_path = os.path.abspath(os.path.join(base_path, data["start_dir"])) if data["start_dir"] else base_path
 
-        if current_path == "" or current_path == self.user_dir:
+        if current_path == "" or current_path == base_path:
             current_path = ""
         if thumbs:
             new_res = {}
             for item_path, value in res.items():
-                full_path = os.path.join(self.user_dir, item_path)
+                full_path = os.path.join(base_path, item_path)
                 if is_image(full_path):
                     value["thumb"], value["tag"] = await self.get_thumbnail(full_path, thumb_size)
                 new_res[item_path] = value
             res = new_res
         result = {
             "items": res,
-            "current": current_path.replace(f"{self.user_dir}{os.path.sep}", ""),
-            "separator": os.path.sep
+            "current": current_path.replace(f"{base_path}{os.path.sep}", ""),
+            "separator": os.path.sep,
+            "show_protected": show_protected,
+            "show_shared": show_shared,
         }
         return result
 
     async def handle_file(self, request: Dict):
         # This is the actual data from js
         data = request["data"]
+        protected = data["protected"] if "protected" in data else False
+        shared = data["shared"] if "shared" in data else False
+        user = request["user"] if "user" in request else None
+        base_path = self.user_dir
+        if protected or shared:
+            if user is None:
+                return {"error": "User not specified, required for protected/shared directories."}
+            user_data = get_user(user)
+            if user_data is None:
+                return {"error": "User not found, required for protected/shared directories."}
+            if not user_data["admin"]:
+                return {"error": "User is not admin, required for protected directories."}
+            base_path = self.protected_dir if protected else self.shared_dir
         # This is the root in which our current path can be combined
-        base_dir = self.user_dir.rstrip(os.path.sep)
+        base_dir = base_path.rstrip(os.path.sep)
         method = data["method"]
         files = data["files"]
         directory = data["dir"].lstrip(os.path.sep)
@@ -98,7 +147,7 @@ class FileHandler:
 
         if method == "delete":
             for file in files:
-                file_path = os.path.join(self.user_dir, file)
+                file_path = os.path.join(base_path, file)
                 try:
                     if os.path.isdir(file_path):
                         shutil.rmtree(file_path)
@@ -122,19 +171,33 @@ class FileHandler:
                         # Show
                         # error message that file could not be renamed
                         print("Error: file could not be renamed.")
-
         elif method == "new":
             for file in files:
                 file_path = os.path.join(full_path, file)
 
                 if not os.path.exists(file_path):
                     os.makedirs(file_path)
-
         data["status"] = "successful"
         return data
 
     async def get_file(self, request: Dict):
         data = request["data"]
+        protected = data["protected"] if "protected" in data else False
+        shared = data["shared"] if "shared" in data else False
+        user = request["user"] if "user" in request else None
+        base_path = self.user_dir
+        if shared:
+            base_path = self.shared_dir
+        if protected:
+            if user is None:
+                return {"error": "User not specified, required for protected directories."}
+            user_data = get_user(user)
+            if user_data is None:
+                return {"error": "User not found, required for protected directories."}
+            if not user_data["admin"]:
+                return {"error": "User is not admin, required for protected directories."}
+            base_path = self.protected_dir
+
         file = data["files"]
         thumbs = data["thumbs"] if "thumbs" in data else False
         thumb_size = data["thumb_size"] if "thumb_size" in data else 128
@@ -145,8 +208,8 @@ class FileHandler:
 
         if isinstance(file, list):
             for check in file:
-                full_file = os.path.abspath(os.path.join(self.user_dir, check))
-                if os.path.exists(full_file) and full_file.startswith(self.user_dir):
+                full_file = os.path.abspath(os.path.join(base_path, check))
+                if os.path.exists(full_file) and full_file.startswith(base_path):
                     files.append(full_file)
 
         if not files:
@@ -263,6 +326,36 @@ class FileHandler:
 
         return {"files": urls}
 
+    async def save_file_async(self, request):
+        data = request["data"]
+        self.logger.debug(f"Saving file: {data}")
+        path = data["path"]
+        file_data = data["file_data"]
+        protected = data["protected"]
+        shared = data["shared"]
+
+        user = request["user"] if "user" in request else None
+        user_data = get_user(user)
+        show_protected = user_data["admin"] if user_data else False
+        show_shared = True
+        base_path = self.user_dir
+        if shared:
+            base_path = self.shared_dir
+        elif protected:
+            if user is None:
+                return {"error": "User not specified, required for protected directories."}
+            if user_data is None:
+                return {"error": "User not found, required for protected directories."}
+            if not user_data["admin"]:
+                return {"error": "User is not admin, required for protected directories."}
+            base_path = self.protected_dir
+        if base_path not in path:
+            self.logger.warning(f"Invalid path: {path}")
+            return {"error": "Invalid path."}
+        with open(path, "w") as f:
+            json.dump(file_data, f, indent=4)
+        return {"saved": "true"}
+
     def save_file(self, dest_dir, file_name, file_contents):
         dir_handler = DirectoryHandler(user_name=self.user_name)
         self.user_dir = dir_handler.get_directory(self.user_name)[0]
@@ -326,13 +419,13 @@ class FileHandler:
             pass
         return img_src, tag_data
 
-    def get_dir_content(self, start_dir: str, include_files: bool = False, recursive: bool = False,
+    def get_dir_content(self, base_path, start_dir: str, include_files: bool = False, recursive: bool = False,
                         filter: Union[str, List[str]] = None) -> Dict[str, Tuple[str, int, str, Union[None, Dict]]]:
 
-        start_dir = os.path.join(self.user_dir, start_dir)
+        start_dir = os.path.join(base_path, start_dir)
         start_dir = os.path.abspath(start_dir)
-        if not start_dir.startswith(self.user_dir) or not os.path.isdir(start_dir):
-            start_dir = self.user_dir
+        if not start_dir.startswith(base_path) or not os.path.isdir(start_dir):
+            start_dir = base_path
 
         result = {}
 
@@ -354,16 +447,16 @@ class FileHandler:
                 }
 
                 if entry.is_dir() and recursive:
-                    sub_res = self.get_dir_content(entry.path, include_files, recursive, filter)
+                    sub_res = self.get_dir_content(base_path, entry.path, include_files, recursive, filter)
                     for key, value in sub_res.items():
                         result[key] = value
 
                 ui_path = str(entry.path)
-                ui_path = ui_path.replace(self.user_dir, "")
+                ui_path = ui_path.replace(base_path, "")
                 ui_path = ui_path.lstrip("/\\")  # Removes leading forward or backward slashes
                 result[ui_path] = entry_data_2
 
-        result[".."] = {"path": start_dir.replace(f"{self.user_dir}{os.path.sep}", "")}
+        result[".."] = {"path": start_dir.replace(f"{base_path}{os.path.sep}", "")}
 
         return result
 
