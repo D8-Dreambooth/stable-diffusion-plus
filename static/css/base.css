@@ -116,6 +116,12 @@ input {
     z-index: 1000000;
 }
 
+.form-control:disabled, .form-control[readonly] {
+    background-color: var(--bs-gray-200);
+    color: var(--bs-gray);
+    opacity: 1;
+}
+
 .table-striped tbody tr:nth-of-type(odd) {
     background-color: var(--bs-gray-100);
 }

@@ -129,12 +129,12 @@ class FileBrowser {
             if (!this.dropdown) {
                 const fileButtons = this.buildFileButtons();
                 parentElement.append(fileButtons);
+                if (this.allowProtected || this.allowShared) {
+                    const pathButtons = this.buildPathButtons();
+                    parentElement.append(pathButtons);
+                }
             }
 
-            if (this.allowProtected || this.allowShared) {
-                const pathButtons = this.buildPathButtons();
-                parentElement.append(pathButtons);
-            }
 
             parentElement.appendChild(wrapper);
 
@@ -716,10 +716,10 @@ class FileBrowser {
         saveButton.addEventListener('click', () => {
             let data = this.editor.get();
             let show_protected = false;
-        let show_shared = false;
-        console.log("Fetching", this.baseDir);
-        if (this.baseDir === "shared") show_shared = true;
-        if (this.baseDir === "protected") show_protected = true;
+            let show_shared = false;
+            console.log("Fetching", this.baseDir);
+            if (this.baseDir === "shared") show_shared = true;
+            if (this.baseDir === "protected") show_protected = true;
             console.log("We should save this: ", data);
             let saveData = {
                 path: this.editFile,
@@ -728,7 +728,7 @@ class FileBrowser {
                 shared: show_shared
             }
             console.log("Saving", saveData);
-            sendMessage("saveFile", saveData,true).then((response) => {
+            sendMessage("saveFile", saveData, true).then((response) => {
                 console.log("Saved?", response);
             });
         });
