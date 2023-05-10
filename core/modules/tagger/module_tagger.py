@@ -22,6 +22,7 @@ class TaggerModule(BaseModule):
 
     def _initialize_websocket(self, handler: SocketHandler):
         super()._initialize_websocket(handler)
+
         handler.register("save_caption", _save_caption)
 
 

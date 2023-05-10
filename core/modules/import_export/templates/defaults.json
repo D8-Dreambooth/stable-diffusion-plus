@@ -1,0 +1,56 @@
+{
+  "modelSelect_select": {
+    "value": "",
+    "options": {}
+  },
+  "convUse512": {
+    "value": false
+  },
+  "extract_save_shared": {
+    "value": false
+  },
+  "modelExportSelect_select": {
+    "value": "",
+    "options": {}
+  },
+  "io_lora_src_select": {
+    "value": "",
+    "options": {}
+  },
+  "io_lora_base_select": {
+    "value": "",
+    "options": {}
+  },
+  "io_lora_precision": {
+    "value": "float",
+    "options": {
+      "fp16": "fp16",
+      "bf16": "bf16",
+      "float": "float"
+    }
+  },
+  "": {
+    "value": 128
+  },
+  "io_lora_network_dimension": {
+    "value": 128,
+    "min": 4,
+    "max": 1024,
+    "step": 1
+  },
+  "io_lora_conv_dimension": {
+    "value": 128,
+    "min": 4,
+    "max": 1024,
+    "step": 1
+  },
+  "downloadModelUrl": {
+    "value": ""
+  },
+  "downloadModelType": {
+    "value": ""
+  },
+  "downloadModelName": {
+    "value": ""
+  }
+}

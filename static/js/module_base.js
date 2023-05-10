@@ -16,6 +16,7 @@ class Module {
     async init(systemConfig, moduleDefaults, locales) {
         this.systemConfig = systemConfig;
         this.moduleDefaults = moduleDefaults;
+        console.log("Defaults: ", this.moduleDefaults);
         let module_id = this.id;
         let module_name = this.name;
         let module_icon = this.icon;
@@ -81,6 +82,7 @@ class Module {
         if (this.init_method !== null) {
             this.init_method();
         }
+        this.populateInputs(this.moduleDefaults);
         this.localize(locales);
     }
 
@@ -99,7 +101,7 @@ class Module {
         }
         elements.forEach((element) => {
             let elem_id = null;
-            if(element.hasAttribute("for")) {
+            if (element.hasAttribute("for")) {
                 elem_id = element.getAttribute("for");
             }
             if (elem_id === null) return;
@@ -134,10 +136,10 @@ class Module {
             }
             if (l !== "" && l.indexOf("<") === -1) {
                 mapped[elem_id] = {
-                        label: l,
-                        title: t,
-                        description: d
-                    };
+                    label: l,
+                    title: t,
+                    description: d
+                };
             }
         });
         localData[this.id] = mapped;
@@ -157,4 +159,105 @@ class Module {
             navList.removeChild(existingModule);
         }
     }
+
+    enumerateInputs() {
+        const element = document.getElementById(this.id);
+        const inputDict = {};
+        const inputElements = element.querySelectorAll('input, select');
+
+        for (let i = 0; i < inputElements.length; i++) {
+            const input = inputElements[i];
+            const inputId = input.id;
+
+            if (input.type === 'checkbox') {
+                inputDict[inputId] = {
+                    value: input.checked
+                };
+            } else if (input.type === 'range') {
+                inputDict[inputId] = {
+                    value: parseFloat(input.value),
+                    min: parseFloat(input.min),
+                    max: parseFloat(input.max),
+                    step: parseFloat(input.step)
+                };
+            } else if (input.tagName.toLowerCase() === 'select') {
+                const options = input.querySelectorAll('option');
+                const optionDict = {};
+
+                for (let j = 0; j < options.length; j++) {
+                    const option = options[j];
+                    if (option.text !== "Loading...") {
+                        optionDict[option.value] = option.text;
+                    }
+                }
+
+                inputDict[inputId] = {
+                    value: input.value,
+                    options: optionDict
+                };
+            } else {
+                inputDict[inputId] = {
+                    value: parseFloat(input.value) || input.value
+                };
+            }
+        }
+
+        return inputDict;
+    }
+
+    populateInputs(inputDict) {
+        const element = document.getElementById(this.id);
+
+        for (const inputId in inputDict) {
+            if (inputId === "") continue;
+            console.log("Populating input " + inputId + " in module " + this.id + ".");
+            let inputElements;
+            try {
+                inputElements = element.querySelectorAll('#' + inputId);
+            } catch (e) {
+                console.log(e);
+            }
+            if (!inputElements) continue;
+            if (!inputElements.length) continue;
+            const inputData = inputDict[inputId];
+            for (let i = 0; i < inputElements.length; i++) {
+                const inputElement = inputElements[i];
+
+                if (inputElement.type === 'checkbox') {
+                    inputElement.checked = inputData.value;
+                } else if (inputElement.type === 'range') {
+                    inputElement.value = inputData.value;
+                    inputElement.min = inputData.min;
+                    inputElement.max = inputData.max;
+                    inputElement.step = inputData.step;
+                } else if (inputElement.tagName.toLowerCase() === 'select') {
+                    while (inputElement.firstChild) {
+                        inputElement.removeChild(inputElement.firstChild);
+                    }
+
+                    for (const value in inputData.options) {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.text = inputData.options[value];
+                        inputElement.add(option);
+                    }
+                    // Select the item from the input options if it exists
+                    let options = inputElement.querySelectorAll('option');
+                    for (let j = 0; j < options.length; j++) {
+                        const option = options[j];
+                        if (option.value === inputData.value) {
+                            option.selected = true;
+                            break;
+                        }
+                    }
+                    inputElement.value = inputData.value;
+                } else {
+                    console.log("Setting input " + inputId + " to " + inputData.value + ".");
+                    inputElement.value = inputData.value;
+                }
+            }
+        }
+    }
+
+
 }

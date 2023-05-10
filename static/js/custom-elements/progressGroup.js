@@ -15,7 +15,7 @@ class ProgressGroup {
           progress_1_css: " bg-success",
           progress_2_css: " bg-warning",
           status: "",
-          status2: "",
+          status_2: "",
           show_bar1: true,
           show_bar2: true,
           show_primary_status: true,
@@ -46,7 +46,7 @@ class ProgressGroup {
         statusRowPrimary.classList.add("row", "statusRowPrimary");
 
         const primary_status = document.createElement("div");
-        primary_status.classList.add("status_primary");
+        primary_status.classList.add("status_primary", "fit");
         primary_status.innerHTML = "";
         this.primary_status = primary_status;
         statusRowPrimary.appendChild(primary_status);
@@ -55,7 +55,7 @@ class ProgressGroup {
         statusRowSecondary.classList.add("row", "statusRowSecondary");
 
         const secondary_status = document.createElement("div");
-        secondary_status.classList.add("status_secondary");
+        secondary_status.classList.add("status_secondary", "fit");
         secondary_status.innerHTML = "";
         this.secondary_status = secondary_status;
         statusRowSecondary.appendChild(secondary_status);
@@ -77,7 +77,7 @@ class ProgressGroup {
         this.options.progress_1_total = 0;
         this.options.progress_2_total = 0;
         this.options.status = "";
-        this.options.status2 = "";
+        this.options.status_2 = "";
         this.update(this.options);
     }
 
@@ -151,7 +151,7 @@ class ProgressGroup {
 
         // Update status text
         this.primary_status.innerHTML = this.options.status;
-        this.secondary_status.innerHTML = this.options.status2;
+        this.secondary_status.innerHTML = this.options.status_2;
 
         // Update status text visibility
         if (this.options.show_primary_status) {

@@ -90,6 +90,10 @@ class BaseModule:
 
         return css_files, js_files, custom_files
 
+    def get_defaults(self):
+        config_handler = ConfigHandler()
+        return config_handler.get_module_defaults(self.name)
+
     def _set_defaults(self):
         config_dir = os.path.join(self.path, "config")
         templates_dir = os.path.join(self.path, "templates")

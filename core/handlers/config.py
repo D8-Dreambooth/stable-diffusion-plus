@@ -129,6 +129,16 @@ class ConfigHandler:
         else:
             self.update_keys(file, default_file)
 
+    def get_module_defaults(self, module_name):
+        module_name = re.sub(r'[^a-zA-Z0-9]', '', module_name)
+        default_file = os.path.join(self._base_defaults, f"{module_name}.json")
+        if os.path.exists(default_file):
+            logger.debug(f"Loading {default_file}")
+            with open(default_file, "r") as file:
+                return json.load(file)
+        logger.debug(f"Default file {default_file} does not exist")
+        return {}
+
     def update_keys(self, template_path, live_path):
         try:
             # Load the template and live JSON data from files

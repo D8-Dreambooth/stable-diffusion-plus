@@ -8,6 +8,7 @@ let localData = {};
 document.addEventListener("DOMContentLoaded", function () {
     sendMessage("get_modules", {}).then(function (response) {
         let module_data = response["module_data"];
+        console.log("Mod data: ", module_data);
         loadDiv.addClass("loaded");
         let enabled_modules = [];
         // Parse module data, which is a dict of lists where the key is the module ID, and the value is a list with two
@@ -15,6 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const localeDataElement = document.getElementById("locale-data");
         let localeInner = localeDataElement.textContent;
         const localeData = JSON.parse(localeInner);
+        let newDefaults = {};
 
         for (let module_id in module_data) {
             let module_settings = module_data[module_id]["config"];
@@ -35,11 +37,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (module.id === camelCaseId) {
                         module.enabled = true;
                         module.init(module_settings, module_defaults, module_locales);
+                        newDefaults[module_id] = module.enumerateInputs();
                         break;
                     }
                 }
             }
         }
+        // Uncomment this to grab default configs after adding/changing stuff.
+        // console.log("New defaults: ", newDefaults);
         fitty(".fit",
             {
                 minSize: 10,

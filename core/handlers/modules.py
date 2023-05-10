@@ -36,7 +36,8 @@ class ModuleHandler:
             model_defaults = {}
             try:
                 model_defaults = module.get_defaults()
-            except:
+            except Exception as e:
+                logger.warning(f"Error getting defaults for {module_name}: {e}")
                 pass
             module_data[module_name] = {
                 "config": model_config if model_config else {},
