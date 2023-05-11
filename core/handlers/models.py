@@ -111,8 +111,9 @@ class ModelHandler:
                     return model
             else:
                 if model.name == value or model.hash == value or model.display_name == value or model.path == value:
+                    logger.debug(f"Found model: {model}")
                     return model
-
+        logger.debug(f"Model not found: {value}")
         return None
 
     async def _load_model(self, msg):

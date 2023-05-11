@@ -229,6 +229,37 @@ class Module {
                     if (inputData.hasOwnProperty("min")) bs.setMin(inputData.min);
                     if (inputData.hasOwnProperty("max")) bs.setMax(inputData.max);
                     if (inputData.hasOwnProperty("step")) bs.setStep(inputData.step);
+
+                } else if (inputElement.classList.contains("nav-tabs")) {
+                    console.log("nav-tabs");
+                    let navLinks = inputElement.querySelectorAll(".nav-link");
+
+                    // Loop through each nav link
+                    navLinks.forEach((link) => {
+                        // Remove the "active" class from all nav links
+                        link.classList.remove("active");
+
+                        // Untoggle the associated tab content
+                        let target = document.querySelector(link.getAttribute("data-bs-target"));
+                        if (target) {
+                            target.classList.remove("show");
+                            target.classList.remove("active");
+                        }
+                    });
+
+                    // Set the target link as active
+                    let targetLink = document.getElementById(inputData.value);
+                    if (targetLink) {
+                        targetLink.classList.add("active");
+
+                        // Toggle the associated tab content
+                        let targetTab = document.querySelector(targetLink.getAttribute("data-bs-target"));
+                        if (targetTab) {
+                            targetTab.classList.add("show");
+                            targetTab.classList.add("active");
+                        }
+                    }
+
                 } else if (inputElement.type === 'checkbox') {
                     inputElement.checked = inputData.value;
 
