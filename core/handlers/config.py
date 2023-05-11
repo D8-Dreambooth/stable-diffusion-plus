@@ -169,15 +169,18 @@ class ConfigHandler:
     def _create_directories(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
-
-        if not os.path.exists(self._shared_dir):
-            os.makedirs(self._shared_dir)
-        if not os.path.exists(self._protected_dir):
-            os.makedirs(self._protected_dir)
-        if self._user_dir and not os.path.exists(self._user_dir):
-            os.makedirs(self._user_dir)
-        if not os.path.exists(self._base_defaults):
-            os.makedirs(self._base_defaults)
+        if self._shared_dir:
+            if not os.path.exists(self._shared_dir):
+                os.makedirs(self._shared_dir)
+        if self._protected_dir:
+            if not os.path.exists(self._protected_dir):
+                os.makedirs(self._protected_dir)
+        if self._user_dir:
+            if self._user_dir and not os.path.exists(self._user_dir):
+                os.makedirs(self._user_dir)
+        if self._base_defaults:
+            if not os.path.exists(self._base_defaults):
+                os.makedirs(self._base_defaults)
         if os.path.samefile(self._shared_dir, self._protected_dir):
             raise ValueError("The shared and protected directories cannot be the same.")
 
