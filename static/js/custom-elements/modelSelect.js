@@ -66,6 +66,7 @@ class ModelSelect {
     modelSocketUpdate(data) {
         const modelType = data.model_type;
         const to_load = data["to_load"];
+        console.log("Socket update: ", data);
         let modelTypes = [modelType];
         if (this.model_type.indexOf("_") !== -1) {
             modelTypes = this.model_type.split("_");
@@ -113,8 +114,8 @@ class ModelSelect {
         this.modelList = modelList;
         this.selectElement.innerHTML = "";
         const loaded = modelList["loaded"];
-        this.value = (loaded === undefined || loaded === null ? "none" : loaded["hash"]);
-
+        this.value = (loaded === undefined || loaded === null ? "none" : loaded);
+        console.log("Set loaded to " + this.value, loaded);
         let blankOption = document.createElement("option");
         blankOption.value = "none";
 

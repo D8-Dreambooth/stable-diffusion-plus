@@ -62,7 +62,9 @@
                 success: function (response) {
                     console.log("Response: ", response);
                     let token = response.access_token;
+                    let user = response.user;
                     document.cookie = "Authorization=bearer " + token;
+                    document.cookie = "user=" + encodeURIComponent(user) + "; path=/";
                     window.location.href = "/";
                 },
                 error: function (xhr, status, error) {

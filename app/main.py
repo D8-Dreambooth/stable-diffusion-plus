@@ -286,9 +286,10 @@ async def handle_login(request: Request, response: Response, form_data: dict):
         access_token = user_handler.create_access_token(data={"sub": username})
         logger.debug("TOKEN CREATED")
         response.set_cookie(key="access_token", value=access_token)
+        response.set_cookie(key="user", value=username)
         logger.debug(f"COOKIE SET, returning: {access_token}")
         # Get the URL for the home page
-        return JSONResponse({"access_token": access_token})
+        return JSONResponse({"access_token": access_token, "user": username})
 
     else:
         html = """
@@ -357,4 +358,5 @@ async def whoami(current_user: User = Depends(get_current_active_user)):
 async def del_session(response: Response):
     response.delete_cookie("Authorization")
     response.delete_cookie("access_token")
+    response.delete_cookie("user")
     return RedirectResponse(url="/login")

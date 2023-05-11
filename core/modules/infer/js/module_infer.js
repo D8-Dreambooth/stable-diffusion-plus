@@ -487,7 +487,7 @@ function getInferSettings() {
 
     inferSettings.mode = inferMode;
     inferSettings.model = model;
-    inferSettings.loras = loras;
+    inferSettings.loras = loras ? loras : [];
     inferSettings.prompt = promptEl.value;
     inferSettings.negative_prompt = negEl.value;
     inferSettings.seed = parseInt(seedEl.value);
