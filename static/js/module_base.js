@@ -109,7 +109,7 @@ class Module {
             if (elem_id === null) return;
             let d = "";
             let t = "";
-            let l = "";
+            let l;
             let ls = element.innerHTML.split("\n");
             let lt = [];
             for (let i = 0; i < ls.length; i++) {
@@ -218,20 +218,17 @@ class Module {
             } catch (e) {
                 console.log(e);
             }
-            console.log("Populating", inputId, inputElements);
             if (!inputElements) continue;
             if (!inputElements.length) continue;
             const inputData = inputDict[inputId];
             for (let i = 0; i < inputElements.length; i++) {
                 const inputElement = inputElements[i];
                 if (inputElement.classList.contains("bootstrapSlider")) {
-                    console.log("BSS", inputElement.id, inputData.value);
                     let bs = $(inputElement).BootstrapSlider();
                     bs.setValue(inputData.value);
                     if (inputData.hasOwnProperty("min")) bs.setMin(inputData.min);
                     if (inputData.hasOwnProperty("max")) bs.setMax(inputData.max);
                     if (inputData.hasOwnProperty("step")) bs.setStep(inputData.step);
-                    console.log("BS", bs);
                 } else if (inputElement.type === 'checkbox') {
                     inputElement.checked = inputData.value;
 
@@ -248,10 +245,7 @@ class Module {
                     // Select the item from th  e input options if it exists
                     const selectedOption = inputElement.querySelector(`option[value="${inputData.value}"]`);
                     if (selectedOption) {
-                        console.log("Selected option", inputData.value, inputElement.id);
                         selectedOption.selected = true;
-                    } else {
-                        console.log("Can't Select option", inputData.value, inputElement.id);
                     }
                 } else {
                     inputElement.value = inputData.value;
