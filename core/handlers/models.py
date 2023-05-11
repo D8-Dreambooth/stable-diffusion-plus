@@ -227,10 +227,11 @@ class ModelHandler:
 
         return output
 
-    def refresh(self, model_type: str, to_load=None):
+    def refresh(self, model_type: str, to_load=None, model_name=None):
         model_data = None
         if to_load:
-            model_data = ModelData(to_load)
+            self.logger.debug(f"Reloading model from data: {to_load}")
+            model_data = ModelData(to_load,name=model_name).__dict__
         msg = {
             "name": "reload_models",
             "model_type": model_type,

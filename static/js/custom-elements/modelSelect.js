@@ -64,16 +64,16 @@ class ModelSelect {
     }
 
     modelSocketUpdate(data) {
-        const modelType = data.model_type;
+        const new_model = data.model_type;
         const to_load = data["to_load"];
-        console.log("Socket update: ", data);
-        let modelTypes = [modelType];
+        let modelTypes = [this.model_type];
         if (this.model_type.indexOf("_") !== -1) {
             modelTypes = this.model_type.split("_");
         }
         let doRefresh = false;
         for (let i = 0; i < modelTypes.length; i++) {
-            if (modelTypes[i] === modelType) {
+            if (modelTypes[i] === new_model) {
+                console.log("Model type matches, refreshing..." + this.container.id, data);
                 doRefresh = true;
                 break;
             }
@@ -88,6 +88,7 @@ class ModelSelect {
                         const option = this.selectElement.options[i];
                         if (option.value === to_load["hash"]) {
                             option.selected = true;
+                            this.value = to_load["hash"];
                             found = true;
                         } else {
                             option.selected = false;
@@ -95,6 +96,7 @@ class ModelSelect {
                     }
                     if (!found) {
                         this.selectElement.options[0].selected = true;
+                        this.value = "none";
                     }
                 }
             });
@@ -115,7 +117,6 @@ class ModelSelect {
         this.selectElement.innerHTML = "";
         const loaded = modelList["loaded"];
         this.value = (loaded === undefined || loaded === null ? "none" : loaded);
-        console.log("Set loaded to " + this.value, loaded);
         let blankOption = document.createElement("option");
         blankOption.value = "none";
 

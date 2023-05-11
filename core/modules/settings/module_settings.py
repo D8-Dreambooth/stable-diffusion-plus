@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 
@@ -5,6 +6,7 @@ import bcrypt
 from fastapi import FastAPI
 
 from core.handlers.config import ConfigHandler
+from core.handlers.models import ModelHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 
@@ -23,6 +25,16 @@ class SettingsModule(BaseModule):
         socket_handler = SocketHandler()
         socket_handler.register("get_settings", self.get_settings)
         socket_handler.register("set_settings", self.set_settings)
+        socket_handler.register("test_push", self.test_push)
+
+    async def refresh_after_delay(self, mh):
+        await asyncio.sleep(30)  # Wait for 30 seconds
+        mh.refresh("diffusers")
+
+    async def test_push(self, req):
+        mh = ModelHandler(user_name="admin")
+        asyncio.create_task(self.refresh_after_delay(mh))
+        return {"status": "ACK ACK"}
 
     async def get_settings(self, req):
         user = req.get("user", None)

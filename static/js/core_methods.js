@@ -253,7 +253,7 @@ function connectSocket() {
                 console.log("Message received: ", event);
             } else {
                 if (socketMethods.hasOwnProperty(method_name)) {
-                    console.log("Forwarding method: ", method_name, message);
+                    if (method_name !== "status") console.log("Forwarding method: ", method_name, message);
                     for (let i = 0; i < socketMethods[method_name].length; i++) {
                         socketMethods[method_name][i](message);
                     }

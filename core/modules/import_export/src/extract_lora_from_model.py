@@ -177,8 +177,8 @@ async def extract_lora(model_org: ModelData, model_tuned: ModelData, model_handl
     dir_name = loras_dir
     if dir_name and not os.path.exists(dir_name):
         os.makedirs(dir_name, exist_ok=True)
-    model_name += "_lora.safetensors"
-    save_to = os.path.join(dir_name, model_name)
+    model_name += "_lora"
+    save_to = os.path.join(dir_name, f"{model_name}.safetensors")
     # minimum metadata
     metadata = {"ss_network_module": "networks.lora", "ss_network_dim": str(dim),
                 "ss_network_alpha": str(dim)}
@@ -193,6 +193,6 @@ async def extract_lora(model_org: ModelData, model_tuned: ModelData, model_handl
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     gc.collect()
-
+    model_handler.refresh("loras", save_to, model_name)
     sh.end(desc="LoRA weights are saved to: " + save_to)
     print(f"LoRA weights are saved to: {save_to}")

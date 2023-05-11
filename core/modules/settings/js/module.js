@@ -5,6 +5,11 @@ function initSettings() {
     sendMessage("get_settings", {}, true).then((res) => {
         parseObject(res);
     });
+    $("#testPush").click(() => {
+        sendMessage("test_push", {}, true).then((res) => {
+            console.log(res);
+        });
+    });
 }
 
 function parseObject(obj) {

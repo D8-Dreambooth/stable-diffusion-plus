@@ -149,8 +149,9 @@ async def _import_model(data):
         if file.endswith(".yaml"):
             config_file = os.path.join(model_dir, file)
             break
-    model_dest = mh>model_path[1] if save_shared else mh.models_path[0]
-    dest_dir = os.path.join(model_dest, "diffusers", model_name.replace(".safetensors", "") if ".safetensors" in model_name else model_name.replace(".ckpt", ""))
+    model_dest = mh.model_path[1] if save_shared else mh.models_path[0]
+    model_name = model_name.replace(".safetensors", "") if ".safetensors" in model_name else model_name.replace(".ckpt", "")
+    dest_dir = os.path.join(model_dest, "diffusers", model_name)
     extract_args = {
         "checkpoint_path": model_path,
         "dump_path": dest_dir,
@@ -163,5 +164,5 @@ async def _import_model(data):
         "prediction_type": "epsilon" if is_512 else "v_prediction"
     }
     await asyncio.to_thread(extract_checkpoint, **extract_args)
-    mh.refresh("diffusers")
+    mh.refresh("diffusers", model_dest, model_name=model_name)
     return {"name": "extraction_started", "message": "Extraction started.", "id": msg_id}
