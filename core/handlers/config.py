@@ -116,7 +116,8 @@ class ConfigHandler:
             if not os.path.exists(dst_path):
                 shutil.copy(src_path, dst_path)
             else:
-                self.update_keys(src_path, dst_path)
+                if "users" not in file:
+                    self.update_keys(src_path, dst_path)
 
     def set_module_default(self, file, module_name):
         # Strip any characters from module_name that are not valid in a path

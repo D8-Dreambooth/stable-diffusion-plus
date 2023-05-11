@@ -123,7 +123,6 @@ class FileBrowser {
                 btnGroup.appendChild(selectButton);
                 btnGroup.appendChild(cancelButton);
                 this.parentElement.appendChild(btnGroup);
-
             }
 
             if (!this.dropdown) {
@@ -467,9 +466,8 @@ class FileBrowser {
         }.bind(this));
 
 
-        let dragCounter = 0;
         let timeoutId = null;
-        const delay = 200; // Delay in milliseconds
+        const delay = 200;
 
         this.treeContainer.addEventListener('dragenter', (e) => {
             e.preventDefault();
@@ -524,7 +522,7 @@ class FileBrowser {
                 method: "POST",
                 body: formData,
             });
-            const data = await response.json();
+            await response.json();
             upDiv.hide();
             await this.refresh();
         });
