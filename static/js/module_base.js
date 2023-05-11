@@ -278,6 +278,13 @@ class Module {
                     if (selectedOption) {
                         selectedOption.selected = true;
                     }
+                    if (inputId.indexOf("_select") !== -1) {
+                        let msId = inputId.replace("_select", "");
+                        let ms = $("#" + msId).modelSelect();
+                        if (ms) {
+                            ms.setValue(inputData.value);
+                        }
+                    }
                 } else {
                     inputElement.value = inputData.value;
                 }

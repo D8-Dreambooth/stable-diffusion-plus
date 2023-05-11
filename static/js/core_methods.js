@@ -22,7 +22,7 @@ const toggleNavbar = () => {
 
 const showNavbar = () => {
     const toggle = document.getElementById('header-toggle'), nav = document.getElementById('nav-bar');
-    toggleNavbar();
+    //toggleNavbar();
     if (toggle && nav) {
         toggle.addEventListener('click', () => {
             toggleNavbar();

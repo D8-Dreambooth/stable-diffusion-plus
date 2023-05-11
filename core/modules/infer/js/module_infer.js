@@ -4,8 +4,10 @@ let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
 let userConfig;
 let controlnetImageEditor;
 let controlnetFileBrowser;
-const moduleSelect = $("#inferModel").modelSelect();
-const lorasSelect = $("#inferLoraModels").modelSelect();
+
+const inferModelSelect = $("#inferModel").modelSelect();
+const loraModelSelect = $("#inferLoraModels").modelSelect();
+
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
@@ -351,8 +353,8 @@ function setResolution(ratio) {
 async function startInference() {
     gallery.clear();
     inferProgress.clear();
-    console.log("MS: ", moduleSelect);
-    const model = moduleSelect[0].val();
+    console.log("MS: ", inferModelSelect);
+    const model = inferModelSelect.getModel();
 
     if (model === undefined) {
         return alert("Please select a model.");
@@ -471,7 +473,7 @@ function getInferSettings() {
     let controlnet_image = controlnetImageEditor.getDropped();
     let infer_mask = inpaintImageEditor.getMask();
     let infer_image = inpaintImageEditor.getDropped();
-    const loras = lorasSelect[0].val();
+    const loras = loraModelSelect.getModel();
     const radioButtons = document.getElementsByName('inferMode');
     let inferMode = 'txt2img';
 
@@ -481,7 +483,7 @@ function getInferSettings() {
             break;
         }
     }
-    const model = moduleSelect[0].val();
+    const model = inferModelSelect.getModel();
 
     inferSettings.mode = inferMode;
     inferSettings.model = model;

@@ -61,12 +61,16 @@
 
 <!--Container Main start-->
 <div class="bg-light" id="mainBody">
-    <div class="loading" id="loading">
-        <div class="loadWrap">
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+    <div class="loading container-fluid" id="loading">
+        <div class="loadWrap row">
+            <div class="col-12">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading</span>
+                </div>
             </div>
-            <div class="loadingText" id="loadingText">Loading...</div>
+            <div class="col-12">
+                <div class="loadingText" id="loadingText">Loading</div>
+            </div>
         </div>
     </div>
     {% for module in module_html %}
@@ -135,7 +139,7 @@
 {% for js in js_files %}
 <script src="{{ js }}?v={{ timestamp }}"></script>
 {% endfor %}
-<script type="application/json" id="locale-data">{{ locales|safe }}</script>
+<script type="application/json" id="locale-data">{{ locales | safe }}</script>
 {% endblock %}
 
 </body>

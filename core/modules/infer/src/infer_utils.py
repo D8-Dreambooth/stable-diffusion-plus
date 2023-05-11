@@ -149,7 +149,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         return [], []
 
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
-
     input_prompts = input_prompts * inference_settings.num_images
     negative_prompts = negative_prompts * inference_settings.num_images
 

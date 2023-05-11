@@ -1,57 +1,66 @@
 class ModelSelect {
-
-    static modelSelectMap = new Map();
-
     constructor(container, options) {
-        const existingInstance = ModelSelect.modelSelectMap.get(container);
-        if (existingInstance) {
-            return existingInstance;
-        }
         registerSocketMethod(container, "reload_models", this.modelSocketUpdate.bind(this));
         this.container = container;
-        this.model_type = options.model_type || "stable-diffusion";
-        this.ext_include = options.ext_include || [".safetensors"];
-        this.ext_exclude = options.ext_exclude || [];
-        this.multiple = options.multiple || false;
-        this.load_on_select = options.load_on_select || false;
+        this.model_type = options.model_type;
+        this.ext_include = options.ext_include;
+        this.ext_exclude = options.ext_exclude;
+        this.multiple = options.multiple;
+        this.load_on_select = options.load_on_select;
         this.modelList = [];
+
+        // Set the default value(s)
+        this.value = options.value || "none";
+
+        // Create the select element
         this.selectElement = document.createElement("select");
         this.selectElement.classList.add("form-control");
         this.selectElement.classList.add("model-select");
+        this.selectElement.dataset["key"] = options.key || container.id;
+        this.selectElement.id = container.id + "_select";
+
+        // Add the multiple attribute if specified
         if (this.multiple) {
             this.selectElement.setAttribute("multiple", "true");
         }
-        this.selectElement.dataset["ModelSelect"] = this;
-        this.selectElement.dataset["key"] = options.key || container.id;
+
+        // Add the class specified in the options, if any
         const addClass = options.addClass || "";
         if (addClass !== "") {
-            this.selectElement.classList.add(addClass);
+            if (addClass.indexOf(" ") !== -1) {
+                const classes = addClass.split(" ");
+                for (let i = 0; i < classes.length; i++) {
+                    this.selectElement.classList.add(classes[i]);
+                }
+            } else {
+                this.selectElement.classList.add(addClass);
+            }
         }
-        this.selectElement.id = container.id + "_select";
-        this.currentModel = options.value || "none";
+
+
+
+        const labelElement = document.createElement("label");
+        labelElement.setAttribute("for", this.selectElement.id);
+        labelElement.textContent = options.label;
+        labelElement.classList.add("form-label");
+
         const wrapper = document.createElement("div");
         wrapper.classList.add("form-group");
-
-        if (options.label) {
-            const labelElement = document.createElement("label");
-            labelElement.setAttribute("for", this.selectElement.id);
-            labelElement.textContent = options.label;
-            labelElement.classList.add("form-label");
-            wrapper.appendChild(labelElement);
-        }
-
+        wrapper.appendChild(labelElement);
         wrapper.appendChild(this.selectElement);
         this.container.appendChild(wrapper);
+
         this.setOnChangeHandler((selectedModel) => {
+            console.log("Model selected", selectedModel);
             if (this.multiple) {
-                this.currentModel = selectedModel;
-            } else if (selectedModel.hasOwnProperty("hash")) {
-                this.currentModel = selectedModel.hash;
+                console.log("Multiple models selected", selectedModel);
+                this.value = selectedModel;
+            } else {
+                console.log("Model selected", selectedModel);
+                this.value = selectedModel[0];
             }
         });
-        this.refresh();
-        ModelSelect.modelSelectMap.set(container, this);
-        return this;
+        this.refresh().then(() => {});
     }
 
     modelSocketUpdate(data) {
@@ -104,12 +113,12 @@ class ModelSelect {
         this.modelList = modelList;
         this.selectElement.innerHTML = "";
         const loaded = modelList["loaded"];
-        this.currentModel = (loaded === undefined || loaded === null ? "none" : loaded);
+        this.value = (loaded === undefined || loaded === null ? "none" : loaded["hash"]);
 
         let blankOption = document.createElement("option");
         blankOption.value = "none";
 
-        if (this.currentModel === "none") {
+        if (this.value === "none") {
             blankOption.selected = true;
         }
         this.selectElement.appendChild(blankOption);
@@ -118,8 +127,8 @@ class ModelSelect {
             modelList.models.forEach(model => {
                 let option = document.createElement("option");
                 option.value = (model.hasOwnProperty("hash") ? model.hash : "none");
-                if (this.currentModel !== "none" && this.currentModel !== undefined) {
-                    if (this.currentModel === option.value) {
+                if (this.value !== "none" && this.value !== undefined) {
+                    if (this.value === option.value) {
                         option.selected = true;
                     }
                 }
@@ -131,28 +140,49 @@ class ModelSelect {
 
 
     getModel() {
-        if (this.multiple) return this.currentModel;
-        const selectedOption = this.selectElement.options[this.selectElement.selectedIndex];
-
-        if (selectedOption.value === "none") {
-            return undefined;
+        if (this.multiple) {
+            // If this.value is an array, enumerate
+            if (Array.isArray(this.value)) {
+                let models = [];
+                for (let i = 0; i < this.value.length; i++) {
+                    const hash = this.value[i];
+                    let model = this.modelList.models.find(
+                        model => model.hash === hash
+                    );
+                    if (model) {
+                        models.push(model);
+                    }
+                }
+                return models;
+            }
+        } else {
+            return this.modelList.models.find(
+                model => model.hash === this.value
+            );
         }
-
-        const selectedHash = selectedOption.value;
-
-        const selectedModel = this.modelList.models.find(
-            model => model.hash === selectedHash
-        );
-
-        if (!selectedModel) {
-            return undefined;
-        }
-
-        return selectedModel;
     }
 
     val() {
         return this.getModel();
+    }
+
+    getValue() {
+        return this.val();
+    }
+
+    setValue(value) {
+        console.log("Setvalue called...");
+        let isValid = false;
+        for (let i = 0; i < this.selectElement.options.length; i++) {
+            const option = this.selectElement.options[i];
+            option.selected = option.value === value;
+            isValid = true;
+            break;
+        }
+        if (isValid) {
+            console.log("Setting value to", value);
+            this.value = value;
+        }
     }
 
     setOnClickHandler(callback) {
@@ -175,71 +205,50 @@ class ModelSelect {
             const selectedOptions = Array.from(this.selectElement.options)
                 .filter(option => option.selected && option.value !== "none");
             if (selectedOptions.length > 0) {
-                let selectedModels = selectedOptions.map(selectedOption => {
-                    // Find the model that matches the selected option value
-                    return this.modelList.models.find(
-                        model => model.hash === selectedOption.value
-                    );
-                });
-                if (this.load_on_select && !this.multiple) {
-                    // Add the model type to each selected model
-                    selectedModels.forEach(selectedModel => {
-                        selectedModel["model_type"] = this.model_type;
-                        sendMessage("load_model", selectedModel);
-                    });
-                }
-
-                if (!this.multiple && selectedModels.length > 0) {
-                    selectedModels = selectedModels[0];
-                }
-                callback(selectedModels);
-
-
+                // Get the values of all the selected options
+                const selectedValues = selectedOptions.map(option => option.value);
+                callback(selectedValues);
             } else {
                 this.currentModel = "none";
             }
         };
     }
-
-
-    static init(selector, options = {}) {
-        const elements = new Map();
-        $(selector).each((index, element) => {
-            if (elements.has(element)) {
-                return elements.get(element);
-            }
-            const data = $(element).data();
-            const optionsWithDefault = {
-                model_type: (data && data.model_type) || (options && options.model_type) || "stable-diffusion",
-                ext_include: (data && (typeof data.ext_include === "string" ? [data.ext_include] : data.ext_include)) || (options && (typeof options.ext_include === "string" ? [options.ext_include] : options.ext_include)) || [],
-                ext_exclude: (data && (typeof data.ext_exclude === "string" ? [data.ext_exclude] : data.ext_exclude)) || (options && (typeof options.ext_exclude === "string" ? [options.ext_exclude] : options.ext_exclude)) || [],
-                load_on_select: (data && data.load_on_select) || (options && options.load_on_select) || false,
-                value: (data && data.value) || (options && options.value) || "none",
-                label: (data && data.label) || (options && options.label) || "",
-                key: (data && data.key) || (options && options.key) || $(element.id),
-                multiple: (data && data.multiple) || (options && options.multiple) || false,
-                addClass: (data && data.add_class) || (options && options.addClass) || ""
-            };
-
-            if (typeof optionsWithDefault.ext_include === "string") {
-                optionsWithDefault.ext_include = [optionsWithDefault.ext_include];
-            }
-            if (typeof optionsWithDefault.ext_exclude === "string") {
-                optionsWithDefault.ext_exclude = [optionsWithDefault.ext_exclude];
-            }
-
-
-            const modelSelect = new ModelSelect(element, optionsWithDefault);
-            elements.set(element, modelSelect);
-        });
-        return Array.from(elements.values());
-    }
-
-
 }
 
-$.fn.modelSelect = function (options) {
-    return ModelSelect.init(this, options);
+$.fn.modelSelect = function (inputOptions) {
+    this.each(function () {
+        const $this = $(this);
+        let select = $this.data("ModelSelect");
+
+        if (!select) {
+            const targetElement = this;
+            const targetDataset = targetElement.dataset;
+            const defaultOptions = {
+                model_type: "diffusers",
+                ext_include: [],
+                ext_exclude: [],
+                load_on_select: false,
+                value: "none",
+                label: "",
+                key: $(this).id,
+                multiple: false,
+                addClass: ""
+            };
+
+            const options = {
+                ...defaultOptions,
+                ...targetDataset,
+                ...inputOptions
+            };
+
+            select = new ModelSelect(targetElement, options);
+            $this.data("ModelSelect", select);
+        } else {
+            console.log("Select already initialized");
+        }
+    });
+
+    return this.data("ModelSelect");
 };
 
 

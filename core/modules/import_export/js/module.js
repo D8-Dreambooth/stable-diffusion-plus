@@ -2,17 +2,14 @@
 const ioModule = new Module("Input/Output", "moduleImportExport", "import", false, -1, initImportExport);
 
 function initImportExport() {
-    const modelSelect = document.getElementById("modelSelect");
     const modelExportSelect = document.getElementById("modelExportSelect");
-
-    const selector = new ModelSelect(modelSelect, {
+    const selector = $("#modelSelect").modelSelect({
         "model_type": "stable-diffusion",
         "ext_include": [".safetensors", ".ckpt"],
         "load_on_select": false,
         "label": "Source Checkpoint"
     });
-
-    const selectorEx = new ModelSelect(modelExportSelect, {
+    const selectorEx = $("#modelExportSelect").modelSelect({
         "model_type": "diffusers",
         "load_on_select": false,
         "label": "Source Checkpoint"
@@ -46,18 +43,14 @@ function initImportExport() {
     extractLora.addEventListener("click", (event) => {
         event.preventDefault();
         // Get references to the elements using their IDs
-        const loraSrcSelect = document.querySelector('#io_lora_src_select');
-        const loraBaseSelect = document.querySelector('#io_lora_base_select');
         const loraPrecisionSelect = document.querySelector('#io_lora_precision');
-
         const loraNetworkDimensionRange = document.querySelector('#io_lora_network_dimension input[type="range"]');
         const loraConvDimensionRange = document.querySelector('#io_lora_conv_dimension input[type="range"]');
 
-
         // Define an empty object
         const values = {};
-        let srcFS = new ModelSelect(document.getElementById("io_lora_src"), {});
-        let baseFS = new ModelSelect(document.getElementById("io_lora_base"), {});
+        let srcFS = $("#io_lora_src").modelSelect({});
+        let baseFS = $("#io_lora_base").modelSelect({});
         // Get the selected value from each of the select elements and add it to the object
         values.tuned = srcFS.getModel();
         values.src = baseFS.getModel();
