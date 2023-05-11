@@ -408,14 +408,15 @@ function applyInferSettings(decodedSettings) {
         controlnetImageEditor.setResolution(decodedSettings.width, decodedSettings.height);
         controlnetImageEditor.setImage(decodedSettings.image);
     } else {
-        widthSlider.value = decodedSettings.width.toString();
-        heightSlider.value = decodedSettings.height.toString();
+        widthSlider.setValue(decodedSettings.width);
+        heightSlider.setValue(decodedSettings.height);
     }
 
-    scaleTest.value = decodedSettings.scale.toString();
-    stepTest.value = decodedSettings.steps.toString();
-    numImages.value = decodedSettings.num_images.toString();
-    batchSize.value = decodedSettings.batch_size.toString();
+
+    scaleTest.setValue(decodedSettings.scale);
+    stepTest.setValue(decodedSettings.steps);
+    numImages.setValue(decodedSettings.num_images);
+    batchSize.setValue(decodedSettings.batch_size);
     document.getElementById("controlnet_preprocess").checked = decodedSettings.controlnet_preprocess;
     document.getElementById("controlnet_batch").checked = decodedSettings.controlnet_batch;
     controlnetFileBrowser.value = decodedSettings.controlnet_batch_dir;

@@ -43,6 +43,7 @@ class BootstrapSlider {
 
         this.numberInput = document.createElement("input");
         this.numberInput.type = "number";
+        this.numberInput.id = this.elem_id + "_number";
         this.numberInput.classList.add("gr-box", "gr-input", "gr-text-input", "text-center", "h-6", "col-3");
         this.numberInput.min = this.min;
         this.numberInput.max = this.max;
@@ -67,6 +68,15 @@ class BootstrapSlider {
         this.rangeInput.addEventListener("input", (event) => {
             this.updateValue(event.target.value);
         });
+        this.isProgrammaticUpdate = false;
+
+        this.rangeInput.addEventListener("change", (event) => {
+            if (!this.isProgrammaticUpdate) {
+                const newValue = event.target.value;
+                console.log("Range change: " + newValue);
+                this.setValue(newValue);
+            }
+        });
         this.container.appendChild(this.rangeInput);
 
         if (!this.visible) {
@@ -79,11 +89,16 @@ class BootstrapSlider {
         this.value = newValue;
         this.numberInput.value = this.value;
         this.rangeInput.value = this.value;
-        if (this.onChangeCallback) {
+        if (this.onChangeCallback && !this.isProgrammaticUpdate) {
             this.onChangeCallback(this.value);
         }
     }
 
+    setValue(value) {
+        this.isProgrammaticUpdate = true;
+        this.updateValue(value);
+        this.isProgrammaticUpdate = false;
+    }
 
     setOnChange(callback) {
         this.onChangeCallback = callback;

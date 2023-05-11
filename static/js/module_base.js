@@ -227,10 +227,15 @@ class Module {
                 if (inputElement.type === 'checkbox') {
                     inputElement.checked = inputData.value;
                 } else if (inputElement.type === 'range') {
+                    console.log("Setting range", inputElement.id, inputData.value, inputData.min, inputData.max, inputData.step);
                     inputElement.value = inputData.value;
                     inputElement.min = inputData.min;
                     inputElement.max = inputData.max;
                     inputElement.step = inputData.step;
+                    let numberSibling = document.getElementById(inputElement.id + "_number");
+                    if (numberSibling) {
+                        numberSibling.value = inputData.value;
+                    }
                 } else if (inputElement.tagName.toLowerCase() === 'select') {
                     const values = new Set(Array.from(inputElement.options).map(option => option.value));
                     for (const value in inputData.options) {
