@@ -82,7 +82,7 @@ function inferInit() {
         "id": "inference"
     });
 
-    scaleTest = new BootstrapSlider(document.getElementById("infer_scale"), {
+    scaleTest = $("#infer_scale").BootstrapSlider({
         elem_id: "scaleSlid",
         min: 1,
         max: 20,
@@ -91,7 +91,7 @@ function inferInit() {
         label: "Scale"
     });
 
-    widthSlider = new BootstrapSlider(document.getElementById("infer_width"), {
+    widthSlider = $("#infer_width").BootstrapSlider({
         elem_id: "widthSlid",
         min: 256,
         max: 4096,
@@ -100,7 +100,7 @@ function inferInit() {
         label: "Width"
     });
 
-    heightSlider = new BootstrapSlider(document.getElementById("infer_height"), {
+    heightSlider = $("#infer_height").BootstrapSlider({
         elem_id: "heightSlid",
         min: 256,
         max: 4096,
@@ -109,7 +109,7 @@ function inferInit() {
         label: "Height"
     });
 
-    stepTest = new BootstrapSlider(document.getElementById("infer_steps"), {
+    stepTest = $("#infer_steps").BootstrapSlider({
         elem_id: "stepSlid",
         min: 5,
         max: 100,
@@ -118,7 +118,7 @@ function inferInit() {
         label: "Steps"
     });
 
-    numImages = new BootstrapSlider(document.getElementById("infer_num_images"), {
+    numImages = $("#infer_num_images").BootstrapSlider({
         elem_id: "numImages",
         min: 1,
         max: 100,
@@ -127,15 +127,15 @@ function inferInit() {
         label: "Number of Images"
     });
 
-    batchSize = new BootstrapSlider(document.getElementById("infer_batch_size"), {
+    batchSize = $("#infer_batch_size").BootstrapSlider({
         elem_id: "batchSize",
         min: 1,
         max: 100,
         value: 1,
         step: 1,
-        label: "Batch Size",
-        model: undefined
+        label: "Batch Size"
     });
+
 
     controlnetFileBrowser = new FileBrowser(document.getElementById("controlnetBatchFileSelect"), {
         "file_type": "image",
@@ -410,6 +410,40 @@ function applyInferSettings(decodedSettings) {
     } else {
         widthSlider.setValue(decodedSettings.width);
         heightSlider.setValue(decodedSettings.height);
+
+        const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
+        const targetAspectRatio = decodedSettings.width / decodedSettings.height;
+
+        // Find the closest aspect ratio
+        let closestRatio = aspectRatios[0];
+        let closestDifference = Math.abs(targetAspectRatio - aspectRatioValue(aspectRatios[0]));
+
+        for (let i = 1; i < aspectRatios.length; i++) {
+            const currentDifference = Math.abs(targetAspectRatio - aspectRatioValue(aspectRatios[i]));
+            if (currentDifference < closestDifference) {
+                closestDifference = currentDifference;
+                closestRatio = aspectRatios[i];
+            }
+        }
+
+        function aspectRatioValue(ratio) {
+            const [width, height] = ratio.split(":");
+            return parseInt(width) / parseInt(height);
+        }
+
+        // Get the index of the closest aspect ratio in the array
+        const closestIndex = aspectRatios.indexOf(closestRatio);
+        console.log("Closest index: ", closestIndex);
+        // Iterate through the buttons and set the closest aspect ratio as selected
+        const buttons = document.querySelectorAll('.aspectButton');
+        buttons.forEach((button, index) => {
+            if (index === closestIndex) {
+                button.classList.add('btn-selected');
+                setResolution(button.dataset.ratio);
+            } else {
+                button.classList.remove('btn-selected');
+            }
+        });
     }
 
 

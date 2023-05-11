@@ -146,22 +146,25 @@ def main():
     git_path = find_git()
 
     if git_path:
-        if not os.path.exists(dreambooth_path):
-            logger.info("Cloning dreambooth repository...")
-            # Clone dreambooth repository
-            branch = launch_settings.get("dreambooth_branch", "dev")
-            clone_command = [git_path, "clone", "-b", branch,
-                             "https://github.com/d8ahazard/sd_dreambooth_extension.git",
-                             dreambooth_path]
-            subprocess.run(clone_command, check=True)
-        else:
-            logger.info("Updating dreambooth repository...")
-            # Fetch changes from dreambooth repository
-            fetch_command = [git_path, "fetch", "origin"]
-            subprocess.run(fetch_command, cwd=dreambooth_path, check=True)
-            # Pull changes from dreambooth repository
-            pull_command = [git_path, "pull", "origin", "HEAD"]
-            subprocess.run(pull_command, cwd=dreambooth_path, check=True)
+        try:
+            if not os.path.exists(dreambooth_path):
+                logger.info("Cloning dreambooth repository...")
+                # Clone dreambooth repository
+                branch = launch_settings.get("dreambooth_branch", "dev")
+                clone_command = [git_path, "clone", "-b", branch,
+                                 "https://github.com/d8ahazard/sd_dreambooth_extension.git",
+                                 dreambooth_path]
+                subprocess.run(clone_command, check=True)
+            else:
+                logger.info("Updating dreambooth repository...")
+                # Fetch changes from dreambooth repository
+                fetch_command = [git_path, "fetch", "origin"]
+                subprocess.run(fetch_command, cwd=dreambooth_path, check=True)
+                # Pull changes from dreambooth repository
+                pull_command = [git_path, "pull", "origin", "HEAD"]
+                subprocess.run(pull_command, cwd=dreambooth_path, check=True)
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Unable to update/fetch dreambooth repository: {e}")
     else:
         if not os.path.exists(dreambooth_path):
             logger.warning("Unable to find git, and dreambooth is not installed. Training will not be available.")

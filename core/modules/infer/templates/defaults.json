@@ -1,18 +1,11 @@
 {
-  "inferModel_select": {
-    "value": "none",
-    "options": {}
-  },
-  "": {
-    "value": 7.5
-  },
-  "widthSlid": {
+  "infer_width": {
     "value": 512,
     "min": 256,
     "max": 4096,
     "step": 64
   },
-  "numImages": {
+  "infer_num_images": {
     "value": 1,
     "min": 1,
     "max": 100,
@@ -28,27 +21,27 @@
     "value": "img2img"
   },
   "infer_negative_prompt": {
-        "value": ""
+    "value": ""
   },
-  "batchSize": {
+  "infer_batch_size": {
     "value": 1,
     "min": 1,
     "max": 100,
     "step": 1
   },
-  "heightSlid": {
+  "infer_height": {
     "value": 512,
     "min": 256,
     "max": 4096,
     "step": 64
   },
-  "stepSlid": {
+  "infer_steps": {
     "value": 20,
     "min": 5,
     "max": 100,
     "step": 1
   },
-  "scaleSlid": {
+  "infer_scale": {
     "value": 7.5,
     "min": 1,
     "max": 20,

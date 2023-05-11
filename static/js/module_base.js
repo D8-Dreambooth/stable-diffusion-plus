@@ -85,7 +85,7 @@ class Module {
         this.localize(locales);
         setTimeout(() => {
             this.populateInputs(this.moduleDefaults);
-        },1000);
+        }, 1000);
     }
 
     localize(module_locales) {
@@ -218,24 +218,23 @@ class Module {
             } catch (e) {
                 console.log(e);
             }
+            console.log("Populating", inputId, inputElements);
             if (!inputElements) continue;
             if (!inputElements.length) continue;
             const inputData = inputDict[inputId];
             for (let i = 0; i < inputElements.length; i++) {
                 const inputElement = inputElements[i];
-
-                if (inputElement.type === 'checkbox') {
+                if (inputElement.classList.contains("bootstrapSlider")) {
+                    console.log("BSS", inputElement.id, inputData.value);
+                    let bs = $(inputElement).BootstrapSlider();
+                    bs.setValue(inputData.value);
+                    if (inputData.hasOwnProperty("min")) bs.setMin(inputData.min);
+                    if (inputData.hasOwnProperty("max")) bs.setMax(inputData.max);
+                    if (inputData.hasOwnProperty("step")) bs.setStep(inputData.step);
+                    console.log("BS", bs);
+                } else if (inputElement.type === 'checkbox') {
                     inputElement.checked = inputData.value;
-                } else if (inputElement.type === 'range') {
-                    console.log("Setting range", inputElement.id, inputData.value, inputData.min, inputData.max, inputData.step);
-                    inputElement.value = inputData.value;
-                    inputElement.min = inputData.min;
-                    inputElement.max = inputData.max;
-                    inputElement.step = inputData.step;
-                    let numberSibling = document.getElementById(inputElement.id + "_number");
-                    if (numberSibling) {
-                        numberSibling.value = inputData.value;
-                    }
+
                 } else if (inputElement.tagName.toLowerCase() === 'select') {
                     const values = new Set(Array.from(inputElement.options).map(option => option.value));
                     for (const value in inputData.options) {
@@ -246,7 +245,7 @@ class Module {
                             inputElement.add(option);
                         }
                     }
-                    // Select the item from the input options if it exists
+                    // Select the item from th  e input options if it exists
                     const selectedOption = inputElement.querySelector(`option[value="${inputData.value}"]`);
                     if (selectedOption) {
                         console.log("Selected option", inputData.value, inputElement.id);

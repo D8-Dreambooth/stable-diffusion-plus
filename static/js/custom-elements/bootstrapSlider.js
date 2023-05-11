@@ -1,5 +1,6 @@
 class BootstrapSlider {
     constructor(parentElement, options) {
+        parentElement.classList.add("bootstrapSlider");
 
         this.min = (options.hasOwnProperty("min")) ? (Number.isInteger(options.min) ? options.min : parseFloat(options.min)) : 1;
         this.max = (options.hasOwnProperty("max")) ? (Number.isInteger(options.max) ? options.max : parseFloat(options.max)) : 150;
@@ -9,11 +10,11 @@ class BootstrapSlider {
         this.visible = (options.hasOwnProperty("visible")) ? options.visible : true;
         this.interactive = (options.hasOwnProperty("interactive")) ? options.interactive : true;
         this.label = (options.hasOwnProperty("label")) ? options.label : "";
-        this.elem_id = (options.hasOwnProperty("elem_id")) ? options.elem_id : "item-" + generateRandomString(8);
+        this.elem_id = parentElement.id;
 
         // create the HTML elements
         this.container = document.createElement("div");
-        this.container.id = this.elem_id;
+        this.container.id = this.elem_id + "_container";
         this.container.classList.add("gr-block", "gr-box", "relative", "w-full", "border-solid", "border", "border-gray-200", "gr-padded");
 
         this.wrap = document.createElement("div");
@@ -33,7 +34,7 @@ class BootstrapSlider {
         this.labelWrapper.appendChild(this.labelElement);
 
         this.labelText = document.createElement("span");
-        this.labelText.setAttribute("for", this.elem_id);
+        this.labelText.setAttribute("for", this.elem_id + "_number");
         this.labelText.classList.add("text-gray-500", "mb-2", "col-11", "fit");
         this.labelText.title = options.title || "How many times to improve the generated image iteratively; higher values take longer; very low values can produce bad results";
         this.labelText.innerText = this.label;
@@ -56,7 +57,7 @@ class BootstrapSlider {
 
         this.rangeInput = document.createElement("input");
         this.rangeInput.type = "range";
-        this.rangeInput.id = this.elem_id;
+        this.rangeInput.id = this.elem_id + "_range";
         this.rangeInput.classList.add("w-full", "disabled:cursor-not-allowed");
         this.rangeInput.min = this.min;
         this.rangeInput.max = this.max;
@@ -81,7 +82,17 @@ class BootstrapSlider {
 
         if (!this.visible) {
             this.container.style.display = "none";
+
         }
+        this.updateValue = this.updateValue.bind(this);
+        this.setValue = this.setValue.bind(this);
+        this.setOnChange = this.setOnChange.bind(this);
+        this.show = this.show.bind(this);
+        this.hide = this.hide.bind(this);
+        this.getValue = this.getValue.bind(this);
+        this.setMin = this.setMin.bind(this);
+        this.setMax = this.setMax.bind(this);
+        this.setStep = this.setStep.bind(this);
         parentElement.appendChild(this.container);
     }
 
@@ -94,7 +105,26 @@ class BootstrapSlider {
         }
     }
 
+    setMin(value) {
+        this.min = value;
+        this.numberInput.min = value;
+        this.rangeInput.min = value;
+    }
+
+    setMax(value) {
+        this.max = value;
+        this.numberInput.max = value;
+        this.rangeInput.max = value;
+    }
+
+    setStep(value) {
+        this.step = value;
+        this.numberInput.step = value;
+        this.rangeInput.step = value;
+    }
+
     setValue(value) {
+        console.log("Setting value: ", value);
         this.isProgrammaticUpdate = true;
         this.updateValue(value);
         this.isProgrammaticUpdate = false;
@@ -132,33 +162,62 @@ class BootstrapSlider {
     }
 }
 
-$.fn.BootstrapSlider = function () {
+$.fn.BootstrapSlider = function (inputOptions) {
     const defaultOptions = {
-        min: this.data.hasOwnProperty("min") ? (Number.isInteger(this.data["min"]) ? this.data["min"] : parseFloat(this.data["min"])) : 1,
-        max: this.data.hasOwnProperty("max") ? (Number.isInteger(this.data["max"]) ? this.data["max"] : parseFloat(this.data["max"])) : 150,
-        step: this.data.hasOwnProperty("step") ? (Number.isInteger(this.data["step"]) ? this.data["step"] : parseFloat(this.data["step"])) : 1,
-        value: this.data.hasOwnProperty("value") ? (Number.isInteger(this.data["value"]) ? this.data["value"] : parseFloat(this.data["value"])) : this.data.hasOwnProperty("max") ? (Number.isInteger(this.data["max"]) ? this.data["max"] : parseFloat(this.data["max"])) : 150,
-        visible: this.data.hasOwnProperty("visible") ? this.data["visible"] : true,
-        interactive: this.data.hasOwnProperty("interactive") ? this.data["interactive"] : true,
-        label: this.data.hasOwnProperty("label") ? this.data["label"] : "Sampling steps",
-        elem_id: this.data.hasOwnProperty("elem-id") ? this.data["elem-id"] : "item-" + generateRandomString(8)
+        min: 1,
+        max: 150,
+        step: 1,
+        value: 150,
+        visible: true,
+        interactive: true,
+        label: "Sampling steps"
     };
-
 
     this.each(function () {
         const $this = $(this);
         let slider = $this.data("BootstrapSlider");
 
         if (!slider) {
+            const targetElement = this;
+            const targetDataset = targetElement.dataset;
+
             const options = {
                 ...defaultOptions,
-                ...$this.data(),
+                ...targetDataset,
+                ...inputOptions
             };
-            slider = new BootstrapSlider(this, options);
+
+            options.min = parseValue(options.min);
+            options.max = parseValue(options.max);
+            options.step = parseValue(options.step);
+            options.value = parseValue(options.value, options.max);
+
+            slider = new BootstrapSlider(targetElement, options);
             $this.data("BootstrapSlider", slider);
+        } else {
+            console.log("Slider already initialized");
         }
     });
 
-    return this;
+    return this.data("BootstrapSlider");
 };
+
+function parseValue(value, fallbackValue) {
+    if (value === undefined) {
+        return fallbackValue;
+    }
+
+    const parsedFloat = parseFloat(value);
+    if (!Number.isNaN(parsedFloat)) {
+        return parsedFloat;
+    }
+
+    const parsedInt = parseInt(value, 10);
+    if (!Number.isNaN(parsedInt)) {
+        return parsedInt;
+    }
+
+    return fallbackValue;
+}
+
 

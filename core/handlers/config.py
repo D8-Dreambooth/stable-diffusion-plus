@@ -112,12 +112,13 @@ class ConfigHandler:
         source_dir = os.path.join(script_path, "conf_src")
         for file in [f for f in os.listdir(source_dir) if os.path.splitext(f)[1] == ".json"]:
             src_path = os.path.join(source_dir, file)
-            dst_path = os.path.join(self._protected_dir, file)
-            if not os.path.exists(dst_path):
-                shutil.copy(src_path, dst_path)
-            else:
-                if "users" not in file:
-                    self.update_keys(src_path, dst_path)
+            if self._protected_dir:
+                dst_path = os.path.join(self._protected_dir, file)
+                if not os.path.exists(dst_path):
+                    shutil.copy(src_path, dst_path)
+                else:
+                    if "users" not in file:
+                        self.update_keys(src_path, dst_path)
 
     def set_module_default(self, file, module_name):
         # Strip any characters from module_name that are not valid in a path
@@ -181,15 +182,17 @@ class ConfigHandler:
         if self._base_defaults:
             if not os.path.exists(self._base_defaults):
                 os.makedirs(self._base_defaults)
-        if os.path.samefile(self._shared_dir, self._protected_dir):
-            raise ValueError("The shared and protected directories cannot be the same.")
+        if self._shared_dir and self._protected_dir:
+            if os.path.samefile(self._shared_dir, self._protected_dir):
+                raise ValueError("The shared and protected directories cannot be the same.")
 
     def _enumerate_configs(self):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
 
         self._enumerate_directory(self._shared_dir, self.config_shared)
-        self._enumerate_directory(self._protected_dir, self.config_protected)
+        if self._protected_dir:
+            self._enumerate_directory(self._protected_dir, self.config_protected)
 
     def _enumerate_directory(self, directory, config_dict):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
