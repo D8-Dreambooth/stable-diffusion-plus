@@ -14,8 +14,7 @@ const analyzeModule = new Module(
 
 function initAnalyze() {
     console.log("Loaded module!: ", analyzeModule.name);
-    analyzeFileBrowser = new FileBrowser(
-        analyzeFileSelect, {
+    analyzeFileBrowser = $("#analyzeFileSelect").fileBrowser({
             "label": "Directory Selection",
             "listFiles": false,
             "expand": false,

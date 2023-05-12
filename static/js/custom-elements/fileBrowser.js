@@ -5,7 +5,10 @@ class FileBrowser {
         this.onSelectCallbacks = [];
         this.onCancelCallbacks = [];
         this.selected = "";
-        this.startLink = "";
+        this.startLink = ""
+        this.getValue = this.getValue.bind(this);
+        this.setValue = this.setValue.bind(this);
+
         let wrapper = document.createElement("div");
         wrapper.classList.add("row", "fileBrowserContainer");
         parentElement.innerHTML = "";
@@ -39,6 +42,8 @@ class FileBrowser {
                 this.selected = path;
                 this.value = path;
             }
+            this.setValue(path);
+            console.log("Value set to: ", this.value);
         }
 
         this.treeContainer = document.createElement("div");
@@ -64,10 +69,6 @@ class FileBrowser {
             this.treeParent.classList.add("dropdown");
         }
         if (this.showSelectButton) this.treeContainer.classList.add("selectSibling");
-        this.currentSort = {
-            type: "name",
-            order: "asc"
-        };
 
         if (!this.showInfo) {
             this.treeParent.classList.add("no-info");
@@ -102,11 +103,12 @@ class FileBrowser {
                             this.input.value = this.selectedLink.dataset.path;
                             this.value = this.selectedLink.dataset.fullPath;
                         }
+                        this.setValue(this.value);
                         this.container.dataset.value = this.value;
-                        this.container.dataset.fileBrowser = JSON.stringify(this);
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
                             this.onSelectCallbacks[i](this.value);
                         }
+                        console.log("Selected: " + this.value);
                         this.toggleTree();
                     }
                 });
@@ -149,11 +151,19 @@ class FileBrowser {
             }
             //this.attachEventHandlers();
         });
-        parentElement.dataset.fileBrowser = JSON.stringify(this);
     }
 
     async refresh() {
         await this.buildTree();
+    }
+
+    getValue() {
+        console.log("Getting value: ", this.value);
+        return this.value;
+    }
+
+    setValue(value) {
+        this.value = value;
     }
 
     setCurrentPath(path) {
@@ -223,7 +233,6 @@ class FileBrowser {
         buttonGroup.querySelectorAll("button").forEach(button => {
             button.addEventListener("click", () => {
                 this.handleFileMethod(button.dataset.function);
-                this.parentElement.dataset.fileBrowser = JSON.stringify(this);
             });
         });
 
@@ -406,7 +415,6 @@ class FileBrowser {
         }
     }
 
-
     selectNextItem(direction, ctrl_pressed, shift_pressed) {
         const selected = this.treeContainer.querySelector(".fileLi.selected");
 
@@ -569,7 +577,6 @@ class FileBrowser {
         });
     }
 
-
     buildInfoPanel(fileInfo) {
         const panelContainer = document.createElement("div");
         panelContainer.classList.add("row");
@@ -641,8 +648,6 @@ class FileBrowser {
 
         return panelContainer;
     }
-
-    // Function to download image
 
     downloadImage(src, name) {
         const link = document.createElement("a");
@@ -735,7 +740,6 @@ class FileBrowser {
         this.textModal = new bootstrap.Modal(document.getElementById('jsonEditModal'), options);
     }
 
-
     createImageModal(src) {
         let modal = document.createElement("div");
         modal.classList.add("infoModal", "fade");
@@ -785,7 +789,6 @@ class FileBrowser {
             });
         });
     }
-
 
     buildInput() {
         const inputGroup = document.createElement("div");
@@ -965,7 +968,6 @@ class FileBrowser {
         return sortCol;
     }
 
-
     generateTree(response) {
         const root = document.createElement("ul");
         root.classList.add("treeRoot");
@@ -1026,7 +1028,8 @@ class FileBrowser {
                 this.selectedLinks.push(listItem);
                 this.input.value = listItem.dataset.path;
                 this.value = this.input.value;
-                this.parentElement.dataset.fileBrowser = JSON.stringify(this);
+                this.setValue(this.value);
+                console.log("Setting value to " + this.value);
             }
 
         }
@@ -1362,17 +1365,17 @@ class FileBrowser {
     }
 }
 
-$.fn.FileBrowser = function (options = {}) {
-    const fileBrowsers = [];
+$.fn.fileBrowser = function (options) {
     this.each(function () {
-        const element = $(this);
-        let fileBrowser = element.data('fileBrowser');
+        const $this = $(this);
+        let fileBrowser = $this.data('FileBrowser');
         if (!fileBrowser) {
             fileBrowser = new FileBrowser(this, options);
-            element.data('fileBrowser', fileBrowser);
+            $this.data("FileBrowser", fileBrowser);
+        } else {
+            console.log("FileBrowser already initialized");
         }
-        fileBrowsers.push(fileBrowser);
     });
-    return fileBrowsers.length === 1 ? fileBrowsers[0] : fileBrowsers;
+    return this.data('FileBrowser');
 };
 

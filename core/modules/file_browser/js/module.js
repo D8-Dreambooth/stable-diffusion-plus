@@ -4,8 +4,7 @@ const fileBrowserModule = new Module("Files", "moduleFileBrowser", "folder-open"
 function initFileBrowser() {
     console.log("FB Init: ", fileBrowserModule);
     // Register the module with the UI. Icon is from boxicons by default.
-    new FileBrowser(
-        document.getElementById("fileContainer"), {
+    $("#fileContainer").fileBrowser({
             "listFiles": true,
             "expand": true,
             "placeholder": "",

@@ -85,11 +85,11 @@ class BootstrapSlider {
 
         }
         this.updateValue = this.updateValue.bind(this);
+        this.getValue = this.getValue.bind(this);
         this.setValue = this.setValue.bind(this);
         this.setOnChange = this.setOnChange.bind(this);
         this.show = this.show.bind(this);
         this.hide = this.hide.bind(this);
-        this.getValue = this.getValue.bind(this);
         this.setMin = this.setMin.bind(this);
         this.setMax = this.setMax.bind(this);
         this.setStep = this.setStep.bind(this);

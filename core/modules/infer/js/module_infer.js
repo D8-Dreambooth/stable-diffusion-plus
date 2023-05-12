@@ -138,8 +138,7 @@ function inferInit() {
         label: "Batch Size"
     });
 
-
-    controlnetFileBrowser = new FileBrowser(document.getElementById("controlnetBatchFileSelect"), {
+    controlnetFileBrowser = $("#controlnetBatchFileSelect").fileBrowser({
         "file_type": "image",
         "showSelectButton": true,
         "listFiles": false,
@@ -148,6 +147,7 @@ function inferInit() {
         "multiselect": false,
         "dropdown": true
     });
+
     controlnetImageEditor = new ImageEditor("controlnetEditor", 512, 512);
     inpaintImageEditor = new ImageEditor("inpaintEditor", 512, 512);
 
