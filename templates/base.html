@@ -65,11 +65,11 @@
         <div class="loadWrap row">
             <div class="col-12">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="sr-only">Loading</span>
+                    <span class="sr-only">{{ loader | safe }}</span>
                 </div>
             </div>
             <div class="col-12">
-                <div class="loadingText" id="loadingText">Loading</div>
+                <div class="loadingText" id="loadingText">{{ loader | safe }}</div>
             </div>
         </div>
     </div>

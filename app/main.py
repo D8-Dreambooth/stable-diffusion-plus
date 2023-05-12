@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os.path
+import random
 import time
 import traceback
 from typing import Dict
@@ -237,11 +238,23 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
     dh = DirectoryHandler(user_name=current_user)
     ch = ConfigHandler(user_name=current_user)
     page_title = ch.get_item_protected("title", "core", "Stable-Diffusion Plus")
+    show_snark = ch.get_item_protected("snarky_loaders", "core", True)
+    if show_snark:
+        loaders = ch.get_config_protected("loading")
+        # Select a random item from the loaders list
+        loader = random.choice(loaders)
+    else:
+        loader = "Loading..."
+    if "<br>" in loader:
+        lines = loader.split("<br>")
+        loader = f"{lines[0]}<br><div class='subLoader'>{lines[1]}</div>"
+    logger.debug("Loading message: %s", loader)
+    timestamp = int(time.time())
+
     if user_handler.user_auth:
         if current_user and not user_data["disabled"]:
             # User is logged in, show the usual home page
             css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, False, user_data)
-            timestamp = int(time.time())
             return templates.TemplateResponse(
                 "base.html",
                 {
@@ -253,7 +266,8 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
                     "custom_files": custom_files,
                     "module_html": html,
                     "timestamp": timestamp,
-                    "locales": locales
+                    "locales": locales,
+                    "loader": loader
                 }
             )
         else:
@@ -266,12 +280,16 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
         return templates.TemplateResponse(
             "base.html",
             {
+                "title": page_title,
                 "request": request,
                 "css_files": css_files,
                 "js_files": js_files,
                 "js_files_ext": js_files_ext,
                 "custom_files": custom_files,
-                "module_html": html
+                "module_html": html,
+                "timestamp": timestamp,
+                "locales": locales,
+                "loader": loader
             }
         )
 

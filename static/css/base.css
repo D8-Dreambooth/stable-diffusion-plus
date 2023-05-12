@@ -218,7 +218,12 @@ input[type="number"]:active::-webkit-inner-spin-button{
     text-align: center;
 }
 
-
+.subLoader {
+    font-size: 17px;
+    width: 75%;
+    text-align: center;
+    margin: 0 auto;
+}
 
 .accordion-header,
 .modal-header,

@@ -292,5 +292,74 @@ class Module {
         }
     }
 
+    getSettings(inputSelector, ignore) {
+        let container = $("#" + this.id);
+        // Select inputs with selector in container
+        let inputs = container.find(inputSelector);
+        let settings = {};
+        inputs.each((index, element) => {
+            let id = element.id;
+            let doIgnore = false;
+            // If ignore is an array of strings
+            if (Array.isArray(ignore)) {
+                // Loop through each string
+                ignore.forEach((ignoreId) => {
+                    // If the element id contains the string, skip it
+                    if (ignoreId !== "" && id.indexOf(ignoreId) !== -1) {
+                        doIgnore = true;
+                    }
+                });
+            } else {
+                if (ignore !== "" && id.indexOf(ignore) !== -1) {
+                    doIgnore = true;
+                }
+            }
+
+            if (doIgnore) return;
+
+            if (id === null || id === "" || id === "undefined") {
+                console.log("invalid element: ", element);
+                return;
+            }
+
+            let value;
+            let elem_selector = "#" + id;
+            let tryParse = false;
+            if ($(element).hasClass("db-file-browser")) {
+                value = element.dataset.value;
+            } else if ($(element).hasClass("db-slider")) {
+                tryParse = true;
+                value = $(elem_selector).BootstrapSlider().getValue();
+            } else if ($(element).is(":checkbox")) {
+                value = $(element).is(":checked");
+            } else if ($(element).is(":radio")) {
+                if ($(element).is(":checked")) {
+                    value = $(element).val();
+                }
+            } else if ($(element).is("select")) {
+                value = $(element).val();
+            } else if ($(element).is("input[type='number']")) {
+                tryParse = true;
+                value = $(element).val();
+            } else {
+                value = $(element).val();
+            }
+
+            if (typeof value === "undefined") {
+                value = "";
+            }
+
+            if (tryParse) {
+                if (!isNaN(parseFloat(value))) {
+                    value = parseFloat(value);
+                } else if (!isNaN(parseInt(value))) {
+                    value = parseInt(value);
+                }
+            }
+
+            settings[id] = value;
+        });
+        return settings;
+    }
 
 }

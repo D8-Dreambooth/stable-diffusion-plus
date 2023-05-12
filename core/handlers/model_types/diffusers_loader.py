@@ -5,15 +5,13 @@ import traceback
 import tomesd
 import torch
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
-    StableDiffusionControlNetPipeline, StableDiffusionSAGPipeline, StableDiffusionPipeline
-
+    StableDiffusionControlNetPipeline, StableDiffusionSAGPipeline
 from diffusers.models.attention_processor import AttnProcessor2_0
 from safetensors.torch import load_file
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data
 from core.pipelines.pipeline_stable_diffusion_controlnet_sag import StableDiffusionControlNetSAGPipeline
-from lora_diffusion.lora import patch_pipe
 
 logger = logging.getLogger(__name__)
 

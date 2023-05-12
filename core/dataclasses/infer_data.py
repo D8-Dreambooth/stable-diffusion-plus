@@ -84,6 +84,18 @@ class InferSettings:
                     pass
             setattr(self, key, value)
 
+    def from_prompt_data(self, prompt_data):
+        for key, value in prompt_data.items():
+            try:
+                getattr(self, key)
+                setattr(self, key, value)
+                continue
+            except AttributeError:
+                pass
+            if key == "resolution":
+                if isinstance(value, tuple) and len(value) == 2:
+                    self.width, self.height = value
+
     def get_controlnet_image(self) -> Union[Image.Image, None]:
         value = self.controlnet_image
         if value is not None:

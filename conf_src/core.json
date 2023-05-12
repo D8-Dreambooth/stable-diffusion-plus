@@ -3,5 +3,6 @@
   "show_settings": true,
   "user_auth": true,
   "theme": "theme-dark",
-  "cpu_only": false
+  "cpu_only": false,
+  "snarky_loaders": false
 }

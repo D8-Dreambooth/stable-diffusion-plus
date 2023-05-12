@@ -173,9 +173,12 @@ class ImageHandler:
             file_name = custom_name
 
         file_name = re.sub(r"[^\w \-_.]", "", file_name)
+        if self.user_dir not in directory:
+            dest_dir = os.path.join(self.user_dir, "outputs", directory)
+            dest_dir = os.path.abspath(dest_dir)
+        else:
+            dest_dir = os.path.abspath(directory)
 
-        dest_dir = os.path.join(self.user_dir, "outputs", directory)
-        dest_dir = os.path.abspath(dest_dir)
         if self.user_dir not in dest_dir:
             logger.error("Exception saving to directory outside of user dir.")
             raise ValueError("Invalid directory for saving.")
