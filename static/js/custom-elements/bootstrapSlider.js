@@ -1,6 +1,7 @@
 class BootstrapSlider {
     constructor(parentElement, options) {
-        parentElement.classList.add("bootstrapSlider");
+        this.parentElement = parentElement;
+        this.parentElement.classList.add("bootstrapSlider");
 
         this.min = (options.hasOwnProperty("min")) ? (Number.isInteger(options.min) ? options.min : parseFloat(options.min)) : 1;
         this.max = (options.hasOwnProperty("max")) ? (Number.isInteger(options.max) ? options.max : parseFloat(options.max)) : 150;
@@ -50,9 +51,6 @@ class BootstrapSlider {
         this.numberInput.max = this.max;
         this.numberInput.step = this.step;
         this.numberInput.value = this.value;
-        this.numberInput.addEventListener("input", (event) => {
-            this.updateValue(event.target.value);
-        });
         this.labelWrapper.appendChild(this.numberInput);
 
         this.rangeInput = document.createElement("input");
@@ -66,18 +64,9 @@ class BootstrapSlider {
         if (!this.interactive) {
             this.rangeInput.disabled = true;
         }
-        this.rangeInput.addEventListener("input", (event) => {
-            this.updateValue(event.target.value);
-        });
+
         this.isProgrammaticUpdate = false;
 
-        this.rangeInput.addEventListener("change", (event) => {
-            if (!this.isProgrammaticUpdate) {
-                const newValue = event.target.value;
-                console.log("Range change: " + newValue);
-                this.setValue(newValue);
-            }
-        });
         this.container.appendChild(this.rangeInput);
 
         if (!this.visible) {
@@ -93,6 +82,7 @@ class BootstrapSlider {
         this.setMin = this.setMin.bind(this);
         this.setMax = this.setMax.bind(this);
         this.setStep = this.setStep.bind(this);
+        this.setOnChange(this.updateValue);
         parentElement.appendChild(this.container);
     }
 
@@ -100,9 +90,6 @@ class BootstrapSlider {
         this.value = newValue;
         this.numberInput.value = this.value;
         this.rangeInput.value = this.value;
-        if (this.onChangeCallback && !this.isProgrammaticUpdate) {
-            this.onChangeCallback(this.value);
-        }
     }
 
     setMin(value) {
@@ -124,24 +111,33 @@ class BootstrapSlider {
     }
 
     setValue(value) {
-        console.log("Setting value: ", value);
+        console.log("Setting value", this.container.id, value);
         this.isProgrammaticUpdate = true;
         this.updateValue(value);
         this.isProgrammaticUpdate = false;
+        this.parentElement.dataset.value = value;
     }
 
     setOnChange(callback) {
         this.onChangeCallback = callback;
         this.rangeInput.addEventListener("input", (event) => {
-            const value = parseInt(event.target.value, 10);
-            this.numberInput.value = String(value);
+            console.log("RangeInput: ", event.target.value);
+            let value = parseInt(event.target.value, 10);
+            if (this.step < 1) {
+                value = parseFloat(event.target.value);
+            }
+            this.numberInput.value = value;
             if (this.onChangeCallback) {
                 this.onChangeCallback(value);
             }
         });
 
         this.numberInput.addEventListener("input", (event) => {
-            const value = parseInt(event.target.value, 10);
+            console.log("NumberInput: ", event.target.value);
+            let value = parseInt(event.target.value, 10);
+            if (this.step < 1) {
+                value = parseFloat(event.target.value);
+            }
             this.rangeInput.value = String(value);
             if (this.onChangeCallback) {
                 this.onChangeCallback(value);

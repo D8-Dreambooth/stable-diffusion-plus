@@ -51,12 +51,9 @@ class ModelSelect {
         this.container.appendChild(wrapper);
 
         this.setOnChangeHandler((selectedModel) => {
-            console.log("Model selected", selectedModel);
             if (this.multiple) {
-                console.log("Multiple models selected", selectedModel);
                 this.value = selectedModel;
             } else {
-                console.log("Model selected", selectedModel);
                 this.value = selectedModel[0];
             }
         });
@@ -73,14 +70,12 @@ class ModelSelect {
         let doRefresh = false;
         for (let i = 0; i < modelTypes.length; i++) {
             if (modelTypes[i] === new_model) {
-                console.log("Model type matches, refreshing..." + this.container.id, data);
                 doRefresh = true;
                 break;
             }
         }
         if (doRefresh) {
             this.refresh().then(() => {
-                console.log("Refreshed model list");
                 if (to_load) {
                     // Check if the hash of to_load matches one of our options, and if so, select it
                     let found = false;
@@ -173,7 +168,6 @@ class ModelSelect {
     }
 
     setValue(value) {
-        console.log("Setvalue called...");
         let isValid = false;
         for (let i = 0; i < this.selectElement.options.length; i++) {
             const option = this.selectElement.options[i];
@@ -182,7 +176,6 @@ class ModelSelect {
             break;
         }
         if (isValid) {
-            console.log("Setting value to", value);
             this.value = value;
         }
     }

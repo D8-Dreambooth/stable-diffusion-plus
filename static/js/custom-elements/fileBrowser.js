@@ -43,7 +43,6 @@ class FileBrowser {
                 this.value = path;
             }
             this.setValue(path);
-            console.log("Value set to: ", this.value);
         }
 
         this.treeContainer = document.createElement("div");
@@ -107,7 +106,6 @@ class FileBrowser {
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
                             this.onSelectCallbacks[i](this.value);
                         }
-                        console.log("Selected: " + this.value);
                         this.toggleTree();
                     }
                 });
@@ -157,7 +155,6 @@ class FileBrowser {
     }
 
     getValue() {
-        console.log("Getting value: ", this.value);
         return this.value;
     }
 
@@ -285,7 +282,6 @@ class FileBrowser {
                 let newBase = button.dataset.base;
                 if (this.baseDir !== newBase) {
                     this.baseDir = newBase;
-                    console.log("New base dir: " + this.baseDir);
                     $(".pathBtn.active").removeClass("active");
                     button.classList.add("active");
                     this.refresh();
@@ -721,20 +717,15 @@ class FileBrowser {
             let data = this.editor.get();
             let show_protected = false;
             let show_shared = false;
-            console.log("Fetching", this.baseDir);
             if (this.baseDir === "shared") show_shared = true;
             if (this.baseDir === "protected") show_protected = true;
-            console.log("We should save this: ", data);
             let saveData = {
                 path: this.editFile,
                 file_data: data,
                 protected: show_protected,
                 shared: show_shared
             }
-            console.log("Saving", saveData);
-            sendMessage("saveFile", saveData, true).then((response) => {
-                console.log("Saved?", response);
-            });
+            sendMessage("saveFile", saveData, true).then((response) => {});
         });
 
         document.body.appendChild(modal);
@@ -830,7 +821,6 @@ class FileBrowser {
 
     async buildTree() {
         const response = await this.fetchFileTreeData(this.currentPath);
-        console.log("Response: " + response);
         if (!response.hasOwnProperty("items")) {
             console.log("No items found");
             return;
@@ -839,7 +829,6 @@ class FileBrowser {
         let show_protected = response["show_protected"] || false;
         this.allowProtected = show_protected;
         this.allowShared = show_shared;
-        console.log("Show shared/protected: " + show_shared + "/" + show_protected);
         let items = response["items"] || [];
         this.currentParent = response["current"] || "";
         this.separator = response["separator"] || "\\";
@@ -1030,7 +1019,6 @@ class FileBrowser {
                 this.input.value = listItem.dataset.path;
                 this.value = listItem.dataset.fullPath;
                 this.setValue(this.value);
-                console.log("Setting value to " + this.value);
             }
 
         }
@@ -1150,9 +1138,7 @@ class FileBrowser {
             }
         } else if (link.dataset.type === ".txt" || link.dataset.type === ".json") {
             if (this.showInfo) {
-                console.log("Link data: ", link.dataset);
                 this.fetchFileData(link.dataset.path).then((data) => {
-                    console.log("File data: ", data);
                     if (data.length > 0) {
                         let fileData = data[0];
                         if (fileData.hasOwnProperty("data")) {
@@ -1300,7 +1286,6 @@ class FileBrowser {
     async fetchFileTreeData(directory, recursive = false, filter = []) {
         let show_protected = false;
         let show_shared = false;
-        console.log("Fetching", this.baseDir);
         if (this.baseDir === "shared") show_shared = true;
         if (this.baseDir === "protected") show_protected = true;
         const data = {

@@ -282,6 +282,7 @@ class ImageHandler:
         for image_file in images:
             image_data = {"path": image_file, "filename": os.path.basename(image_file)}
             with Image.open(image_file) as img:
+                extension = os.path.splitext(image_file)[1]
                 png_info = img.info
                 for k in self.infer_keys:
                     if png_info.get(k):
@@ -291,7 +292,7 @@ class ImageHandler:
                         except (TypeError, ValueError):
                             pass
 
-                txt_file = image_file.replace(".png", ".txt")
+                txt_file = image_file.replace(extension, ".txt")
                 if os.path.exists(txt_file):
                     with open(txt_file, "r", encoding="utf8") as file:
                         prompt = file.read()
