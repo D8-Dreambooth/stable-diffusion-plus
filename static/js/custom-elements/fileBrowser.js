@@ -1028,7 +1028,7 @@ class FileBrowser {
                 this.selectedLink = listItem;
                 this.selectedLinks.push(listItem);
                 this.input.value = listItem.dataset.path;
-                this.value = this.input.value;
+                this.value = listItem.dataset.fullPath;
                 this.setValue(this.value);
                 console.log("Setting value to " + this.value);
             }
