@@ -104,7 +104,6 @@ class FileBrowser {
                             this.value = this.selectedLink.dataset.fullPath;
                         }
                         this.setValue(this.value);
-                        this.container.dataset.value = this.value;
                         for (let i = 0; i < this.onSelectCallbacks.length; i++) {
                             this.onSelectCallbacks[i](this.value);
                         }
@@ -164,6 +163,8 @@ class FileBrowser {
 
     setValue(value) {
         this.value = value;
+        this.container.dataset.value = value;
+
     }
 
     setCurrentPath(path) {
