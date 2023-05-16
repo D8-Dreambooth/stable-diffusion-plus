@@ -8,7 +8,7 @@ basicsr
 bcrypt
 bitsandbytes @ https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl; os_name == 'nt'
 bitsandbytes==0.38.1; os_name != 'nt'
-compel~=1.1.5
+compel
 controlnet-aux~=0.0.3
 dadaptation==2.0
 deepface
