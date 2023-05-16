@@ -28,7 +28,7 @@ function initAnalyze() {
     analyzeImageEditor = new ImageEditor("analyzeFileContent", 512, 512);
 
     $("#analyzeFileButton").click(function() {
-        let selectedFile = analyzeFileBrowser.value;
+        let selectedFile = analyzeFileBrowser.val();
         let targetImage = analyzeImageEditor.getDropped();
         if (selectedFile && targetImage) {
             console.log("Analyze: ", selectedFile, targetImage);
@@ -38,6 +38,8 @@ function initAnalyze() {
                 analyzeOutput = response;
                 $("#analyzeOutput").html(response);
             });
+        } else {
+            console.log("Analyze: No file selected or no image dropped!", selectedFile, targetImage);
         }
     });
 

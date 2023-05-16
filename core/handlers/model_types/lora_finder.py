@@ -6,7 +6,7 @@ from core.handlers.models import ModelHandler
 mh = ModelHandler()
 
 
-def get_lora_models(data, handler: ModelHandler):
+async def get_lora_models(data, handler: ModelHandler):
     output = []
     for mdir in handler.models_path:
         lora_dir = os.path.join(mdir, "loras")

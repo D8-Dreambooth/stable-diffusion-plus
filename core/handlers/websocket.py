@@ -27,8 +27,12 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     async def send_personal_message(self, message: Dict):
-        websocket = message.pop("socket")
-        await websocket.send_json(message)
+        try:
+            websocket = message.pop("socket")
+            # Make sure the websocket isn't closed already
+            await websocket.send_json(message)
+        except:
+            pass
 
     async def broadcast(self, message: Dict):
         message["broadcast"] = True

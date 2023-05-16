@@ -4,6 +4,7 @@ import time
 
 import torch
 from diffusers import DiffusionPipeline
+from diffusers.models.attention_processor import AttnProcessor2_0
 
 from dreambooth.utils.image_utils import get_scheduler_class
 
@@ -15,20 +16,9 @@ torch.backends.cuda.matmul.allow_tf32 = True
 
 def test_pipe():
     results = {}
-    optimizer_methods = [["enable_vae_tiling", "enable_sequential_cpu_offload"],
-                         ["enable_vae_slicing", "enable_vae_tiling"],
+    optimizer_methods = [["enable_vae_tiling", "enable_vae_slicing", "enable_xformers_memory_efficient_attention"],
                          ["enable_vae_tiling", "enable_xformers_memory_efficient_attention"],
-                         ["enable_vae_slicing", "enable_sequential_cpu_offload"],
-                         ["enable_vae_tiling", "enable_xformers_memory_efficient_attention",
-                          "enable_sequential_cpu_offload"],
-                         ["enable_vae_slicing", "enable_xformers_memory_efficient_attention",
-                          "enable_sequential_cpu_offload"],
-                         ["enable_vae_tiling", "enable_vae_slicing", "enable_sequential_cpu_offload"],
-                         ["enable_vae_tiling", "enable_vae_slicing", "enable_xformers_memory_efficient_attention"],
-                         ["enable_vae_slicing", "enable_xformers_memory_efficient_attention",
-                          "enable_sequential_cpu_offload"],
-                         ["enable_vae_tiling", "enable_vae_slicing", "enable_xformers_memory_efficient_attention",
-                          "enable_sequential_cpu_offload"]
+                         ["enable_vae_slicing", "enable_xformers_memory_efficient_attention"]
                          ]
 
     model_path = os.path.abspath(os.path.join("..", "data_shared", "models", "diffusers", "v1-5-pruned.safetensors"))
@@ -47,6 +37,7 @@ def test_pipe():
             model_path,
             torch_dtype=torch.bfloat16
         )
+        s_pipeline.unet.set_attn_processor(AttnProcessor2_0())
         print("Loaded pipeline")
         s_pipeline.scheduler = get_scheduler_class("UniPCMultistep").from_config(
             s_pipeline.scheduler.config

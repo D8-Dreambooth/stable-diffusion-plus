@@ -6,8 +6,11 @@ let localData = {};
 // region ModuleHandling
 
 document.addEventListener("DOMContentLoaded", function () {
+    initializeCore();
+    console.log("Getting module data...");
     sendMessage("get_modules", {}).then(function (response) {
         let module_data = response["module_data"];
+        console.log("Got module data: ", module_data);
         loadDiv.addClass("loaded");
         let enabled_modules = [];
         // Parse module data, which is a dict of lists where the key is the module ID, and the value is a list with two

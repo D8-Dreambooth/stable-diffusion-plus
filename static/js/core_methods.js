@@ -6,6 +6,18 @@ const historyTracker = new HistoryTracker();
 let messages = [];
 // region Initialization
 
+function initializeCore() {
+    console.log("Initializing core methods.");
+    connectSocket();
+    showNavbar();
+    sendMessage("get_config", {"section_key": "core"}).then((data) => {
+        console.log("Loading core settings");
+        loadCoreSettings(data);
+    });
+    const $buttons = $('.cancelButton').cancelButton();
+    console.log("Core initialized.");
+}
+
 const toggleNavbar = () => {
     const nav = document.getElementById('nav-bar'),
         bodypd = document.getElementById('body-pd'),
@@ -37,15 +49,6 @@ const getCookie = (name) => {
 }
 
 
-document.addEventListener("DOMContentLoaded", function () {
-    connectSocket();
-
-    showNavbar();
-    sendMessage("get_config", {"section_key": "core"}).then((data) => {
-        loadCoreSettings(data);
-    });
-    const $buttons = $('.cancelButton').cancelButton();
-});
 
 function loadCoreSettings(data) {
     const settingsButton = $("#settingsButton");

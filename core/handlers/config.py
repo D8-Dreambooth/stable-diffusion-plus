@@ -172,15 +172,19 @@ class ConfigHandler:
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
         if self._shared_dir:
             if not os.path.exists(self._shared_dir):
+                logger.debug(f"Creating shared directory: {self._shared_dir}")
                 os.makedirs(self._shared_dir)
         if self._protected_dir:
+            logger.debug(f"Creating protected directory: {self._protected_dir}")
             if not os.path.exists(self._protected_dir):
                 os.makedirs(self._protected_dir)
         if self._user_dir:
+            logger.debug(f"Creating user directory: {self._user_dir}")
             if self._user_dir and not os.path.exists(self._user_dir):
                 os.makedirs(self._user_dir)
         if self._base_defaults:
             if not os.path.exists(self._base_defaults):
+                logger.debug(f"Creating base defaults directory: {self._base_defaults}")
                 os.makedirs(self._base_defaults)
         if self._shared_dir and self._protected_dir:
             if os.path.samefile(self._shared_dir, self._protected_dir):

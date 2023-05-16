@@ -7,6 +7,7 @@ from PIL.Image import Resampling
 from controlnet_aux import OpenposeDetector, MLSDdetector, HEDdetector, CannyDetector, MidasDetector
 from controlnet_aux import PidiNetDetector, NormalBaeDetector, LineartDetector, LineartAnimeDetector, ContentShuffleDetector
 
+from core.handlers.status import StatusHandler
 from core.modules.infer.src.preprocessors.coco_detector import CocoDetector
 
 logger = logging.getLogger(__name__)
@@ -134,7 +135,7 @@ def get_model_data(model_name):
     return None
 
 
-def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str, max_res: int = 1024, process:bool = True):
+def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str, max_res: int = 1024, process:bool = True, handler: StatusHandler = None):
     model = get_model_data(model_name)
     if not len(images):
         logger.warning("NO IMAGE, STUPID")
@@ -144,6 +145,14 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str
         return None, prompt
 
     converted = []
+    status = {
+        "progress_2_total": len(images),
+        "progress_2_current": 0
+    }
+    if process:
+        status["status_2"] = "Loading preprocessor: " + model["preprocessor"]
+
+    handler.update(items=status)
     for img in images:
         converted.append(img.convert("RGB"))
 
@@ -190,6 +199,8 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str
     out_prompts = []
     img_idx = 0
     for img in images:
+        handler.update(items={"progress_2_current": img_idx, "status_2": f"Processing control image {img_idx}/{len(images)}"})
+        handler.send()
         try:
             if len(prompt) == len(images):
                 out_prompts.append(prompt[img_idx])
@@ -232,4 +243,5 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str
         except:
             logger.warning("Failed to preprocess image")
             traceback.print_exc()
+        handler.update("status_2", "")
     return output, out_prompts

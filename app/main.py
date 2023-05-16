@@ -151,7 +151,8 @@ def initialize_app():
     socket_handler.register("get_config_item", config_handler.socket_get_config_item)
     socket_handler.register("set_config_item", config_handler.socket_set_config_item)
 
-    StatusHandler(socket_handler)
+    sh = StatusHandler(socket_handler)
+    sh.end("")
     # Now create the other handlers, which use our dirs vars from above
     FileHandler(app)
     ModelHandler()

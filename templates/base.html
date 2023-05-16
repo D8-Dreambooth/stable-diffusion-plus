@@ -104,6 +104,9 @@
 {% block scripts %}
 <script type="text/javascript" src="/static/js/lib/font-awesome.min.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/lib/jquery-3.6.4.min.js?v={{ timestamp }}"></script>
+
+<!-- For plotting things -->
+<script type="text/javascript" src="/static/js/lib/plotly.2.20.0.min.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/lib/fitty.min.js?v={{ timestamp }}"></script>
 
 <!-- Bootstrap 5 JS -->
@@ -113,7 +116,8 @@
 <!-- jQuery Custom Scroller CDN -->
 <script type="text/javascript" src="/static/js/lib/jquery.mCustomScrollbar.concat.min.js?v={{ timestamp }}"></script>
 
-<!-- LightGallery + Plugins. -->
+
+<!-- Custom elements -->
 <script type="text/javascript" src="/static/js/custom-elements/cancelButton.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/custom-elements/imageEditor.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/custom-elements/inlineGallery.js?v={{ timestamp }}"></script>
@@ -121,13 +125,14 @@
 <script type="text/javascript" src="/static/js/custom-elements/fileBrowser.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/custom-elements/modelSelect.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/custom-elements/progressGroup.js?v={{ timestamp }}"></script>
+
 <!-- Load core JS file, which has methods all other scripts should be able to access. -->
 <script type="text/javascript" src="/static/js/custom-elements/keyListener.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/custom-elements/historyTracker.js?v={{ timestamp }}"></script>
 <script type="text/javascript" src="/static/js/core_methods.js?v={{ timestamp }}"></script>
+
 <!-- Load restricted JS file, which has methods only module code should be able to access. -->
 <script type="text/javascript" src="/static/js/restricted_methods.js?v={{ timestamp }}"></script>
-
 <script type="text/javascript" src="/static/js/module_base.js?v={{ timestamp }}"></script>
 <!-- Now append all extension code -->
 {% for js in js_files_ext %}

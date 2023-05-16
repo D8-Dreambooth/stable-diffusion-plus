@@ -6,8 +6,9 @@ import random
 import traceback
 
 import torch
+from PIL import Image
 from compel import Compel
-from tqdm import tqdm
+from core.modules.dreambooth.helpers.mytqdm import mytqdm
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.config import ConfigHandler
@@ -63,31 +64,29 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         if inference_settings.controlnet_batch:
             # List files in the batch directory
             batch_dir = inference_settings.controlnet_batch_dir
-            file_handler = FileHandler(user_name=user)
-            files = file_handler.get_dir_content(batch_dir, True, False, None)
-
-            # Check if the files are images
-            images = []
-
-            for file in files:
-                if is_image(os.path.join(file_handler.user_dir, file)):
-                    images.append(file)
+            image_handler = ImageHandler(user_name=user)
+            images, image_data = image_handler.load_image(batch_dir, None, True)
 
             # Get the images and prompts
-            for image in images:
-                file_req = {"data": {"files": image, "return_pil": True}}
-                image_data = await file_handler.get_file(file_req)
-                image = image_data["files"][0]["image"]
-                img_prompt = image_data["files"][0]["data"] if "data" in image_data["files"][0] else None
+            img_idx = 0
+
+            for image_path in images:
+                image = Image.open(image_path)
+                img_prompt = None
+                if len(image_data) > img_idx:
+                    img_prompt = image_data[img_idx]["prompt"] if "prompt" in image_data[img_idx] else None
                 if not img_prompt and inference_settings.controlnet_batch_use_prompt:
                     logger.warning("No prompt found for image, using UI prompt.")
                 else:
                     if inference_settings.controlnet_batch_find and inference_settings.controlnet_batch_replace:
-                        img_prompt = img_prompt.replace(inference_settings.controlnet_batch_find,
-                                                        inference_settings.controlnet_batch_replace)
+                        find = inference_settings.controlnet_batch_find
+                        find_phrases = [f"a {find}", f"an {find}", f"the {find}", f"{find}"]
                         img_prompt = ",".join([img_prompt, inference_settings.prompt])
+                        for phrase in find_phrases:
+                            img_prompt = img_prompt.replace(phrase, inference_settings.controlnet_batch_replace)
 
                 control_images.append(image)
+                img_idx += 1
                 prompt_in = img_prompt if img_prompt else inference_settings.prompt
                 input_prompts.append(prompt_in)
                 negative_prompts.append(inference_settings.negative_prompt)
@@ -118,13 +117,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                                          prompt=input_prompts,
                                                          model_name=inference_settings.controlnet_type,
                                                          max_res=max_res,
-                                                         process=inference_settings.controlnet_preprocess)
+                                                         process=inference_settings.controlnet_preprocess,
+                                                         handler=status_handler)
 
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
 
         model_data.data = {"type": inference_settings.controlnet_type}
-
-
     else:
         input_prompts = [inference_settings.prompt]
         negative_prompts = [inference_settings.negative_prompt]
@@ -161,6 +159,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     out_images = []
     out_prompts = []
     original_controls = []
+    used_controls = []
     try:
         status_handler.update(
             items={
@@ -170,7 +169,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         if isinstance(inference_settings.seed, str):
             initial_seed = int(inference_settings.seed)
 
-        pbar = tqdm(desc="Making images.", total=total_images)
+        pbar = mytqdm(desc="Making images.", total=total_images, user=user, target="infer", index=1)
 
         def update_progress(step: int, timestep: int, latents: torch.FloatTensor):
             # Move the latents tensor to CPU if it's on a different device
@@ -179,11 +178,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             # Update the progress status handler with the new items
             status_handler.update(items={
                 "latents": converted,
-            }, send=False)
-            status_handler.step(preview_steps)
+                "progress_2_total": inference_settings.steps,
+                "progress_2_current": step,
+            }, send=True)
 
         total_images = len(input_prompts)
-        original_controls = control_images
+        used_controls = []
         while len(out_images) < total_images:
             batch_size = inference_settings.batch_size
             required_images = total_images - len(out_images)
@@ -218,6 +218,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             if control_images and len(control_images) > 0:
                 batch_control = control_images[:batch_size]
                 control_images = control_images[batch_size:]
+                used_controls.extend(batch_control)
+                use_embeds = False
             else:
                 batch_control = []
             if initial_seed is None:
@@ -289,20 +291,39 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             current_total = len(out_images) + (1 * inference_settings.batch_size)
             if current_total > total_images:
                 current_total = total_images
-            status_handler.update(items={
-                "status": f"Generating {current_total}/{total_images} images.", "images": s_image, "prompts": prompts},
+            if status_handler.status.canceled:
+                logger.debug("Canceled!")
+                break
+
+            status_handler.update(items=
+            {
+                "status": f"Generating {current_total}/{total_images} images.",
+                "images": s_image,
+                "prompts": prompts,
+                "progress_1_total": total_images,
+                "progress_1_current": current_total,
+                "latents": s_image,
+                "progress_2_total": inference_settings.steps,
+                "progress_2_current": inference_settings.steps,
+            },
                 send=True)
 
     except Exception as e:
         logger.error(f"Exception inferring: {e}")
         traceback.print_exc()
 
-    if original_controls is not None:
-        out_images.extend(original_controls)
-        for img in original_controls:
-            out_prompts.append("Control image")
+    if len(used_controls) > 0:
+        out_images.extend(used_controls)
+        out_prompts.extend([f"Control image {i}" for i in range(len(used_controls))])
+
     status_handler.update(
-        items={"status": f"Generation complete.", "images": out_images, "prompts": out_prompts}, send=False)
+        items={
+            "status": f"Generation complete.",
+            "images": out_images,
+            "prompts": out_prompts,
+            "progress_2_total": 0,
+            "progress_2_current": 0
+        }, send=False)
     status_handler.end("Generation complete.")
     return out_images, out_prompts
 

@@ -329,7 +329,7 @@ class InlineGallery {
         let append = true;
         let latent = null;
 
-        if (!status.active || status.canceled) {
+        if (!status.active) {
             append = false;
         }
 
@@ -391,7 +391,6 @@ class InlineGallery {
                 return;
             }
 
-
             // Primary image
             const primaryImage = document.createElement('img');
             primaryImage.src = imageData.src;
@@ -405,7 +404,6 @@ class InlineGallery {
                 primaryImage.style.display = 'block';
                 doSelect = true;
             }
-
 
             // Caption
             if (this.options.showCaptions) {
@@ -436,7 +434,6 @@ class InlineGallery {
                     this.thumbnailContainer.style.display = 'none';
                 }
             }
-
 
             // Update options data
             this.options.data.push({

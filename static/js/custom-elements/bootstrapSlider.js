@@ -111,7 +111,6 @@ class BootstrapSlider {
     }
 
     setValue(value) {
-        console.log("Setting value", this.container.id, value);
         this.isProgrammaticUpdate = true;
         this.updateValue(value);
         this.isProgrammaticUpdate = false;
@@ -190,8 +189,6 @@ $.fn.BootstrapSlider = function (inputOptions) {
 
             slider = new BootstrapSlider(targetElement, options);
             $this.data("BootstrapSlider", slider);
-        } else {
-            console.log("Slider already initialized");
         }
     });
 

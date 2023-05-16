@@ -133,7 +133,7 @@ def load_diffusers_inpaint(model_data: ModelData):
 
 def load_diffusers_controlnet(model_data: ModelData):
     model_path = model_data.path
-    load_sag = model_data.data.get("enable_sag", True)
+    load_sag = model_data.data.get("enable_sag", False)
     pipeline = None
     if not os.path.exists(model_path):
         logger.debug(f"Unable to load model: {model_path}")
@@ -161,12 +161,11 @@ def load_diffusers_controlnet(model_data: ModelData):
         else:
             pipeline = StableDiffusionControlNetPipeline.from_pretrained(model_path, torch_dtype=torch.float16,
                                                                          controlnet=controlnet)
-        pipeline.enable_model_cpu_offload()
         pipeline.unet.set_attn_processor(AttnProcessor2_0())
         if os.name != "nt":
             pipeline.unet = torch.compile(pipeline.unet)
+        pipeline.enable_vae_slicing()
         pipeline.enable_xformers_memory_efficient_attention()
-        pipeline.vae.enable_tiling()
         tomesd.apply_patch(pipeline, ratio=0.5)
         pipeline.scheduler.config["solver_type"] = "bh2"
         pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)

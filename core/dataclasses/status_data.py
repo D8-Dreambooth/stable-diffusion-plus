@@ -58,8 +58,10 @@ class StatusData:
         self.status = ""
         self.status_2 = ""
         self.latents = []
-        self.progress_1_current = self.progress_1_total
-        self.progress_2_current = self.progress_2_total
+        self.progress_1_current = 0
+        self.progress_1_total = 0
+        self.progress_2_current = 0
+        self.progress_2_total = 0
         self.active = False
 
     def dict(self):

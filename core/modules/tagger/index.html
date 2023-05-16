@@ -1,30 +1,32 @@
 <div class="module" id="moduleTagger">
     <div class="container-fluid">
-        <div class="card shadow">
-            <div class="card-body">
-                <div class="borderSection">
-                    <div class="sectionLabel">Select Directory</div>
-                    <div class="row">
-                        <div class="col-12 col-md-9">
-                            <div class="form-group" id="tagImageFileSelect"></div>
-                        </div>
-                        <div class="col-12 col-md-3">
-                            <div class="form-group">
-                                <div class="form-check form-switch m-2">
-                                    <input class="form-check-input" type="checkbox" id="imageRecurse">
-                                    <label class="form-check-label" for="imageRecurse">Recurse</label>
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="borderSection">
+                            <div class="sectionLabel">Select Directory</div>
+                            <div class="row">
+                                <div class="col-12 col-md-9">
+                                    <div class="form-group" id="tagImageFileSelect"></div>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <div class="form-group">
+                                        <div class="form-check form-switch m-2">
+                                            <input class="form-check-input" type="checkbox" id="imageRecurse">
+                                            <label class="form-check-label" for="imageRecurse">Recurse</label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="card" id="imageEditCard">
-            <div class="card-body">
-                <div class="borderSection">
-                    <div class="row">
-                        <div class="col-12 col-md-6">
+            <div class="col-12 col-md-6">
+                <div class="card shadow" id="imageEditCard">
+                    <div class="card-body">
+                        <div class="borderSection">
                             <div class="form-group">
                                 <div class="sectionLabel">Edit</div>
                                 <div class="col-12">
@@ -40,14 +42,22 @@
                                         <img id="fullImage">
                                     </div>
                                 </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary" id="captionImage">Caption</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-12 col-md-6">
-                        <div class="form-group">
-                            <div class="sectionLabel">Select</div>
-                            <div id="imageBrowser"></div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="borderSection">
+                            <div class="form-group">
+                                <div class="sectionLabel">Select</div>
+                                <div id="imageBrowser"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

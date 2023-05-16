@@ -241,7 +241,15 @@ function initTagger() {
         }
 
     });
-
+    $("#captionImage").on("click", function() {
+        let selected = document.querySelector("#imageBrowser .thumb.selected");
+        if (selected) {
+            let path = selected.getAttribute("data-path");
+            sendMessage("caption_image", {path: path}).then((response) => {
+                console.log("Captioned: ", response);
+            });
+        }
+    });
 }
 
 async function updateThumbSelection() {

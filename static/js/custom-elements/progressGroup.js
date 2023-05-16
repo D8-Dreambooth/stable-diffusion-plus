@@ -4,23 +4,27 @@ class ProgressGroup {
         this.update = this.update.bind(this);
         this.onComplete = null;
         this.onCancel = null;
-
+        this.onStart = null;
+        this.onUpdate = null;
+        this.onCompleteCalled = false;
+        this.onCancelCalled = false;
+        this.onStartCalled = false;
         registerSocketMethod("progressGroup", "status", this.update);
-      // Set options last with update(options)
+        // Set options last with update(options)
         this.options = {
-          progress_1_current: 0,
-          progress_2_current: 0,
-          progress_1_total: 0,
-          progress_2_total: 0,
-          progress_1_css: " bg-success",
-          progress_2_css: " bg-warning",
-          status: "",
-          status_2: "",
-          show_bar1: true,
-          show_bar2: true,
-          show_primary_status: true,
-          show_secondary_status: true,
-          show_percent: true
+            progress_1_current: 0,
+            progress_2_current: 0,
+            progress_1_total: 0,
+            progress_2_total: 0,
+            progress_1_css: " progress_main",
+            progress_2_css: " progress_secondary",
+            status: "",
+            status_2: "",
+            show_bar1: true,
+            show_bar2: true,
+            show_primary_status: true,
+            show_secondary_status: true,
+            show_percent: true
         };
         this.id = (options.hasOwnProperty("id") ? options.id : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
 
@@ -28,19 +32,27 @@ class ProgressGroup {
         this.progressContainer = document.createElement("div");
         this.progressContainer.classList.add("progressContainer");
 
-        const progressRow = document.createElement("div");
-        progressRow.classList.add("progressRow");
+        const progressRow1 = document.createElement("div");
+        progressRow1.classList.add("progressRow");
 
         this.progressBar1 = document.createElement("div");
         this.progressBar1.classList.add("progress-bar");
+
+        const progressGroup1 = document.createElement("div");
+        progressGroup1.classList.add("progress");
+        progressGroup1.appendChild(this.progressBar1);
+        progressRow1.appendChild(progressGroup1);
+
+        const progressRow2 = document.createElement("div");
+        progressRow2.classList.add("progressRow");
+
         this.progressBar2 = document.createElement("div");
         this.progressBar2.classList.add("progress-bar");
 
-        const progressGroup = document.createElement("div");
-        progressGroup.classList.add("progress");
-        progressGroup.appendChild(this.progressBar1);
-        progressGroup.appendChild(this.progressBar2);
-        progressRow.appendChild(progressGroup);
+        const progressGroup2 = document.createElement("div");
+        progressGroup2.classList.add("progress");
+        progressGroup2.appendChild(this.progressBar2);
+        progressRow2.appendChild(progressGroup2);
 
         const statusRowPrimary = document.createElement("div");
         statusRowPrimary.classList.add("row", "statusRowPrimary");
@@ -59,10 +71,10 @@ class ProgressGroup {
         secondary_status.innerHTML = "";
         this.secondary_status = secondary_status;
         statusRowSecondary.appendChild(secondary_status);
-
-        this.progressContainer.appendChild(progressRow);
         this.progressContainer.appendChild(statusRowPrimary);
+        this.progressContainer.appendChild(progressRow1);
         this.progressContainer.appendChild(statusRowSecondary);
+        this.progressContainer.appendChild(progressRow2);
 
         // Append to parent element
         this.parentElement.appendChild(this.progressContainer);
@@ -78,10 +90,16 @@ class ProgressGroup {
         this.options.progress_2_total = 0;
         this.options.status = "";
         this.options.status_2 = "";
+        this.onCompleteCalled = false;
+        this.onCancelCalled = false;
+        this.onStartCalled = false;
         this.update(this.options);
     }
 
     update(options) {
+        if (this.onUpdate !== null) {
+            options = this.onUpdate(options);
+        }
         if (options.hasOwnProperty("target")) {
             if (this.id !== options.target) {
                 return;
@@ -99,68 +117,54 @@ class ProgressGroup {
         this.progressBar1.setAttribute("aria-valuenow", this.options.progress_1_current);
         this.progressBar2.setAttribute("aria-valuenow", this.options.progress_2_current);
 
-        // Update progress bar visibility
-        if (this.options.show_bar1) {
-            this.progressBar1.style.setProperty("display", "block");
-        } else {
-            this.progressBar1.style.setProperty("display", "none");
-        }
-
-        if (this.options.show_bar2) {
-            this.progressBar2.style.setProperty("display", "block");
-        } else {
-            this.progressBar2.style.setProperty("display", "none");
-        }
-
         let pct_1 = (this.options.progress_1_current / this.options.progress_1_total) * 100;
         let pct_2 = (this.options.progress_2_current / this.options.progress_2_total) * 100;
-        if (!isNaN(pct_1) && !isNaN(pct_2)) {
-            if (pct_1 > 0 && pct_2 > 0) {
-                let total_pct = pct_1 + pct_2;
-                let adj_pct_1 = (pct_1 / total_pct) * 100;
-                let adj_pct_2 = (pct_2 / total_pct) * 100;
-                this.progressBar1.style.setProperty("width", adj_pct_1 + "%");
-                this.progressBar2.style.setProperty("width", adj_pct_2 + "%");
-            } else {
-                this.progressBar1.style.setProperty("width", pct_1 + "%");
-                this.progressBar2.style.setProperty("width", pct_2 + "%");
-            }
 
+        if (!isNaN(pct_1) && this.options.progress_1_total > 0) {
+            this.progressBar1.parentElement.style.setProperty("display", "block");
+            this.progressBar1.style.setProperty("width", pct_1 + "%");
             if (this.options.show_percent) {
                 let roundedPct1 = pct_1.toFixed(0);
-                let roundedPct2 = pct_2.toFixed(0);
                 this.progressBar1.innerHTML = String(roundedPct1) + "%";
-                this.progressBar2.innerHTML = String(roundedPct2) + "%";
-            } else {
-                this.progressBar1.innerHTML = "";
-                this.progressBar2.innerHTML = "";
             }
         } else {
-            if (!isNaN(pct_1)) {
-                let roundedPct1 = pct_1.toFixed(0);
-                this.progressBar1.style.setProperty("width", pct_1 + "%");
-                if (this.options.show_percent) {
-                    this.progressBar1.innerHTML = String(roundedPct1) + "%";
-                }
-            } else {
-                this.progressBar1.style.setProperty("width", "0");
-            }
-
-                this.progressBar2.style.setProperty("width", "0");
+            this.progressBar1.parentElement.style.setProperty("display", "none");
         }
 
+        if (!isNaN(pct_2) && this.options.progress_2_total > 0) {
+            this.progressBar2.parentElement.style.setProperty("display", "block");
+            this.progressBar2.style.setProperty("width", pct_2 + "%");
+            if (this.options.show_percent) {
+                let roundedPct2 = pct_2.toFixed(0);
+                this.progressBar2.innerHTML = String(roundedPct2) + "%";
+            }
+        } else {
+            this.progressBar2.parentElement.style.setProperty("display", "none");
+        }
+
+        if (this.options.progress_1_total > 0 && this.options.progress_2_total > 0) {
+            this.progressBar1.style.setProperty("border-radius", "5px 5px 0 0");
+            this.progressBar1.style.setProperty("border-bottom", "1px solid var(--bs-border-dark)")
+            this.progressBar1.style.setProperty("border-radius", "0 0 5px 5px");
+        } else {
+            this.progressBar1.style.setProperty("border-radius", "5px 5px 5px 5px");
+            this.progressBar1.style.setProperty("border-radius", "5px 5px 5px 5px");
+            this.progressBar1.style.setProperty("border-bottom", "none");
+        }
         // Update status text
+
         this.primary_status.innerHTML = this.options.status;
         this.secondary_status.innerHTML = this.options.status_2;
 
         // Update status text visibility
-        if (this.options.show_primary_status) {
+        if (this.options.status !== "") {
             this.primary_status.style.setProperty("display", "block");
         } else {
             this.primary_status.style.setProperty("display", "none");
         }
 
-        if (this.options.show_secondary_status) {
+
+        if (this.options.status_2 !== "") {
             this.secondary_status.style.setProperty("display", "block");
         } else {
             this.secondary_status.style.setProperty("display", "none");
@@ -169,16 +173,27 @@ class ProgressGroup {
         // Update progress bar CSS classes
         this.progressBar1.className = "progress-bar" + this.options.progress_1_css;
         this.progressBar2.className = "progress-bar" + this.options.progress_2_css;
-        if (options["active"] === false) {
-            if (options["canceled"] === true) {
-                // If this.onCancel is a function, call it
-                if (typeof this.onCancel === "function") {
-                    this.onCancel();
-                }
-            } else {
-                // If this.onComplete is a function, call it
-                if (typeof this.onComplete === "function") {
-                    this.onComplete();
+
+        if (options["canceled"] === true && !this.onCancelCalled) {
+            // If this.onCancel is a function, call it
+            if (this.onCancel !== null) {
+                this.onCancelCalled = true;
+                this.onCancel();
+            }
+        }
+        if (options["active"] === false && !this.onCompleteCalled) {
+            // If this.onComplete is a function, call it
+            if (this.onComplete !== null) {
+                this.onCompleteCalled = true;
+                this.onComplete();
+            }
+        } else {
+            if (!this.onStartCalled) {
+                if (this.onStart !== null) {
+                    console.log("onStart called: ", this.onStart);
+                    // If this.onStart is a function, call it
+                    this.onStartCalled = true;
+                    this.onStart();
                 }
             }
         }
@@ -190,6 +205,15 @@ class ProgressGroup {
 
     setOnComplete(callback) {
         this.onComplete = callback;
+    }
+
+    setOnStart(callback) {
+        console.log("Onstart set? ", callback)
+        this.onStart = callback;
+    }
+
+    setOnUpdate(callback) {
+        this.onUpdate = callback;
     }
 
 }

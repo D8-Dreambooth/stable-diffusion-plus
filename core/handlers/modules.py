@@ -32,6 +32,7 @@ class ModuleHandler:
         ch = ConfigHandler()
         module_data = {}
         for module_name, module in self.active_modules.items():
+            logger.debug("Getting config for " + module_name)
             model_config = ch.get_config(module_name.replace("module_", ""))
             model_defaults = {}
             try:
@@ -43,6 +44,8 @@ class ModuleHandler:
                 "config": model_config if model_config else {},
                 "defaults": model_defaults
             }
+            logger.debug("Config got.")
+        logger.debug("Done, returning.")
         return {"module_data": module_data}
 
     def initialize_modules(self):

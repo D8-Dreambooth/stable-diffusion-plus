@@ -80,7 +80,7 @@ class ModelHandler:
             model_types = [model_type] if not "_" in model_type else model_type.split("_")
             for model_type in model_types:
                 if model_type in self.model_finders:
-                    model_list = self.model_finders[model_type](data, self)
+                    model_list = await self.model_finders[model_type](data, self)
                 else:
                     ext_include = None if "ext_include" not in data else data["ext_include"]
                     ext_exclude = None if "ext_exclude" not in data else data["ext_exclude"]
@@ -111,7 +111,6 @@ class ModelHandler:
                     return model
             else:
                 if model.name == value or model.hash == value or model.display_name == value or model.path == value:
-                    logger.debug(f"Found model: {model}")
                     return model
         logger.debug(f"Model not found: {value}")
         return None

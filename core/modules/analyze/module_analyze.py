@@ -1,6 +1,7 @@
 import base64
 import logging
 import os
+import traceback
 from typing import Dict
 
 import cv2
@@ -83,7 +84,8 @@ class AnalyzeModule(BaseModule):
                 await status_handler.send_async()
                 ranks_dict[f"image_{img_count}"] = {"path": path, "image_data": image_data, "distance": distance,
                                                     "verified": verified}
-            except:
+            except Exception as e:
+                logger.debug(f"Exception with analysis: {e} at {traceback.format_exc()}")
                 pass
             img_count += 1
 
