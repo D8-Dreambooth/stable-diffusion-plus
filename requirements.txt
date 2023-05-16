@@ -20,7 +20,7 @@ ftfy~=6.1.1
 gitpython~=3.1.31
 httpx
 jinja2
-salesforce-lavis~=1.0.2
+salesforce-lavis
 lion-pytorch~=0.0.7
 matplotlib==3.7.1
 mediapipe-silicon; sys_platform == 'darwin'
