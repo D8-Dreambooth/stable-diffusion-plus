@@ -54,8 +54,8 @@ class StatusData:
         self.prompts = []
         self.descriptions = []
 
-    def end(self):
-        self.status = ""
+    def end(self, desc: str = ""):
+        self.status = desc
         self.status_2 = ""
         self.latents = []
         self.progress_1_current = 0

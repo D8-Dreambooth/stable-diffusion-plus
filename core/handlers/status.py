@@ -66,8 +66,7 @@ class StatusHandler:
         self.send()
 
     def end(self, desc: str):
-        self.status.end()
-        self.status.status = desc
+        self.status.end(desc)
         self.send()
 
     def step(self, n: int = 1, secondary_bar: bool = False):
