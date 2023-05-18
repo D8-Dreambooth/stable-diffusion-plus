@@ -96,6 +96,7 @@ class Module {
             let {label, title} = module_locales["module"];
             if (label) {
                 this.moduleLink.querySelector(".nav_name").innerHTML = label;
+                moduleIds[this.id] = label;
             }
             if (title) {
                 this.moduleLink.setAttribute("title", title);
