@@ -44,7 +44,7 @@ def load_diffusers(model_data: ModelData):
             if os.name != "nt":
                 pipeline.unet = torch.compile(pipeline.unet)
             pipeline.enable_xformers_memory_efficient_attention()
-            pipeline.vae.enable_slicing()
+            #pipeline.vae.enable_slicing()
             tomesd.apply_patch(pipeline, ratio=0.5)
             pipeline.scheduler.config["solver_type"] = "bh2"
             pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)

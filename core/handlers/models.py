@@ -20,11 +20,41 @@ from dreambooth.sd_to_diff import extract_checkpoint
 logger = logging.getLogger(__name__)
 
 
+# This class is a singleton used to easily move models in and out of CPU/GPU memory
+# If you're relying on this instead of deleting loaded models, then it might be a good idea to check
+# if they are currently on the desired device, and if not, move it there.
+class ModelManager:
+    _to_cpu_handlers = []
+    _to_gpu_handlers = []
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ModelManager, cls).__new__(cls)
+        return cls._instance
+
+    def register(self, to_cpu_method, to_gpu_method):
+        self._to_cpu_handlers.append(to_cpu_method)
+        self._to_gpu_handlers.append(to_gpu_method)
+
+    def to_cpu(self):
+        for handler in self._to_cpu_handlers:
+            handler()
+
+    def to_gpu(self):
+        for handler in self._to_gpu_handlers:
+            handler()
+
+
 class ModelHandler:
     _instance = None
     _instances = {}
     models_path = []
+    shared_path = None
+    user_path = None
+    protected_path = None
     socket_handler = None
+    model_watcher = None
     loaded_models = {}
     listed_models = {}
     model_loaders = {}
@@ -33,19 +63,24 @@ class ModelHandler:
     user_name = None
     logger = None
 
-    def __new__(cls, user_name=None):
-        if cls._instance is None:
+    def __new__(cls, user_name=None, watcher=None):
+        if cls._instance is None and watcher is not None:
             dir_handler = DirectoryHandler()
             models_path = dir_handler.get_directory("models")
             cls._instance = super(ModelHandler, cls).__new__(cls)
             cls._instance.logger = logging.getLogger(f"{__name__}-shared")
+            cls._instance.model_watcher = watcher
             cls._instance.models = {}
             cls._instance.loaded_models = {}
             cls._instance.models_path = models_path
+            cls._instance.shared_path = dir_handler.get_shared_directory("models")
             cls._instance.socket_handler = SocketHandler()
             cls._instance.socket_handler.register("models", cls._instance.list_models)
             cls._instance.socket_handler.register("load_model", cls._instance._load_model)
             cls._instance.initialize_loaders()
+            manager = ModelManager()
+            manager.register(cls._instance.to_cpu, cls._instance.to_gpu)
+
         if user_name is not None:
             if user_name in cls._instances:
                 return cls._instances[user_name]
@@ -55,13 +90,19 @@ class ModelHandler:
                 models_path = dir_handler.get_directory("models")
                 user_instance = super(ModelHandler, cls).__new__(cls)
                 user_instance.logger = logging.getLogger(f"{__name__}-{user_name}")
+                user_instance.shared_path = dir_handler.get_shared_directory("models")
+                user_instance.protected_path = dir_handler.get_protected_directory("models")
+                user_instance.user_path = dir_handler.get_user_directory("models")
                 user_instance.models = {}
+                user_instance.model_watcher = cls._instance.model_watcher
                 user_instance.loaded_models = {}
                 user_instance.models_path = models_path
                 user_instance.socket_handler = SocketHandler()
                 user_instance.socket_handler.register("models", user_instance.list_models, user_name)
                 user_instance.socket_handler.register("load_model", user_instance._load_model, user_name)
                 user_instance.user_name = user_name
+                manager = ModelManager()
+                manager.register(user_instance.to_cpu, user_instance.to_gpu)
                 user_instance.initialize_loaders()
                 cls._instances[user_name] = user_instance
                 return user_instance
@@ -230,7 +271,7 @@ class ModelHandler:
         model_data = None
         if to_load:
             self.logger.debug(f"Reloading model from data: {to_load}")
-            model_data = ModelData(to_load,name=model_name).__dict__
+            model_data = ModelData(to_load, name=model_name).__dict__
         msg = {
             "name": "reload_models",
             "model_type": model_type,
@@ -310,6 +351,8 @@ class ModelHandler:
                     torch.cuda.empty_cache()
                 gc.collect()
             else:
+                if torch.cuda.is_available():
+                    model = model.to('cuda')
                 return model
 
         # Convert stable-diffusion/checkpoints to diffusers

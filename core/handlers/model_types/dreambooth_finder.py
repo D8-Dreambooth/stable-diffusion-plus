@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -19,10 +20,15 @@ async def get_db_models(data, handler: ModelHandler):
             for item in os.listdir(out_dir):
                 full_item = os.path.join(out_dir, item)
                 if os.path.isdir(full_item):
+                    logger.debug(f"Found model: {full_item}")
                     mi = ModelData(full_item)
                     config_path = os.path.join(full_item, "db_config.json")
+                    if not os.path.exists(config_path):
+                        continue
+                    config_json = json.load(open(config_path, "r"))
+                    model_name = config_json.get("model_name", None)
                     if os.path.exists(config_path):
-                        config = from_file(full_item)
+                        config = from_file(model_name, out_dir)
                         mi.data["db_config"] = config.__dict__
                         model_src = ""
                         if "src" in mi.data["db_config"] and mi.data["db_config"]["src"]:

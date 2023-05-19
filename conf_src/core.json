@@ -4,5 +4,6 @@
   "user_auth": true,
   "theme": "theme-dark",
   "cpu_only": false,
-  "snarky_loaders": false
+  "snarky_loaders": false,
+  "bard_api_key": ""
 }

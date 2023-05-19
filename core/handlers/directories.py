@@ -41,7 +41,6 @@ class DirectoryHandler:
         
     def initialize_directories(self):
         # Check/set shared directories based on launch settings
-
         shared_path = self._launch_settings.get("shared_dir", "")
         self.shared_path = shared_path if shared_path != "" else os.path.join(self.app_path, "data_shared")
         if not os.path.exists(self.shared_path):
@@ -82,6 +81,33 @@ class DirectoryHandler:
 
         return output
 
+    def get_user_directory(self, directory: str):
+        output = None
+        if self._user_name:
+            user_dir = os.path.join(self.protected_path, "users", self._user_name)
+            if directory == self._user_name:
+                return user_dir
+            if directory in user_dir:
+                output = os.path.join(user_dir, directory)
+        else:
+            self.logger.warning("No user name set, cannot get user directory.")
+        return output
+
+    def get_shared_directory(self, directory: str):
+        output = None
+        if directory in self.shared_dirs:
+            output = os.path.join(self.shared_path, directory)
+        else:
+            self.logger.warning("Directory not found in shared directories.")
+        return output
+
+    def get_protected_directory(self, directory: str):
+        output = None
+        if directory in self.protected_dirs:
+            output = os.path.join(self.shared_path, directory)
+        else:
+            self.logger.warning("Directory not found in shared directories.")
+        return output
 
 
 

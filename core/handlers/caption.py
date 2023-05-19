@@ -1,4 +1,3 @@
-import importlib.util
 import inspect
 import logging
 import os
@@ -7,7 +6,7 @@ from typing import Dict
 
 from PIL import Image
 
-from core.handlers.captioners.base import BaseCaptioner
+from core.helpers import BaseCaptioner
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class CaptionHandler:
         return self.captioners[captioner].caption(image, params, unload)
 
     def list_captioners(self):
-        captioner_dir = os.path.join(os.path.dirname(__file__), "captioners")
+        captioner_dir = os.path.join(os.path.dirname(__file__), "helpers/captioners")
         for file in os.listdir(captioner_dir):
             if file.endswith(".py"):
                 name = file[:-3]

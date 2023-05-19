@@ -197,8 +197,27 @@ class UserHandler:
         from core.handlers.file import FileHandler
         from core.handlers.models import ModelHandler
         from core.handlers.images import ImageHandler
+        self.users = []
+        for user_name, user in users.items():
+            if not user["disabled"]:
+                logger.info(f"Registering handlers for user_name: {user_name}")
+                DirectoryHandler(user_name=user_name)
+                StatusHandler(user_name=user_name)
+                FileHandler(user_name=user_name)
+                ModelHandler(user_name=user_name)
+                ImageHandler(user_name=user_name)
+                self.users.append(User(**user))
 
-        for user in users:
+    def register_user(self, user):
+        # If the user value is a dict
+        if isinstance(user, dict):
+            user = User(**user)
+        if not user.disabled:
+            self.users.append(user)
+            from core.handlers.status import StatusHandler
+            from core.handlers.file import FileHandler
+            from core.handlers.models import ModelHandler
+            from core.handlers.images import ImageHandler
             logger.info(f"Registering handlers for user: {user}")
             DirectoryHandler(user_name=user)
             StatusHandler(user_name=user)
@@ -206,44 +225,41 @@ class UserHandler:
             ModelHandler(user_name=user)
             ImageHandler(user_name=user)
 
-    def register_user(self, user):
-        from core.handlers.status import StatusHandler
-        from core.handlers.file import FileHandler
-        from core.handlers.models import ModelHandler
-        from core.handlers.images import ImageHandler
-        logger.info(f"Registering handlers for user: {user}")
-        DirectoryHandler(user_name=user)
-        StatusHandler(user_name=user)
-        FileHandler(user_name=user)
-        ModelHandler(user_name=user)
-        ImageHandler(user_name=user)
-
     def verify_password(self, plain_password, hashed_password):
         return self.pwd_context.verify(plain_password, hashed_password)
 
     def get_password_hash(self, password):
-
         return self.pwd_context.hash(password)
 
     async def update_password(self, req):
-        user = req.get("user", None)
-        ch = ConfigHandler()
-        user_data = ch.get_item_protected(user, "users", None)
-        is_admin = False
-        if user:
-            if user_data:
-                is_admin = user_data.get("admin", False)
+        request_user = req.get("user", None)
+        # Find user data in self.users
+        request_user_data = None
+        update_user_data = None
+        data = req["data"] if "data" in req else {}
+        update_user = data.get("user", None)
+        new_password = data.get("password", None)
 
-            data = req["data"] if "data" in req else {}
+        for user in self.users:
+            if user.name == request_user:
+                request_user_data = user
+            if user.name == update_user:
+                update_user_data = user
 
-            update_user = data.get("user", None)
-            password = data.get("password", None)
-            if is_admin or update_user == user:
-                encrypted_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-                user_data["pass"] = encrypted_pass.decode()
-                ch.set_item_protected(user, user_data, "users")
-                return {"status": "Password updated successfully."}
+        is_admin = False if not request_user_data else request_user_data.admin
+        if not is_admin or request_user != update_user:
             return {"status": "Unable to update password."}
+
+        encrypted_pass = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
+        update_user_data.password = encrypted_pass.decode()
+
+        self.users = []
+        for u in self.users:
+            if u.name == update_user_data.name:
+                u = update_user_data
+            self.users.append(u)
+
+        return {"status": "Password updated successfully."}
 
     def authenticate_user(self, user: str, password: str):
         user = get_user(user)

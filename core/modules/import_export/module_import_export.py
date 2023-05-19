@@ -149,7 +149,7 @@ async def _import_model(data):
         if file.endswith(".yaml"):
             config_file = os.path.join(model_dir, file)
             break
-    model_dest = mh.model_path[1] if save_shared else mh.models_path[0]
+    model_dest = mh.models_path[1] if save_shared else mh.modelss_path[0]
     model_name = model_name.replace(".safetensors", "") if ".safetensors" in model_name else model_name.replace(".ckpt", "")
     dest_dir = os.path.join(model_dest, "diffusers", model_name)
     extract_args = {

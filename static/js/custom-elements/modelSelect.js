@@ -174,6 +174,9 @@ class ModelSelect {
                 return models;
             }
         } else {
+            if (this.value === "none" || this.value === undefined) {
+                return null;
+            }
             return this.modelList.models.find(
                 model => model.hash === this.value
             );

@@ -20,6 +20,7 @@ class ConfigHandler:
     _user_defaults = None
     config_shared = {}
     config_protected = {}
+    config_user = None
     user_instances = {}
 
     def __new__(cls, user_name=None):
@@ -55,6 +56,7 @@ class ConfigHandler:
                 else:
                     user_instance._protected_dir = None
                 user_instance._user_dir = os.path.join(dir_handler.protected_path, "users", user_name, "config")
+                user_instance.config_user = {}
                 user_instance._base_defaults = os.path.join(dir_handler.protected_path, "users", user_name, "defaults")
                 # Enumerate all files in cls._base_defaults and copy to user defaults if not already present
                 user_instance._create_directories()
@@ -111,6 +113,8 @@ class ConfigHandler:
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
         source_dir = os.path.join(script_path, "conf_src")
         for file in [f for f in os.listdir(source_dir) if os.path.splitext(f)[1] == ".json"]:
+            if "launch_settings" in file:
+                continue
             src_path = os.path.join(source_dir, file)
             if self._protected_dir:
                 dst_path = os.path.join(self._protected_dir, file)
@@ -197,6 +201,8 @@ class ConfigHandler:
         self._enumerate_directory(self._shared_dir, self.config_shared)
         if self._protected_dir:
             self._enumerate_directory(self._protected_dir, self.config_protected)
+        if self._user_dir and self.config_user:
+            self._enumerate_directory(self._user_dir, self.config_user)
 
     def _enumerate_directory(self, directory, config_dict):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
@@ -218,6 +224,28 @@ class ConfigHandler:
         data = self._get_config_dict(section_key, self.config_shared)
         return data
 
+    def get_config_user(self, section_key=None):
+        self._enumerate_configs()
+        data = self._get_config_dict(section_key, self.config_user)
+        return data
+
+    def set_config(self, config, section_key=None):
+        """
+        Set the configuration for a section. If the section does not exist, it will be created.
+        :param config:
+        :param section_key:
+        """
+        self._set_config_dict(config, section_key, self.config_shared)
+
+    def set_config_user(self, config, section_key=None):
+        """
+        Set the configuration for a section. If the section does not exist, it will be created.
+        :param config:
+        :param section_key:
+        """
+        logger.debug(f"Setting user config for {section_key}")
+        self._set_config_dict(config, section_key, is_user=True)
+
     def get_item(self, key, section_key=None, default=None):
         self._enumerate_configs()
         if not section_key or section_key == "core":
@@ -226,48 +254,61 @@ class ConfigHandler:
         else:
             return self._get_item_from_dict(key, section_key, default, self.config_shared)
 
-    def set_default_config(self, config, section_key=None, protected=False):
-        if section_key and section_key not in self.config_shared.keys():
-            logger.debug(f"Setting default config for {section_key}")
-            self._set_config_dict(config, section_key, protected)
-
-    def set_config(self, config, section_key=None):
-        self._set_config_dict(config, section_key, self.config_shared)
-
-    def set_item(self, key, value, section_key=None):
-        return self._set_item_in_dict(key, value, section_key, False)
-
-    def get_all_protected(self) -> Tuple[Dict, Dict]:
-        if "extensions" in locals():
-            raise ValueError("Protected configuration accessed from unauthorized method.")
-        shared = self.config_shared.copy()
-        protected = self.config_protected.copy()
-
-        # Move "core" value from protected to shared
-        if "core" in protected:
-            shared["core"] = protected.pop("core")
-
-        return shared, protected
-
-    def get_config_protected(self, section_key=None):
-        if "extensions" in locals():
-            raise ValueError("Protected configuration accessed from unauthorized method.")
-        return self._get_config_dict(section_key, self.config_protected)
+    def get_item_user(self, key, section_key=None, default=None):
+        self._enumerate_configs()
+        return self._get_item_from_dict(key, section_key, default, self.config_user)
 
     def get_item_protected(self, key, section_key=None, default=None):
         if "extensions" in locals():
             raise ValueError("Protected configuration accessed from unauthorized method.")
         return self._get_item_from_dict(key, section_key, default, self.config_protected)
 
-    def set_config_protected(self, config, section_key=None):
-        if "extensions" in locals():
-            raise ValueError("Protected configuration accessed from unauthorized method.")
-        self._set_config_dict(config, section_key, True)
+    def set_item(self, key, value, section_key=None):
+        return self._set_item_in_dict(key, value, section_key, False)
 
     def set_item_protected(self, key, value, section_key=None):
         if "extensions" in locals():
             raise ValueError("Protected configuration accessed from unauthorized method.")
         return self._set_item_in_dict(key, value, section_key, True)
+
+    def set_item_user(self, key, value, section_key=None):
+        return self._set_item_in_dict(key, value, section_key, is_user=True)
+
+    def set_default_config(self, config, section_key=None, protected=False):
+        if section_key and section_key not in self.config_shared.keys():
+            logger.debug(f"Setting default config for {section_key}")
+            self._set_config_dict(config, section_key, protected)
+
+    def get_all_protected(self) -> Tuple[Dict, Dict, Dict]:
+        if "extensions" in locals():
+            raise ValueError("Protected configuration accessed from unauthorized method.")
+        shared = self.config_shared.copy()
+        protected = self.config_protected.copy()
+        user = {}
+        if self._user_dir:
+            user = self.config_user.copy()
+
+        # Move "core" value from protected to shared
+        if "core" in protected:
+            shared["core"] = protected.pop("core")
+
+        return shared, protected, user
+
+    def get_config_protected(self, section_key=None):
+        if "extensions" in locals():
+            raise ValueError("Protected configuration accessed from unauthorized method.")
+        return self._get_config_dict(section_key, self.config_protected)
+
+    def set_config_protected(self, config, section_key=None):
+        if "extensions" in locals():
+            raise ValueError("Protected configuration accessed from unauthorized method.")
+        self._set_config_dict(config, section_key, True)
+
+    def get_config_user(self, section_key=None):
+        return self._get_config_dict(section_key, self.config_user)
+
+    def set_config_user(self, config, section_key=None):
+        self._set_config_dict(config, section_key, is_user=True)
 
     def _get_config_dict(self, section_key, config_dict):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
@@ -292,39 +333,64 @@ class ConfigHandler:
         else:
             return default
 
-    def _set_item_in_dict(self, key, value, section_key=None, is_protected=False):
+    def _set_item_in_dict(self, key, value, section_key=None, is_protected=False, is_user=False):
         self._enumerate_configs()
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
 
-        config_dict = self.config_protected if is_protected else self.config_shared
+        if is_user:
+            if self._user_dir is not None:
+                target_dict = self.config_user
+            else:
+                raise ValueError(
+                    "User directory not set, be sure to instantiate this class with a user_name parameter.")
+        elif is_protected:
+            target_dict = self.config_protected
+        else:
+            target_dict = self.config_shared
 
         if section_key is None:
             section_key = "core"
         logger.debug(f"Updating: {section_key}-{key} {value} {is_protected}")
-        if section_key not in config_dict:
-            config_dict[section_key] = {}
-        config_dict[section_key][key] = value
-        self._save_config_file(section_key, config_dict[section_key], is_protected)
+        if section_key not in target_dict:
+            target_dict[section_key] = {}
+        target_dict[section_key][key] = value
+        self._save_config_file(section_key, target_dict[section_key], is_protected, is_user)
         return True
 
-    def _set_config_dict(self, config, section_key, is_protected=False):
+    def _set_config_dict(self, config, section_key, is_protected=False, is_user=False):
         self._enumerate_configs()
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
-
-        target_dict = self.config_protected if is_protected else self.config_shared
+        if is_user:
+            if self._user_dir is not None:
+                target_dict = self.config_user
+            else:
+                raise ValueError(
+                    "User directory not set, be sure to instantiate this class with a user_name parameter.")
+        elif is_protected:
+            target_dict = self.config_protected
+        else:
+            target_dict = self.config_shared
         if section_key is None:
             section_key = "core"
         target_dict["core"] = config
-        self._save_config_file(section_key, config, is_protected)
+        self._save_config_file(section_key, config, is_protected, is_user)
 
-    def _save_config_file(self, section_key, data, is_protected=False):
+    def _save_config_file(self, section_key, data, is_protected=False, is_user=False):
         caller_file = inspect.getouterframes(inspect.currentframe())[1].filename
         if caller_file != __file__:
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
-
-        target_dir = self._protected_dir if is_protected else self._shared_dir
+        if is_user:
+            if self._user_dir is not None:
+                target_dir = self._user_dir
+            else:
+                raise ValueError(
+                    "User directory not set, be sure to instantiate this class with a user_name parameter.")
+        elif is_protected:
+            target_dir = self._protected_dir
+        else:
+            target_dir = self._shared_dir
         target_file = os.path.join(target_dir, f"{section_key}.json")
         logger.debug(f"Writing: {target_file}")
         with open(target_file, "w") as cfg_out:

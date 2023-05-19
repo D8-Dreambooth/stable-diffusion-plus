@@ -4,6 +4,7 @@ class FileBrowser {
         this.onClickCallbacks = [];
         this.onSelectCallbacks = [];
         this.onCancelCallbacks = [];
+        this.onRefreshCallbacks = [];
         this.selected = "";
         this.startLink = ""
         this.getValue = this.getValue.bind(this);
@@ -152,6 +153,11 @@ class FileBrowser {
 
     async refresh() {
         await this.buildTree();
+        if (this.onRefreshCallbacks.length > 0) {
+            for (let i = 0; i < this.onRefreshCallbacks.length; i++) {
+                this.onRefreshCallbacks[i](this.value);
+            }
+        }
     }
 
     getValue() {
@@ -170,6 +176,10 @@ class FileBrowser {
 
     addOnDoubleClick(callback) {
         this.onDoubleClickCallbacks.push(callback);
+    }
+
+    addOnRefresh(callback) {
+        this.onRefreshCallbacks.push(callback);
     }
 
     addOnClick(callback) {

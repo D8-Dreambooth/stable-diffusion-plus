@@ -1,23 +1,21 @@
 import asyncio
 import concurrent.futures
 import logging
-import os
 import random
 import traceback
 
 import torch
 from PIL import Image
 from compel import Compel
-from core.modules.dreambooth.helpers.mytqdm import mytqdm
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.config import ConfigHandler
-from core.handlers.file import FileHandler, is_image
 from core.handlers.images import ImageHandler
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data, preprocess_image
 from core.handlers.models import ModelHandler
 from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
+from core.modules.dreambooth.helpers.mytqdm import mytqdm
 
 socket_handler = SocketHandler()
 logger = logging.getLogger(__name__)

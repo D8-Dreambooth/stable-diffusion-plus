@@ -1,8 +1,11 @@
 let imageFileBrowser;
 let captionData = {};
 let lastSelected = null;
-
+let thresholdSlider = null;
+let characterSlider = null;
+let tagProgress;
 const taggerModule = new Module("Tagger", "moduleTagger", "purchase-tag-alt", false, -1, initTagger);
+
 function initTagger() {
     console.log("Loading module: ", taggerModule.name);
     imageFileBrowser = $("#tagImageFileSelect").fileBrowser({
@@ -14,89 +17,20 @@ function initTagger() {
         "multiselect": false,
         "dropdown": true
     });
+    tagProgress = new ProgressGroup(document.getElementById("tagProgressGroup"), {"id": "tagProgressGroup"});
+    tagProgress.setOnComplete(() => {
+        imageFileBrowser.refresh();
+    });
+    thresholdSlider = $("#tagThreshold").BootstrapSlider({});
+    characterSlider = $("#tagCharThreshold").BootstrapSlider({});
+
     imageFileBrowser.addOnSelect((file) => {
         console.log("FILE: ", file);
-        const thumbContainer = document.getElementById("imageBrowser");
-        let imageBrowser = document.getElementById("imageBrowser");
-        let recurse = document.getElementById("imageRecurse").checked;
-        imageBrowser.innerHTML = "Loading...";
-        sendMessage("get_images", {
-            directory: file,
-            recurse: recurse,
-            return_thumb: true,
-            thumb_size: 128
-        }).then((data) => {
-            imageBrowser.innerHTML = "";
-            const items = data["image_data"];
-            for (const path in items) {
-                const thumbDataItem = items[path];
-                console.log("Parsing: ", thumbDataItem);
-                // Create thumbnail element
-                const thumbElem = document.createElement("div");
-                thumbElem.classList.add("thumb");
-                thumbElem.style.backgroundImage = `url(${thumbDataItem.src})`;
-                thumbElem.tabIndex = -1;
-                // Set path and tag in dataset
-                thumbElem.dataset.path = thumbDataItem.path;
-                thumbElem.dataset.tag = thumbDataItem.prompt;
+        loadImages(file);
+    });
 
-                // Add onclick listener
-                thumbElem.onclick = async function (event) {
-                    const shift = event.shiftKey;
-                    const ctrl = event.ctrlKey;
-                    console.log("Thumb: ", event);
-                    const imageBrowser = document.getElementById("imageBrowser");
-                    let thumbs = imageBrowser.querySelectorAll(".thumb");
-                    let selectedThumbs = imageBrowser.querySelectorAll(".thumb.selected");
-
-                    if (!shift && !ctrl) {
-                        thumbs.forEach((thumb) => {
-                            thumb.classList.remove("selected");
-                        });
-                        this.classList.add("selected");
-                        this.focus();
-                    } else if (shift) {
-                        this.classList.add("selected");
-                        if (selectedThumbs.length === 0) {
-                            this.classList.add("selected");
-                        } else {
-                            let endIndex = Array.from(thumbs).indexOf(this);
-                            let startIndex = Array.from(thumbs).indexOf(lastSelected);
-
-                            if (startIndex > endIndex) {
-                                let temp = endIndex;
-                                endIndex = startIndex;
-                                startIndex = temp;
-                            }
-                            console.log("Start: ", startIndex, "End: ", endIndex);
-                            for (let i = startIndex; i <= endIndex; i++) {
-                                thumbs[i].classList.add("selected");
-                            }
-                        }
-                    } else if (ctrl) {
-                        console.log("WTF, control: ", this);
-                        if (!this.classList.contains("selected")) {
-                            console.log("Selecting");
-                            this.classList.add("selected");
-                        } else {
-                            if (selectedThumbs.length > 1) {
-                                console.log("DeSelecting");
-                                this.classList.remove("selected");
-                            }
-                        }
-                    }
-                    lastSelected = this;
-                    updateThumbSelection().then(() => {
-                        console.log("Thumb selection updated?");
-                    });
-                };
-
-
-                // Append thumbnail element to container
-                thumbContainer.appendChild(thumbElem);
-            }
-            console.log("Response: ", data);
-        });
+    imageFileBrowser.addOnRefresh((file) => {
+        loadImages(lastPath);
     });
 
     let selectedIndex = 0;
@@ -241,15 +175,42 @@ function initTagger() {
         }
 
     });
-    $("#captionImage").on("click", function() {
-        let selected = document.querySelector("#imageBrowser .thumb.selected");
-        if (selected) {
-            let path = selected.getAttribute("data-path");
-            sendMessage("caption_image", {path: path}).then((response) => {
-                console.log("Captioned: ", response);
-            });
-        }
+    $("#captionSelected").on("click", function () {
+        let selected = document.querySelectorAll("#imageBrowser .thumb.selected");
+        startCaption(selected);
     });
+    $("#captionAll").on("click", function () {
+        let selected = document.querySelectorAll("#imageBrowser .thumb");
+        startCaption(selected);
+    });
+}
+
+function startCaption(selected) {
+
+    if (selected.length > 0) {
+        let selectedPaths = [];
+        for (let i = 0; i < selected.length; i++) {
+            selectedPaths.push(selected[i].getAttribute("data-path"));
+        }
+        let params = {path: selectedPaths};
+
+        let caps = {};
+        let captioners = document.querySelectorAll(".tagCapSelect");
+        for (let i = 0; i < captioners.length; i++) {
+            let captioner = captioners[i];
+            let captionerValue = captioner.value;
+            // Set to true if checked, false if not
+            caps[captionerValue] = captioner.checked;
+        }
+        params["captioners"] = caps;
+        params["threshold"] = thresholdSlider.value;
+        params["char_threshold"] = characterSlider.value;
+        params["blacklist"] = $("#tagBlacklist").val();
+        params["append_existing"] = $("#appendExisting").is(":checked");
+        sendMessage("caption_image", params, await = false).then((response) => {
+            console.log("Captioned: ", response);
+        });
+    }
 }
 
 async function updateThumbSelection() {
@@ -278,14 +239,15 @@ async function updateThumbSelection() {
         } catch (e) {
             console.error("Error: ", e);
         }
-    }
-    if (selectedThumbs.length > 1) {
+    } else if (selectedThumbs.length > 1) {
         const imageTagElem = document.getElementById("imageCaption");
         let imagesSrcArray = [];
         let imageTagsDict = {};
         selectedThumbs.forEach((thumb) => {
             imagesSrcArray.push(thumb.style.backgroundImage.slice(5, -2));
-            imageTagsDict[thumb.getAttribute("data-path")] = thumb.dataset.tag;
+            if (thumb.dataset.hasOwnProperty("tag")) {
+                imageTagsDict[thumb.getAttribute("data-path")] = thumb.dataset.tag;
+            }
         });
         fullImageWrap.innerHTML = "";
         imagesSrcArray.forEach((src) => {
@@ -295,26 +257,38 @@ async function updateThumbSelection() {
             fullImageWrap.appendChild(img);
         });
 
-        let commonTagsArray = Object.values(imageTagsDict)[0].split(",").map((tag) => tag.trim());
-        for (const tags of Object.values(imageTagsDict).slice(1)) {
-            let currentTagsArray = tags.split(",").map((tag) => tag.trim());
-            commonTagsArray = commonTagsArray.filter((tag) => currentTagsArray.includes(tag));
+        let commonTagsArray = [];
+        if (Object.keys(imageTagsDict).length > 1) {
+            commonTagsArray = Object.values(imageTagsDict)[0]
+                .split(",")
+                .map((tag) => tag.trim());
+            for (const tags of Object.values(imageTagsDict).slice(1)) {
+                let currentTagsArray = tags.split(",").map((tag) => tag.trim());
+                commonTagsArray = commonTagsArray.filter((tag) => currentTagsArray.includes(tag));
+            }
         }
 
         let captionData = {};
 
         for (const [path, tags] of Object.entries(imageTagsDict)) {
             let originalCaption = tags;
-            let strippedCaption = originalCaption.split(",").map((caption) => caption.trim())
+            let strippedCaption = originalCaption
+                .split(",")
+                .map((caption) => caption.trim())
                 .filter((caption) => !tags.split(",").map((tag) => tag.trim()).includes(caption));
             captionData[path] = {
-                "caption": originalCaption,
-                "unique": strippedCaption
+                caption: originalCaption,
+                unique: strippedCaption,
             };
         }
 
-        imageTagElem.value = commonTagsArray.join(", ");
-
+        let joined = commonTagsArray.join(", ");
+        console.log("JOINED: ", joined);
+        if (joined !== "undefined" && joined !== undefined && joined !== null) {
+            imageTagElem.value = joined;
+        } else {
+            imageTagElem.value = "";
+        }
     }
 }
 
@@ -356,6 +330,90 @@ async function checkSaveCaptions() {
             // captionData[path].unique = uniqueCaption.filter((caption) => !newCaption.includes(caption));
         }
     }
+}
+
+function loadImages(file) {
+    const thumbContainer = document.getElementById("imageBrowser");
+    let imageBrowser = document.getElementById("imageBrowser");
+    let recurse = document.getElementById("imageRecurse").checked;
+    imageBrowser.innerHTML = "Loading...";
+    sendMessage("get_images", {
+        directory: file,
+        recurse: recurse,
+        return_thumb: true,
+        thumb_size: 128
+    }).then((data) => {
+        imageBrowser.innerHTML = "";
+        const items = data["image_data"];
+        for (const path in items) {
+            const thumbDataItem = items[path];
+            console.log("Parsing: ", thumbDataItem);
+            // Create thumbnail element
+            const thumbElem = document.createElement("div");
+            thumbElem.classList.add("thumb");
+            thumbElem.style.backgroundImage = `url(${thumbDataItem.src})`;
+            thumbElem.tabIndex = -1;
+            // Set path and tag in dataset
+            thumbElem.dataset.path = thumbDataItem.path;
+            thumbElem.dataset.tag = thumbDataItem.prompt;
+
+            // Add onclick listener
+            thumbElem.onclick = async function (event) {
+                const shift = event.shiftKey;
+                const ctrl = event.ctrlKey;
+                console.log("Thumb: ", event);
+                const imageBrowser = document.getElementById("imageBrowser");
+                let thumbs = imageBrowser.querySelectorAll(".thumb");
+                let selectedThumbs = imageBrowser.querySelectorAll(".thumb.selected");
+
+                if (!shift && !ctrl) {
+                    thumbs.forEach((thumb) => {
+                        thumb.classList.remove("selected");
+                    });
+                    this.classList.add("selected");
+                    this.focus();
+                } else if (shift) {
+                    this.classList.add("selected");
+                    if (selectedThumbs.length === 0) {
+                        this.classList.add("selected");
+                    } else {
+                        let endIndex = Array.from(thumbs).indexOf(this);
+                        let startIndex = Array.from(thumbs).indexOf(lastSelected);
+
+                        if (startIndex > endIndex) {
+                            let temp = endIndex;
+                            endIndex = startIndex;
+                            startIndex = temp;
+                        }
+                        console.log("Start: ", startIndex, "End: ", endIndex);
+                        for (let i = startIndex; i <= endIndex; i++) {
+                            thumbs[i].classList.add("selected");
+                        }
+                    }
+                } else if (ctrl) {
+                    console.log("WTF, control: ", this);
+                    if (!this.classList.contains("selected")) {
+                        console.log("Selecting");
+                        this.classList.add("selected");
+                    } else {
+                        if (selectedThumbs.length > 1) {
+                            console.log("DeSelecting");
+                            this.classList.remove("selected");
+                        }
+                    }
+                }
+                lastSelected = this;
+                updateThumbSelection().then(() => {
+                    console.log("Thumb selection updated?");
+                });
+            };
+
+
+            // Append thumbnail element to container
+            thumbContainer.appendChild(thumbElem);
+        }
+        console.log("Response: ", data);
+    });
 }
 
 

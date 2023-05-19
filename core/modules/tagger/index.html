@@ -25,37 +25,136 @@
             </div>
             <div class="col-12 col-md-6">
                 <div class="card shadow" id="imageEditCard">
+                    <div class="card-header">Edit</div>
+
                     <div class="card-body">
-                        <div class="borderSection">
+                        <div class="borderSection row">
                             <div class="form-group">
-                                <div class="sectionLabel">Edit</div>
-                                <div class="col-12">
-                                    <label for="autoSave" class="form-check-label">Auto-Save</label>
-                                    <input type="checkbox" id="autoSave" class="form-check-input" checked/>
+                                <div class="progressGroup" id="tagProgressGroup"></div>
+                            </div>
+                            <div class="form-group col-12">
+                                <div class="fullImgWrap">
+                                    <img id="fullImage">
                                 </div>
-                                <div class="col-12 col-12">
-                                    <label for="imageCaption">
-                                        Caption
-                                    </label>
-                                    <textarea class="form-control" id="imageCaption" rows="6"></textarea>
-                                    <div class="fullImgWrap">
-                                        <img id="fullImage">
+                            </div>
+                            <div class="form-group col-12">
+                                <label for="imageCaption">
+                                    Caption
+                                </label>
+                                <textarea class="form-control" id="imageCaption" rows="6"></textarea>
+                            </div>
+                            <div class="form-group col-12">
+                                <div class="form-check form-switch m-2">
+                                    <input class="form-check-input" type="checkbox" id="autoSave" checked>
+                                    <label class="form-check-label" for="autoSave">Auto-Save</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion mt-2" id="autoTagSettingsParent">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="autoTagHeading">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#autoTagSettings" aria-expanded="false"
+                                        aria-controls="autoTagSettings">
+                                    Auto-Tag
+                                </button>
+                            </h2>
+                            <div id="autoTagSettings" class="accordion-collapse collapse"
+                                 aria-labelledby="autoTagHeading"
+                                 data-bs-parent="#autoTagSettingsParent">
+                                <div class="accordion-body">
+                                    <div class="form-group col-12 borderSection">
+                                        <div class="form-label ms-1">Natural Language</div>
+                                        <div class="ms-1 mb-2">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagBlip2"
+                                                       value="blip2">
+                                                <label class="form-check-label" for="tagBlip2">BlipV2</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagBlipLarge"
+                                                       value="blip_large">
+                                                <label class="form-check-label" for="tagBlipLarge">Blip
+                                                    Large</label>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary" id="captionImage">Caption</button>
+                                    <div class="form-group col-12 borderSection">
+                                        <div class="form-label ms-1">Tags</div>
+                                        <div class="text-center mb-2">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagVit"
+                                                       value="vit">
+                                                <label class="form-check-label" for="tagVit">Vit</label>
+                                            </div>
+
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagSwin"
+                                                       value="swin">
+                                                <label class="form-check-label" for="tagSwin">Swin</label>
+                                            </div>
+
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagConv"
+                                                       value="conv">
+                                                <label class="form-check-label" for="tagConv">Conv</label>
+                                            </div>
+
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagConv2"
+                                                       value="conv2">
+                                                <label class="form-check-label" for="tagConv2">Conv2</label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group col-12">
+                                            <div id="tagThreshold" data-label="Threshold" data-min="0"
+                                                 data-max="1"
+                                                 data-step="0.1" data-value="0.5"></div>
+                                        </div>
+                                        <div class="form-group col-12">
+                                        </div>
+
+                                        <div id="tagCharThreshold" data-label="Char Threshold" data-min="0"
+                                             data-max="1"
+                                             data-step="0.1" data-value="0.5"></div>
+                                    </div>
+                                    <div class="form-group col-12 borderSection">
+                                        <label for="tagBlacklist" class="form-label"
+                                               title="Enter a comma-separated-list of tags to ignore">Blacklist</label>
+                                        <textarea class="form-control" id="tagBlacklist" rows="6"></textarea>
+                                    </div>
+                                    <div class="form-group col-12 borderSection">
+                                        <div class="form-check form-switch m-2">
+                                            <input class="form-check-input" type="checkbox" id="appendExisting" checked>
+                                            <label class="form-check-label" for="appendExisting">Append new captions to existing</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-12 text-center">
+                                        <button class="btn btn-primary" id="captionSelected">Caption Selected
+                                        </button>
+                                        <button class="btn btn-primary" id="captionAll">Caption All</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
             <div class="col-12 col-md-6">
                 <div class="card shadow">
+                    <div class="card-header">Select</div>
                     <div class="card-body">
                         <div class="borderSection">
                             <div class="form-group">
-                                <div class="sectionLabel">Select</div>
                                 <div id="imageBrowser"></div>
                             </div>
                         </div>
