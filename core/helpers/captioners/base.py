@@ -22,7 +22,10 @@ class BaseCaptioner:
 
     def _to_cpu(self):
         if self.model:
-            self.model = self.model.to("cpu")
+            try:
+                self.model = self.model.to("cpu")
+            except:
+                pass
         if self.processor:
             try:
                 self.processor = self.processor.to("cpu")
@@ -31,7 +34,10 @@ class BaseCaptioner:
 
     def _to_gpu(self):
         if self.model:
-            self.model = self.model.to(self.device)
+            try:
+                self.model = self.model.to(self.device)
+            except:
+                pass
         if self.processor:
             try:
                 self.processor = self.processor.to(self.device)
