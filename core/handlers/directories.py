@@ -87,7 +87,8 @@ class DirectoryHandler:
             user_dir = os.path.join(self.protected_path, "users", self._user_name)
             if directory == self._user_name:
                 return user_dir
-            if directory in user_dir:
+            full_dir = os.path.abspath(os.path.join(user_dir, directory))
+            if user_dir in full_dir:
                 output = os.path.join(user_dir, directory)
         else:
             self.logger.warning("No user name set, cannot get user directory.")
@@ -95,8 +96,9 @@ class DirectoryHandler:
 
     def get_shared_directory(self, directory: str):
         output = None
-        if directory in self.shared_dirs:
-            output = os.path.join(self.shared_path, directory)
+        full_path = os.path.join(self.shared_path, directory)
+        if self.shared_path in os.path.abspath(full_path):
+            output = full_path
         else:
             self.logger.warning("Directory not found in shared directories.")
         return output

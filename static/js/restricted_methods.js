@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", function () {
         let localeInner = localeDataElement.textContent;
         const localeData = JSON.parse(localeInner);
         let newDefaults = {};
-
         for (let module_id in module_data) {
             let module_settings = module_data[module_id]["config"];
             let module_defaults = module_data[module_id]["defaults"];

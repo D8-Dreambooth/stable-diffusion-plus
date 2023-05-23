@@ -78,6 +78,7 @@ class Module {
         for (let link of navLinks) {
             navList.appendChild(link);
         }
+
         if (this.init_method !== null) {
             this.init_method();
         }
@@ -150,8 +151,13 @@ class Module {
 
     async reload() {
         if (this.reload_method !== null) {
-            await this.reload_method;
+            console.log("Reloading " + this.id);
+            this.reload_method();
         }
+        //this.localize(locales);
+        setTimeout(() => {
+            this.populateInputs(this.moduleDefaults);
+        }, 1000);
     }
 
     async unload() {

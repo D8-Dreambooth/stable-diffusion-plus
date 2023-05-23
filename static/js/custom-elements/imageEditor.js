@@ -38,10 +38,6 @@ class ImageEditor {
         this.brushColor = 'black';
         this.updateCursorStyle();
         this.scale = 1;
-        this.minScale = 0.1;
-        this.maxScale = 10;
-        this.translateX = 0;
-        this.translateY = 0;
         this.scaleCanvas(width, height);
         // Add event listeners for canvas interaction
         this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));

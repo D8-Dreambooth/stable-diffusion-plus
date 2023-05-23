@@ -23,6 +23,7 @@ class InferSettings:
     controlnet_mask = None
     controlnet_preprocess = True
     controlnet_type = None
+    denoise_strength: float = 0.6
     enable_controlnet = False
     height: int = 512
     infer_image = None
@@ -30,7 +31,9 @@ class InferSettings:
     invert_mask = True
     mode: str = "infer"
     model: ModelData = "None"
+    vae: Dict = None
     loras: List[ModelData] = None
+    lora_weight = 0.9
     negative_prompt: str = ""
     num_images: int = 1
     prompt: str = ""

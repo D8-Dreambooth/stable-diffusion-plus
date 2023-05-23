@@ -140,8 +140,22 @@ function createTabs(sections, parent) {
         }
 
         timeoutId = setTimeout(() => {
-            sendMessage("set_settings", {"section": sectionName, "key": paramName, "value": paramValue}).then((res) => {});
+            sendMessage("set_settings", {"section": sectionName, "key": paramName, "value": paramValue}).then((res) => {
+            });
             timeoutId = null;
+            if (sectionName !== "core") {
+                console.log("Refreshing section: " + sectionName, modules);
+                for (let i = 0; i < modules.length; i++) {
+                    console.log(modules[i].id.toLowerCase(), "module" + sectionName);
+                    if (modules[i].id.toLowerCase() === "module" + sectionName) {
+                        modules[i].systemConfig[paramName] = paramValue;
+                        console.log("Refreshing: ", modules[i]);
+                        modules[i].reload();
+                        break;
+                    }
+                }
+            }
+
         }, 500);
     });
 }

@@ -7,9 +7,10 @@ import traceback
 from io import BytesIO
 
 import torch
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image, ImageFilter
 from compel import Compel
-from diffusers import StableDiffusionInpaintPipeline, StableDiffusionImg2ImgPipeline
+from diffusers import StableDiffusionInpaintPipeline, StableDiffusionImg2ImgPipeline, \
+    StableDiffusionInpaintPipelineLegacy, DDIMScheduler
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.config import ConfigHandler
@@ -121,8 +122,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                                          handler=status_handler)
 
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
-
-        model_data.data = {"type": inference_settings.controlnet_type}
     else:
         input_prompts = [inference_settings.prompt]
         negative_prompts = [inference_settings.negative_prompt]
@@ -133,6 +132,13 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     await status_handler.send_async()
     if len(inference_settings.loras):
         model_data.data["loras"] = inference_settings.loras
+        model_data.data["lora_weight"] = inference_settings.lora_weight
+    if inference_settings.vae is not None:
+        try:
+            model_data.data["vae"] = inference_settings.vae["path"]
+            logger.debug(f"Set custom VAE: {inference_settings.vae['path']}")
+        except Exception as e:
+            logger.debug(f"Unable to parse VAE JSON: {e}")
     logger.debug("Sent")
     pipeline = model_handler.load_model("diffusers", model_data)
 
@@ -171,9 +177,14 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             converted = None
             try:
                 latent = pipeline.decode_latents(latents)
+                if torch.is_tensor(latent):  # Check if it's a PyTorch tensor
+                    latent = latent.squeeze().permute(1, 2, 0).cpu().numpy()
+                    latent = (latent.max() - latent) * 255  # Adjust the range of values
+                    latent = latent.round().clip(0, 255).astype("uint8")
                 converted = pipeline.numpy_to_pil(latent)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Unable to convert latents to image: {e}")
+                traceback.print_exc()
             # Update the progress status handler with the new items
             status_handler.update(items={
                 "latents": converted,
@@ -274,8 +285,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     image = Image.open(BytesIO(image_data)).convert("RGB")
                     kwargs["image"] = image
                     if inference_settings.mode == "img2img":
-                        kwargs["strength"] = 0.65
-                    del kwargs["num_inference_steps"]
+                        kwargs["strength"] = inference_settings.denoise_strength
                 else:
                     if gen_height > 0:
                         kwargs["height"] = gen_height
@@ -292,6 +302,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     pipeline = StableDiffusionInpaintPipeline(**pipeline.components)
                 elif inference_settings.mode == "img2img":
                     pipeline = StableDiffusionImg2ImgPipeline(**pipeline.components)
+                    pipeline.scheduler = DDIMScheduler().from_config(pipeline.scheduler.config)
 
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
 

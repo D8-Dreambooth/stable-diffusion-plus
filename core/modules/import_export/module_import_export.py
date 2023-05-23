@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os.path
+from typing import Dict
 
 import requests
 import torch
@@ -8,14 +9,106 @@ from fastapi import FastAPI, Query
 from huggingface_hub import snapshot_download
 from starlette.responses import JSONResponse
 
+from core.dataclasses.model_data import ModelData
 from core.handlers.models import ModelHandler
 from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 from core.modules.import_export.src.convert_original_stable_diffusion_to_diffusers import extract_checkpoint
 from core.modules.import_export.src.extract_lora_from_model import extract_lora
+from core.modules.import_export.src.model_merge import ModelMerge
 
 logger = logging.getLogger(__name__)
+
+
+async def _merge_checkpoints(request):
+    user = request["user"] if "user" in request else None
+    mm = ModelMerge(user_name=user)
+    data = request["data"]
+    logger.debug(f"Merge Checkpoints_start: {data}")
+    for key, value in data.items():
+        if "_model" in key and isinstance(value, Dict):
+            data[key] = ModelData(value["path"])
+    logger.debug(f"Merge Checkpoints: {data}")
+    res = mm.merge(**data)
+    return res
+
+
+async def _extract_lora(request):
+    logger.debug(f"Extract LoRA: {request}")
+    user = request["user"] if "user" in request else None
+    mh = ModelHandler(user_name=user)
+    sh = StatusHandler(user_name=user)
+    data = request["data"]
+    model_src = data["src"]
+    model_tuned = data["tuned"]
+    src_model = await mh.find_model("diffusers", model_src)
+    tuned_model = await mh.find_model("diffusers", model_tuned)
+    precision = data["precision"]
+    dim = data["network_dim"]
+    conv_dim = data["conv_dim"]
+    # Determine the device to use, based on if MPS or cuda and if available
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    sh.start(desc="Extracting LoRA", total=100)
+    asyncio.create_task(extract_lora(src_model, tuned_model, mh, precision, dim, conv_dim, device))
+    return {"name": "extraction_started", "message": "No model data provided."}
+
+
+async def _download_model(request):
+    user = request["user"] if "user" in request else None
+    mh = ModelHandler(user_name=user)
+    data = request["data"]
+    model_url = data["url"]
+    model_type = data["model_type"]
+    model_name = data["name"] if "name" in data else None
+    if not model_name:
+        model_name = model_url.split("/")[-1]
+        if "http" in model_url:
+            model_name = model_name.split(".")[0]
+    models_dir = os.path.join(mh.models_path[1], model_type)
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+
+    from_hub = True
+    if "http" in model_url and "huggingface" not in model_url:
+        from_hub = False
+
+    dest_folder = os.path.join(models_dir, model_name)
+    output_path = dest_folder
+    if from_hub:
+        repo_id = model_url
+        include_files = ["*.safetensors", "*.bin", "*.ckpt", "*.json", "*.txt", "*.yaml", "*.yml"]
+        exclude_files = ["*.md", ".gitattributes"]
+        if model_type == "diffusers":
+            include_files = ["*.safetensors", "*.json", "*.txt", "*.yaml", "*.yml"]
+            exclude_files = ["*-pruned.ckpt", "*-pruned.safetensors", "README.md", ".gitattributes", "*.bin",
+                             "*.ckpt"]
+        snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
+                          local_dir_use_symlinks=False, allow_patterns=include_files, ignore_patterns=exclude_files)
+    else:
+        try:
+            # Download the file from the URL?
+            filename = model_url.split('/')[-1].replace(" ", "_")  # be careful with file names
+            file_path = os.path.join(dest_folder, filename)
+            output_path = os.path.abspath(file_path)
+            r = requests.get(model_url, stream=True)
+            if r.ok:
+                logger.debug("saving to", os.path.abspath(file_path))
+                with open(file_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 8):
+                        if chunk:
+                            f.write(chunk)
+                            f.flush()
+                            os.fsync(f.fileno())
+            else:  # HTTP status code 4XX/5XX
+                logger.debug("Download failed: status code {}\n{}".format(r.status_code, r.text))
+                output_path = None
+        except:
+            logger.debug("Download failed: {}".format(model_url))
+            output_path = None
+
+    if output_path:
+        mh.refresh(model_type, to_load=dest_folder)
 
 
 class ImportExportModule(BaseModule):
@@ -44,83 +137,9 @@ class ImportExportModule(BaseModule):
     def _initialize_websocket(self, handler: SocketHandler):
         super()._initialize_websocket(handler)
         handler.register("extract_checkpoint", _import_model)
-        handler.register("download_model", self._download_model)
-        handler.register("extract_lora", self._extract_lora)
-
-    async def _download_model(self, request):
-        user = request["user"] if "user" in request else None
-        mh = ModelHandler(user_name=user)
-        data = request["data"]
-        model_url = data["url"]
-        model_type = data["model_type"]
-        model_name = data["name"] if "name" in data else None
-        if not model_name:
-            model_name = model_url.split("/")[-1]
-            if "http" in model_url:
-                model_name = model_name.split(".")[0]
-        models_dir = os.path.join(mh.models_path[1], model_type)
-        if not os.path.exists(models_dir):
-            os.makedirs(models_dir)
-
-        from_hub = True
-        if "http" in model_url and "huggingface" not in model_url:
-            from_hub = False
-
-        dest_folder = os.path.join(models_dir, model_name)
-        output_path = dest_folder
-        if from_hub:
-            repo_id = model_url
-            include_files = ["*.safetensors", "*.bin", "*.ckpt", "*.json", "*.txt", "*.yaml", "*.yml"]
-            exclude_files = ["*.md", ".gitattributes"]
-            if model_type == "diffusers":
-                include_files = ["*.safetensors", "*.json", "*.txt", "*.yaml", "*.yml"]
-                exclude_files = ["*-pruned.ckpt", "*-pruned.safetensors", "README.md", ".gitattributes", "*.bin",
-                                 "*.ckpt"]
-            snapshot_download(repo_id, revision=None, repo_type="model", cache_dir=None, local_dir=dest_folder,
-                              local_dir_use_symlinks=False, allow_patterns=include_files, ignore_patterns=exclude_files)
-        else:
-            try:
-                # Download the file from the URL?
-                filename = model_url.split('/')[-1].replace(" ", "_")  # be careful with file names
-                file_path = os.path.join(dest_folder, filename)
-                output_path = os.path.abspath(file_path)
-                r = requests.get(model_url, stream=True)
-                if r.ok:
-                    logger.debug("saving to", os.path.abspath(file_path))
-                    with open(file_path, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=1024 * 8):
-                            if chunk:
-                                f.write(chunk)
-                                f.flush()
-                                os.fsync(f.fileno())
-                else:  # HTTP status code 4XX/5XX
-                    logger.debug("Download failed: status code {}\n{}".format(r.status_code, r.text))
-                    output_path = None
-            except:
-                logger.debug("Download failed: {}".format(model_url))
-                output_path = None
-
-        if output_path:
-            mh.refresh(model_type, to_load=dest_folder)
-
-    async def _extract_lora(self, request):
-        logger.debug(f"Extract LoRA: {request}")
-        user = request["user"] if "user" in request else None
-        mh = ModelHandler(user_name=user)
-        sh = StatusHandler(user_name=user)
-        data = request["data"]
-        model_src = data["src"]
-        model_tuned = data["tuned"]
-        src_model = await mh.find_model("diffusers", model_src)
-        tuned_model = await mh.find_model("diffusers", model_tuned)
-        precision = data["precision"]
-        dim = data["network_dim"]
-        conv_dim = data["conv_dim"]
-        # Determine the device to use, based on if MPS or cuda and if available
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        sh.start(desc="Extracting LoRA", total=100)
-        asyncio.create_task(extract_lora(src_model, tuned_model, mh, precision, dim, conv_dim, device))
-        return {"name": "extraction_started", "message": "No model data provided."}
+        handler.register("download_model", _download_model)
+        handler.register("extract_lora", _extract_lora)
+        handler.register("merge_checkpoints", _merge_checkpoints)
 
 
 async def _import_model(data):

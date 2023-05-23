@@ -1,11 +1,12 @@
 let gallery;
 let inferProgress;
-let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider;
+let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider, loraWeight, denoiseStrength;
 let userConfig;
 let controlnetImageEditor;
 let controlnetFileBrowser;
-
+let ratiosSet = false;
 const inferModelSelect = $("#inferModel").modelSelect();
+const vaeModelSelect = $("#inferVae").modelSelect();
 const loraModelSelect = $("#inferLoraModels").modelSelect();
 
 const ratioContainer = $("#infer_ratios");
@@ -26,8 +27,11 @@ let inferSettings = {
     "batch_size": 1,
     "width": 512,
     "height": 512,
+    "denoise_strength": 0.6,
     "model": undefined,
+    "vae": undefined,
     "loras": undefined,
+    "lora_weight": 0.9,
     "infer_mask": undefined,
     "infer_image": undefined,
     "controlnet_mask": undefined,
@@ -47,7 +51,15 @@ ratioContainer.hide();
 inferWidth.hide();
 inferHeight.hide();
 
-const inferModule = new Module("Inference", "moduleInfer", "images", true, 1, inferInit);
+const inferModule = new Module(
+    "Inference",
+    "moduleInfer",
+    "images",
+    true,
+    1,
+    inferInit,
+    inferRefresh
+);
 
 function inferResponse(data) {
     //console.log("Inference response received: ", data);
@@ -93,7 +105,7 @@ function inferInit() {
         label: "Scale"
     });
 
-    widthSlider = $("#infer_width").BootstrapSlider({
+    widthSlider = inferWidth.BootstrapSlider({
         elem_id: "widthSlid",
         min: 256,
         max: 4096,
@@ -102,7 +114,7 @@ function inferInit() {
         label: "Width"
     });
 
-    heightSlider = $("#infer_height").BootstrapSlider({
+    heightSlider = inferHeight.BootstrapSlider({
         elem_id: "heightSlid",
         min: 256,
         max: 4096,
@@ -136,6 +148,22 @@ function inferInit() {
         value: 1,
         step: 1,
         label: "Batch Size"
+    });
+
+    loraWeight = $("#infer_lora_weight").BootstrapSlider({
+        elem_id: "lora_weight",
+        min: 0.01,
+        max: 1,
+        value: 0.9,
+        step: 0.01,
+    });
+
+    denoiseStrength = $("#infer_denoise_strength").BootstrapSlider({
+        min:0.01,
+        max:1,
+        value:0.6,
+        step:0.01,
+        label:"Denoise Strength"
     });
 
     controlnetFileBrowser = $("#controlnetBatchFileSelect").fileBrowser({
@@ -196,6 +224,7 @@ function inferInit() {
     });
 
     const radioButtons = document.getElementsByName('inferMode');
+
     for (let i = 0; i < radioButtons.length; i++) {
         radioButtons[i].addEventListener('change', function () {
             if (this.value === "txt2img") {
@@ -203,8 +232,12 @@ function inferInit() {
             } else {
                 inpaintContainer.show();
             }
+            if (this.value === "img2img") {
+
+            }
         });
     }
+
     let moduleSettings = inferModule.systemConfig;
     loadSettings(moduleSettings);
     sendMessage("get_controlnets", {}, true).then((data) => {
@@ -226,6 +259,26 @@ function inferInit() {
     console.log("Infer settings: ", inferSettings);
 }
 
+function inferRefresh() {
+    loadSettings(inferModule.systemConfig);
+    sendMessage("get_controlnets", {}, true).then((data) => {
+        console.log("Controlnets: ", data);
+        let controlnetSelect = document.getElementById("controlnet_type");
+        let option = document.createElement("option");
+        option.value = "None";
+        option.text = "";
+        controlnetSelect.add(option);
+        data = data["nets"];
+        for (let i = 0; i < data.length; i++) {
+            let option = document.createElement("option");
+            option.value = data[i]["name"];
+            option.text = data[i]["name"];
+            controlnetSelect.add(option);
+        }
+    });
+    getInferSettings();
+    console.log("Infer settings(refresh): ", inferSettings);
+}
 
 function getSelectedText(input) {
     return input.value.substring(input.selectionStart, input.selectionEnd);
@@ -297,14 +350,24 @@ function loadSettings(data) {
     if (data["show_aspect_ratios"]) {
         addRatioCards();
         ratioContainer.show();
+        inferWidth.hide();
+        inferHeight.hide();
     } else {
+        ratioContainer.hide();
         inferWidth.show();
         inferHeight.show();
+    }
+
+    if (data["show_vae_select"]) {
+        inpaintContainer.show();
+    } else {
+        inpaintContainer.hide();
     }
 }
 
 function addRatioCards() {
     const ratioContainer = document.querySelector("#infer_ratios");
+    ratioContainer.innerHTML = "";
     const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
     const buttonGroup = document.createElement("div");
     buttonGroup.classList.add("btn-group");
@@ -484,8 +547,9 @@ function getInferSettings() {
         }
     }
     const model = inferModelSelect.getModel();
-
+    const vae = vaeModelSelect.getModel();
     inferSettings.mode = inferMode;
+    inferSettings.vae = vae;
     inferSettings.model = model;
     inferSettings.loras = loras ? loras : [];
     inferSettings.prompt = promptEl.value;
@@ -496,12 +560,14 @@ function getInferSettings() {
     inferSettings.steps = parseInt(stepTest.value);
     inferSettings.num_images = parseInt(numImages.value);
     inferSettings.batch_size = parseInt(batchSize.value);
+    inferSettings.lora_weight = loraWeight.value;
     inferSettings.controlnet_mask = controlnet_mask;
     inferSettings.controlnet_image = controlnet_image;
     inferSettings.infer_mask = infer_mask;
     inferSettings.infer_image = infer_image;
     inferSettings.enable_controlnet = enableControlNet.checked;
     inferSettings.controlnet_type = controlnetType.value;
+    inferSettings.denoise_strength = parseFloat(denoiseStrength.value);
     inferSettings.controlnet_preprocess = document.getElementById("controlnet_preprocess").checked;
     inferSettings.controlnet_batch = document.getElementById("controlnet_batch").checked;
     inferSettings.controlnet_batch_dir = controlnetFileBrowser.value;

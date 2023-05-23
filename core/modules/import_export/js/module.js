@@ -15,10 +15,15 @@ function initImportExport() {
         "label": "Source Checkpoint"
     });
 
+    const modelMergePrimary = $("#modelMergePrimary").modelSelect({"model_type": "diffusers"});
+    const modelMergeSecondary = $("#modelMergeSecondary").modelSelect({"model_type": "diffusers"});
+    const modelMergeTertiary = $("#modelMergeTertiary").modelSelect({"model_type": "diffusers"});
+
     const startExtract = document.getElementById("startExtract");
     const startCompile = document.getElementById("startCompile");
     const extractLora = document.getElementById("startExtractLora");
-
+    const startMerge = document.getElementById("startMerge");
+    $("#merge_multiplier").BootstrapSlider({});
     startExtract.addEventListener("click", (event) => {
         event.preventDefault();
         console.log("startExtract button was clicked");
@@ -64,6 +69,22 @@ function initImportExport() {
         });
     });
 
+    startMerge.addEventListener("click", (event) => {
+        event.preventDefault();
+        let modelInfo = {};
+        modelInfo["primary_model"] = modelMergePrimary.getModel();
+        modelInfo["secondary_model"] = modelMergeSecondary.getModel();
+        modelInfo["tertiary_model"] = modelMergeTertiary.getModel();
+        modelInfo["save_as_half"] = document.getElementById("merge_save_half").checked;
+        modelInfo["merge_type"] = document.getElementById("merge_type").value;
+        modelInfo["merge_new_name"] = document.getElementById("merge_new_name").value;
+        let multiplier = parseFloat(document.getElementById("merge_multiplier").getAttribute("data-value"));
+        modelInfo["merge_multiplier"] = multiplier;
+        console.log("Merge message: ", modelInfo);
+        sendMessage("merge_checkpoints", modelInfo, true, "io").then((res) => {
+            console.log("All done!", res);
+        });
+    });
     let pg = new ProgressGroup(document.getElementById("importProgressGroup"), {"id": "io"});
 
     $("#startModelDownload").click((event) => {

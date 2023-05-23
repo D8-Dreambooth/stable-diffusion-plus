@@ -5,7 +5,8 @@ import traceback
 import tomesd
 import torch
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
-    StableDiffusionImg2ImgPipeline, StableDiffusionDepth2ImgPipeline, StableDiffusionPipeline
+    StableDiffusionImg2ImgPipeline, StableDiffusionDepth2ImgPipeline, StableDiffusionPipeline, AutoencoderKL, \
+    StableDiffusionInpaintPipelineLegacy
 from diffusers.models.attention_processor import AttnProcessor2_0
 from safetensors.torch import load_file
 
@@ -16,7 +17,7 @@ from core.pipelines.pipeline_stable_diffusion_inpaint_controlnet import StableDi
 logger = logging.getLogger(__name__)
 
 
-def initialize_pipeline(pipeline, loras):
+def initialize_pipeline(pipeline, loras, weight: float = 0.9):
     pipeline.enable_model_cpu_offload()
     pipeline.unet.set_attn_processor(AttnProcessor2_0())
     if os.name != "nt":
@@ -29,7 +30,7 @@ def initialize_pipeline(pipeline, loras):
     if len(loras):
         for lora in loras:
             if "path" in lora:
-                pipeline = apply_lora(pipeline, lora['path'], 0.75)
+                pipeline = apply_lora(pipeline, lora['path'], weight)
                 logger.debug(f"Loading lora: {lora['name']}")
     return pipeline
 
@@ -65,16 +66,18 @@ def load_diffusers(model_data: ModelData):
         try:
             nets = initialize_controlnets(model_data)
             pipe_args = {
-                "pretrained_model_name_or_path": model_path,
-                "torch_dtype": torch.float16,
-                "custom_pipeline": "stable_diffusion_mega",
+                "torch_dtype": torch.float16
             }
+            if "vae" in model_data.data:
+                pipe_args["vae"] = AutoencoderKL.from_pretrained(
+                    model_data.data["vae"],
+                    torch_dtype=torch.float16
+                )
             if len(nets):
                 pipe_args["controlnet"] = nets
-                text2img = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16, controlnet=nets)
-            else:
-                text2img = DiffusionPipeline.from_pretrained(model_path, torch_dtype=torch.float16)
-            pipeline = initialize_pipeline(text2img, loras=model_data.data.get("loras", []))
+
+            text2img = DiffusionPipeline.from_pretrained(model_path, **pipe_args)
+            pipeline = initialize_pipeline(text2img, loras=model_data.data.get("loras", []), weight=model_data.data.get("lora_weight", 0.9))
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
@@ -100,7 +103,7 @@ def load_diffusers_img2img(model_data: ModelData):
             if len(nets):
                 pipe_args["controlnet"] = nets
             pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []))
+            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
@@ -125,8 +128,8 @@ def load_diffusers_inpaint(model_data: ModelData):
             }
             if len(nets):
                 pipe_args["controlnet"] = nets
-            pipeline = StableDiffusionInpaintPipeline.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []))
+            pipeline = StableDiffusionInpaintPipelineLegacy.from_pretrained(**pipe_args)
+            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
@@ -152,7 +155,7 @@ def load_diffusers_depth2img(model_data: ModelData):
             if len(nets):
                 pipe_args["controlnet"] = nets
             pipeline = StableDiffusionDepth2ImgPipeline.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []))
+            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
