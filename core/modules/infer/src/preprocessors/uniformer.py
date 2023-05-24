@@ -22,6 +22,7 @@ class UniformerDetector:
         modelpath = os.path.join(models_dir, "upernet_global_small.pth")
         if not os.path.exists(modelpath):
             from basicsr.utils.download_util import load_file_from_url
+
             load_file_from_url(checkpoint_file, model_dir=models_dir)
         config_file = os.path.join(os.path.dirname(models_dir), "uniformer", "exp", "upernet_global_small", "config.py")
         self.model = init_segmentor(config_file, modelpath).cuda()

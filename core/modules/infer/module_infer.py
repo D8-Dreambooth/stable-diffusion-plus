@@ -39,6 +39,8 @@ class InferenceModule(BaseModule):
         self._initialize_websocket(handler)
 
     def _initialize_api(self, app: FastAPI):
+        """
+
         Initializes the API for the FastAPI app. Defines a GET route for inference/infer endpoint.
         If an API key is set, it must be present in the request.
         Returns a JSON response with a message indicating that the job has started.
@@ -64,6 +66,8 @@ class InferenceModule(BaseModule):
 
 
 async def _start_inference(msg):
+    """
+    Starts the inference process asynchronously.
 
     The function receives a message containing data, message ID, user and target information. It creates an instance of the InferSettings class with the data and calls the start_inference() function in a separate thread using asyncio.create_task(). It then immediately returns a reply to the websocket with a status message indicating that the inference has started.
 
@@ -86,6 +90,8 @@ async def _start_inference(msg):
 
 
 async def _get_controlnets(msg):
+    """
+    Returns a dictionary containing the controlnets.
 
     The function receives a message and returns a dictionary containing the controlnets. It retrieves the controlnets from the model_data and returns them in the "nets" key of the dictionary.
 
@@ -101,6 +107,8 @@ async def _get_controlnets(msg):
 
 
 async def _mask_image(msg):
+    """
+    Masks the input image based on the objects detected.
 
     The function receives a message containing data, message ID, user and target information. It extracts the image and the objects to be detected from the data and calls the detect_and_create_mask() method of the object_detector attribute to create a mask for the detected objects. It then immediately returns a reply to the websocket with a status message indicating that the inference has started.
 
@@ -120,6 +128,6 @@ async def _mask_image(msg):
         find_objects = find_objects.split(",")
     else:
         find_objects = [find_objects]
-    foo = self.object_detector.detect_and_create_mask(image, find_objects)
+    # foo = self.object_detector.detect_and_create_mask(image, find_objects)
     # Immediately return a reply to the websocket
     return {"name": "status", "message": "Inference started.", "id": msg_id}
