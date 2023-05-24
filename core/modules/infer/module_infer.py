@@ -10,7 +10,6 @@ from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
 from core.handlers.model_types.controlnet_processors import model_data
 from core.modules.infer.src.infer_utils import start_inference
-from core.modules.infer.src.object_detector import ObjectDetector
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,6 @@ class InferenceModule(BaseModule):
         """
         self.name = "Inference"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        self.object_detector = ObjectDetector()
 
         super().__init__(self.name, self.path)
 
@@ -128,6 +126,5 @@ async def _mask_image(msg):
         find_objects = find_objects.split(",")
     else:
         find_objects = [find_objects]
-    # foo = self.object_detector.detect_and_create_mask(image, find_objects)
     # Immediately return a reply to the websocket
     return {"name": "status", "message": "Inference started.", "id": msg_id}

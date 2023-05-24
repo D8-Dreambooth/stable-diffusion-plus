@@ -7,7 +7,6 @@ import shutil
 import site
 import subprocess
 import sys
-import traceback
 
 from venv import EnvBuilder
 
@@ -18,41 +17,6 @@ to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "te
            "tensorboard"]
 for skip in to_skip:
     logging.getLogger(skip).setLevel(logging.WARNING)
-
-original_mkdirs = os.mkdir
-original_makedirs = os.makedirs
-
-
-def hook_mkdirs(*args, **kwargs):
-    if not os.path.exists(args[0]):
-        if "core" in args[0] and "models" in args[0]:
-            logger.debug(f"MKDIR: {args[0]}")
-            traceback.print_stack()
-        if "dreambooth" in args[0] and "models" in args[0]:
-            logger.debug(f"MKDIR db: {args[0]}")
-            traceback.print_stack()
-    try:
-        original_mkdirs(*args, **kwargs)
-    except FileExistsError:
-        pass
-
-
-def hook_makedirs(*args, **kwargs):
-    if not os.path.exists(args[0]):
-        if "core" in args[0] and "models" in args[0]:
-            logger.debug(f"MAKEDIRS: {args[0]}")
-            traceback.print_stack()
-        if "dreambooth" in args[0] and "models" in args[0]:
-            logger.debug(f"MAKEDIRS db: {args[0]}")
-            traceback.print_stack()
-    try:
-        original_makedirs(*args, **kwargs)
-    except FileExistsError:
-        pass
-
-
-os.mkdir = hook_mkdirs
-os.makedirs = hook_makedirs
 
 
 def create_venv(venv_dir):
@@ -180,7 +144,7 @@ def run_server(debug, port):
     except KeyboardInterrupt:
         if server is not None:
             server.shutdown()
-        pass
+        pass  # Handle KeyboardInterrupt in main part of your scr
 
 
 if __name__ == "__main__":
@@ -307,4 +271,8 @@ if __name__ == "__main__":
     requirements = os.path.join(base_path, "requirements.txt")
     install_requirements(venv_dir, requirements)
 
-    run_server(debug, port)
+    # in the main part of your script
+    try:
+        run_server(debug, port)
+    except KeyboardInterrupt:
+        print("Server stopped")
