@@ -29,14 +29,8 @@ from core.handlers.queues import QueueHandler
 from core.handlers.status import StatusHandler
 from core.handlers.users import UserHandler, User, get_current_active_user
 from core.handlers.websocket import SocketHandler
+from core.helpers.model_watcher import ModelWatcher
 from .library.helpers import *
-
-# If running linux, disable torch2 dynamo
-if os.name == "posix":
-    # For now disable Torch2 Dynamo
-    os.environ["TORCHDYNAMO_DISABLE"] = "1"
-
-logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
 
 # I think some of these can go away.
 clients = []
@@ -50,6 +44,8 @@ protected_config = ""
 config_handler = None
 directory_handler = None
 user_auth = True
+model_watcher = ModelWatcher()
+
 dirs = {}
 
 logger = logging.getLogger(__name__)
@@ -155,7 +151,7 @@ def initialize_app():
     sh.end("")
     # Now create the other handlers, which use our dirs vars from above
     FileHandler(app)
-    ModelHandler()
+    ModelHandler(watcher=model_watcher)
     ImageHandler()
     CacheHandler()
     user_handler.initialize(app, socket_handler)
@@ -379,3 +375,11 @@ async def del_session(response: Response):
     response.delete_cookie("access_token")
     response.delete_cookie("user")
     return RedirectResponse(url="/login")
+
+@app.on_event("startup")
+def startup_event():
+    model_watcher.start()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    model_watcher.stop()

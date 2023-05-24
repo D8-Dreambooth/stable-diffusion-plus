@@ -128,6 +128,7 @@ function showPane(module_id) {
 
 
     if (activePane) {
+        console.log("Module ids: ", moduleIds);
         activePane.classList.add("activePane");
         activeLink.classList.add("activeLink");
         sectionTitle.innerHTML = moduleIds[module_id];

@@ -9,7 +9,8 @@ class Module {
         this.reload_method = reload_method;
         this.systemConfig = null;
         this.moduleDefaults = null;
-        this.moduleLink = null;
+        this.moduleLink = null
+        console.log("Registering: ", this);
         registerModule(this);
     }
 
@@ -78,6 +79,7 @@ class Module {
         for (let link of navLinks) {
             navList.appendChild(link);
         }
+
         if (this.init_method !== null) {
             this.init_method();
         }
@@ -150,8 +152,13 @@ class Module {
 
     async reload() {
         if (this.reload_method !== null) {
-            await this.reload_method;
+            console.log("Reloading " + this.id);
+            this.reload_method();
         }
+        //this.localize(locales);
+        setTimeout(() => {
+            this.populateInputs(this.moduleDefaults);
+        }, 1000);
     }
 
     async unload() {

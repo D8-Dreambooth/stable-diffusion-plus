@@ -69,12 +69,16 @@ class StatusHandler:
         self.status.end(desc)
         self.send()
 
-    def step(self, n: int = 1, secondary_bar: bool = False):
+    def step(self, n: int = 1, secondary_bar: bool = False, description: str = None):
         if secondary_bar:
+            if description is not None:
+                self.status.status_2 = description
             self.status.progress_2_current += n
             if self.status.progress_2_current >= self.status.progress_2_total:
                 self.status.progress_2_current = self.status.progress_2_total
         else:
+            if description is not None:
+                self.status.status = description
             self.status.progress_1_current += n
             if self.status.progress_1_current >= self.status.progress_1_total:
                 self.status.progress_1_current = self.status.progress_1_total

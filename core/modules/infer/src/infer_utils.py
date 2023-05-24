@@ -1,23 +1,25 @@
 import asyncio
+import base64
 import concurrent.futures
 import logging
-import os
 import random
 import traceback
+from io import BytesIO
 
 import torch
-from PIL import Image
+from PIL import Image, ImageFilter
 from compel import Compel
-from core.modules.dreambooth.helpers.mytqdm import mytqdm
+from diffusers import StableDiffusionInpaintPipeline, StableDiffusionImg2ImgPipeline, \
+    StableDiffusionInpaintPipelineLegacy, DDIMScheduler
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.config import ConfigHandler
-from core.handlers.file import FileHandler, is_image
 from core.handlers.images import ImageHandler
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data, preprocess_image
 from core.handlers.models import ModelHandler
 from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
+from core.modules.dreambooth.helpers.mytqdm import mytqdm
 
 socket_handler = SocketHandler()
 logger = logging.getLogger(__name__)
@@ -47,7 +49,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
     # Model data, duh
     model_data = inference_settings.model
-
     # Total images to process?
     total_images = 0
 
@@ -121,8 +122,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                                          handler=status_handler)
 
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
-
-        model_data.data = {"type": inference_settings.controlnet_type}
     else:
         input_prompts = [inference_settings.prompt]
         negative_prompts = [inference_settings.negative_prompt]
@@ -133,13 +132,15 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     await status_handler.send_async()
     if len(inference_settings.loras):
         model_data.data["loras"] = inference_settings.loras
+        model_data.data["lora_weight"] = inference_settings.lora_weight
+    if inference_settings.vae is not None:
+        try:
+            model_data.data["vae"] = inference_settings.vae["path"]
+            logger.debug(f"Set custom VAE: {inference_settings.vae['path']}")
+        except Exception as e:
+            logger.debug(f"Unable to parse VAE JSON: {e}")
     logger.debug("Sent")
-    if inference_settings.mode == "txt2img":
-        pipeline = model_handler.load_model("diffusers", model_data)
-    elif inference_settings.mode == "inpaint":
-        pipeline = model_handler.load_model("diffusers_inpaint", model_data)
-    elif inference_settings.mode == "img2img":
-        pipeline = model_handler.load_model("diffusers_img2img", model_data)
+    pipeline = model_handler.load_model("diffusers", model_data)
 
     if not pipeline:
         logger.warning("No model selected.")
@@ -158,7 +159,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
     out_images = []
     out_prompts = []
-    original_controls = []
     used_controls = []
     try:
         status_handler.update(
@@ -169,12 +169,35 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         if isinstance(inference_settings.seed, str):
             initial_seed = int(inference_settings.seed)
 
-        pbar = mytqdm(desc="Making images.", total=total_images, user=user, target="infer", index=1)
+        pbar = mytqdm(
+            desc="Making images.",
+            total=total_images,
+            user=user,
+            target="infer",
+            index=1,
+        )
 
         def update_progress(step: int, timestep: int, latents: torch.FloatTensor):
+            """
+            Updates the progress status of the Dreambooth processes. Converts the latents tensor to a numpy array and then to a PIL image.
+            Updates the progress status handler with the new items, including the converted latents, total number of steps and current step.
+            @param step: int
+            @param timestep: int
+            @param latents: torch.FloatTensor
+            @return: None
+            """
             # Move the latents tensor to CPU if it's on a different device
-            latent = pipeline.decode_latents(latents)
-            converted = pipeline.numpy_to_pil(latent)
+            converted = None
+            try:
+                latent = pipeline.decode_latents(latents)
+                if torch.is_tensor(latent):  # Check if it's a PyTorch tensor
+                    latent = latent.squeeze().permute(1, 2, 0).cpu().numpy()
+                    latent = (latent.max() - latent) * 255  # Adjust the range of values
+                    latent = latent.round().clip(0, 255).astype("uint8")
+                converted = pipeline.numpy_to_pil(latent)
+            except Exception as e:
+                logger.debug(f"Unable to convert latents to image: {e}")
+                traceback.print_exc()
             # Update the progress status handler with the new items
             status_handler.update(items={
                 "latents": converted,
@@ -264,12 +287,36 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     kwargs["callback"] = update_progress
                     kwargs["callback_steps"] = preview_steps
 
-                if gen_height > 0:
-                    kwargs["height"] = gen_height
-                if gen_width > 0:
-                    kwargs["width"] = gen_width
                 if inference_settings.use_sag:
                     kwargs["sag_scale"] = 1.0
+                logger.debug(f"Mode: {inference_settings.mode}")
+                skip_modes = ["img2img", "inpaint", "depth2img"]
+                if inference_settings.mode in skip_modes and inference_settings.infer_image is not None:
+                    # Load PIL Image from data:image/png
+                    image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])
+                    # Create PIL Image object
+                    image = Image.open(BytesIO(image_data)).convert("RGB")
+                    kwargs["image"] = image
+                    if inference_settings.mode == "img2img":
+                        kwargs["strength"] = inference_settings.denoise_strength
+                else:
+                    if gen_height > 0:
+                        kwargs["height"] = gen_height
+                    if gen_width > 0:
+                        kwargs["width"] = gen_width
+                if inference_settings.mode == "inpaint":
+                    if inference_settings.infer_mask is not None:
+                        mask_data = base64.b64decode(inference_settings.infer_mask.split(",")[1])
+                        mask_data = Image.open(BytesIO(mask_data))
+                        mask = process_mask(mask_data, inference_settings.invert_mask)
+                        kwargs["mask_image"] = mask
+                logger.debug(f"KWARGS: {kwargs}")
+                if inference_settings.mode == "inpaint":
+                    pipeline = StableDiffusionInpaintPipeline(**pipeline.components)
+                elif inference_settings.mode == "img2img":
+                    pipeline = StableDiffusionImg2ImgPipeline(**pipeline.components)
+                    pipeline.scheduler = DDIMScheduler().from_config(pipeline.scheduler.config)
+
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
 
             pbar.update(len(s_image))
@@ -328,7 +375,60 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     return out_images, out_prompts
 
 
+def process_mask(mask_data, invert_mask):
+    """
+    Processes the mask data by converting the image to RGBA format to ensure an alpha channel exists.
+    Changes all white pixels to yellow if invert_mask is True, otherwise changes all transparent pixels to white.
+    Converts the image to greyscale and applies a Gaussian blur.
+    Creates a new black image and pastes the white layer onto it.
+    @param mask_data: PIL.Image
+    @param invert_mask: bool
+    @return: PIL.Image
+    """
+    # Convert image to RGBA to ensure there's an alpha (transparency) channel
+    data = mask_data.getdata()
+
+    new_data = []
+    for item in data:
+        # change all white (also shades of whites)
+        # pixels to yellow
+        if invert_mask:
+            if item[3] != 0:  # non-transparent pixels
+                new_data.append((255, 255, 255, 255))  # white pixel
+            else:
+                new_data.append(item)  # original pixel
+        else:
+            if item[3] == 0:  # transparent pixels
+                new_data.append((255, 255, 255, 255))  # white pixel
+            else:
+                new_data.append(item)  # original pixel
+
+    mask_data.putdata(new_data)
+
+    # convert image to greyscale
+    mask_data = mask_data.convert("L")
+
+    # apply Gaussian blur
+    mask_data = mask_data.filter(ImageFilter.GaussianBlur(5))
+
+    # create a new black image
+    black_background = Image.new('L', mask_data.size)
+    # paste the white layer onto a black background
+    black_background.paste(mask_data)
+
+    return black_background
+
+
 def parse_prompt(input_string):
+    """
+    Parses the input string by replacing spaces with underscores and splitting the string by commas.
+    For each token, splits it by underscores and processes each word.
+    If the word contains parentheses, sets the weight to 1.1 raised to the power of the number of open parentheses.
+    If the word contains square brackets, sets the weight to 0.9 raised to the power of the number of square brackets.
+    Returns the output string with spaces instead of underscores.
+    @param input_string: str
+    @return: str
+    """
     input_string = input_string.replace(" ", "_")
     tokens = input_string.split(",")
     new_tokens = []

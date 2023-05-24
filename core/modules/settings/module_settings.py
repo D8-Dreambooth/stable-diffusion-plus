@@ -38,8 +38,8 @@ class SettingsModule(BaseModule):
 
     async def get_settings(self, req):
         user = req.get("user", None)
-        ch = ConfigHandler()
-        shared_config, protected_config = ch.get_all_protected()
+        ch = ConfigHandler(user_name=user)
+        shared_config, protected_config, user_config = ch.get_all_protected()
         user_data = ch.get_item_protected(user, "users", None)
         users = []
         if "users" in protected_config.keys():
@@ -59,7 +59,7 @@ class SettingsModule(BaseModule):
                         if u.get("name") == user:
                             u.pop("admin", None)
                             pc["users"].append(u)
-        return {"status": "ACK ACK", "shared": shared_config, "protected": pc}
+        return {"status": "ACK ACK", "shared": shared_config, "protected": pc, "user": user_config}
 
     async def set_settings(self, req):
         data = req["data"] if "data" in req else {}

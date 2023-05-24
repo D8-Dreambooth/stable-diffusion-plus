@@ -19,6 +19,7 @@ class ModelSelect {
         this.selectElement.classList.add("model-select");
         this.selectElement.dataset["key"] = options.key || container.id;
         this.selectElement.id = container.id + "_select";
+        this.selectElement.name = container.id + "_select";
 
         // Add the multiple attribute if specified
         if (this.multiple) {
@@ -174,6 +175,9 @@ class ModelSelect {
                 return models;
             }
         } else {
+            if (this.value === "none" || this.value === undefined) {
+                return null;
+            }
             return this.modelList.models.find(
                 model => model.hash === this.value
             );

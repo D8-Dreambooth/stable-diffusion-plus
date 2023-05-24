@@ -29,6 +29,7 @@ class ConnectionManager:
     async def send_personal_message(self, message: Dict):
         try:
             websocket = message.pop("socket")
+
             # Make sure the websocket isn't closed already
             await websocket.send_json(message)
         except:
