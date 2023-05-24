@@ -7,11 +7,8 @@ import shutil
 import site
 import subprocess
 import sys
-import threading
-import time
 import traceback
 
-import uvicorn
 from venv import EnvBuilder
 
 logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.DEBUG)
@@ -173,6 +170,19 @@ def install_extensions():
     pass
 
 
+def run_server(debug, port):
+    server = None
+    try:
+        import uvicorn
+        config = uvicorn.Config("app.main:app", reload=debug, host="0.0.0.0", port=port, access_log=False)
+        server = uvicorn.Server(config=config)
+        server.run()
+    except KeyboardInterrupt:
+        if server is not None:
+            server.shutdown()
+        pass
+
+
 if __name__ == "__main__":
     # Check that we're on Python 3.10
     if sys.version_info < (3, 10):
@@ -219,7 +229,8 @@ if __name__ == "__main__":
             json.dump(launch_settings, ls, indent=4)
 
     debug = launch_settings.get("debug", False)
-    logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s', level=logging.INFO if not debug else logging.DEBUG)
+    logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s',
+                        level=logging.INFO if not debug else logging.DEBUG)
     logger = logging.getLogger("launch")
     # Set up logging
     to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio",
@@ -296,19 +307,4 @@ if __name__ == "__main__":
     requirements = os.path.join(base_path, "requirements.txt")
     install_requirements(venv_dir, requirements)
 
-    server_thread = None
-    server = None
-    try:
-        config = uvicorn.Config("app.main:app", reload=debug, host="0.0.0.0", port=port, access_log=False)
-        server = uvicorn.Server(config=config)
-        server_thread = threading.Thread(target=server.run)
-        server_thread.start()
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if server:
-            server.shutdown()
-        if server_thread:
-            server_thread.join()
+    run_server(debug, port)

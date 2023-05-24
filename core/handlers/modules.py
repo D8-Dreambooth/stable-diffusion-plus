@@ -17,6 +17,7 @@ class ModuleHandler:
     _instance = None
     module_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "modules"))
     active_modules = {}
+    loaded_modules = []
     socket_handler = None
 
     def __new__(cls, module_dir, socket_handler: SocketHandler = None):
@@ -29,6 +30,7 @@ class ModuleHandler:
         return cls._instance
 
     async def _get_modules(self, data):
+        self.initialize_modules()
         ch = ConfigHandler()
         module_data = {}
         for module_name, module in self.active_modules.items():
@@ -51,6 +53,9 @@ class ModuleHandler:
     def initialize_modules(self):
         for root, dirs, files in os.walk(self.module_dir):
             for mod_dir in dirs:
+                if mod_dir in self.loaded_modules:
+                    continue
+                added = False
                 module_path = os.path.join(root, mod_dir)
                 for file in os.listdir(module_path):
                     if file.endswith(".py"):
@@ -81,11 +86,15 @@ class ModuleHandler:
                                     logging.warning(f"Failed to instantiate module {module_name}: {e}")
                                     traceback.print_exc()
                             if module_obj:
+                                added = True
                                 self.active_modules[module_name] = module_obj
 
                         except Exception as e:
                             logger.debug(f"Failed to initialize module '{module_name}': {e}")
                             # traceback.logger.debug_exc()
+                if added:
+                    self.loaded_modules.append(mod_dir)
 
     def get_modules(self) -> Dict[str, BaseModule]:
+        self.initialize_modules()
         return self.active_modules

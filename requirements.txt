@@ -38,10 +38,11 @@ requests~=2.30.0
 safetensors~=0.3.1
 tensorboard
 tomesd
-torch>=2.0.0
-torchvision>=0.15.1
+torch>=2.0.1
+torchvision>=0.15.2
 tqdm~=4.65.0
 transformers==4.29.2
 uvicorn~=0.22.0
+watchdog
 websockets~=11.0.3
 xformers~=0.0.19

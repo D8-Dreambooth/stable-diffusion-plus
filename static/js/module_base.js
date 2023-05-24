@@ -9,7 +9,8 @@ class Module {
         this.reload_method = reload_method;
         this.systemConfig = null;
         this.moduleDefaults = null;
-        this.moduleLink = null;
+        this.moduleLink = null
+        console.log("Registering: ", this);
         registerModule(this);
     }
 

@@ -159,7 +159,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
     out_images = []
     out_prompts = []
-    original_controls = []
     used_controls = []
     try:
         status_handler.update(
@@ -170,9 +169,23 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         if isinstance(inference_settings.seed, str):
             initial_seed = int(inference_settings.seed)
 
-        pbar = mytqdm(desc="Making images.", total=total_images, user=user, target="infer", index=1)
+        pbar = mytqdm(
+            desc="Making images.",
+            total=total_images,
+            user=user,
+            target="infer",
+            index=1,
+        )
 
         def update_progress(step: int, timestep: int, latents: torch.FloatTensor):
+            """
+            Updates the progress status of the Dreambooth processes. Converts the latents tensor to a numpy array and then to a PIL image.
+            Updates the progress status handler with the new items, including the converted latents, total number of steps and current step.
+            @param step: int
+            @param timestep: int
+            @param latents: torch.FloatTensor
+            @return: None
+            """
             # Move the latents tensor to CPU if it's on a different device
             converted = None
             try:
@@ -363,6 +376,15 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
 
 def process_mask(mask_data, invert_mask):
+    """
+    Processes the mask data by converting the image to RGBA format to ensure an alpha channel exists.
+    Changes all white pixels to yellow if invert_mask is True, otherwise changes all transparent pixels to white.
+    Converts the image to greyscale and applies a Gaussian blur.
+    Creates a new black image and pastes the white layer onto it.
+    @param mask_data: PIL.Image
+    @param invert_mask: bool
+    @return: PIL.Image
+    """
     # Convert image to RGBA to ensure there's an alpha (transparency) channel
     data = mask_data.getdata()
 
@@ -398,6 +420,15 @@ def process_mask(mask_data, invert_mask):
 
 
 def parse_prompt(input_string):
+    """
+    Parses the input string by replacing spaces with underscores and splitting the string by commas.
+    For each token, splits it by underscores and processes each word.
+    If the word contains parentheses, sets the weight to 1.1 raised to the power of the number of open parentheses.
+    If the word contains square brackets, sets the weight to 0.9 raised to the power of the number of square brackets.
+    Returns the output string with spaces instead of underscores.
+    @param input_string: str
+    @return: str
+    """
     input_string = input_string.replace(" ", "_")
     tokens = input_string.split(",")
     new_tokens = []

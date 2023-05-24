@@ -7,6 +7,15 @@ from torchvision.models.segmentation import FCN_ResNet101_Weights
 
 
 class CocoDetector(object):
+    """
+    A class that performs object detection using the FCN-ResNet101 model.
+    Initializes the Processor and loads the model.
+    Preprocesses the image for segmentation and detects the various elements in the image.
+    Extracts the tensor from the ordered dict and generates a segmentation map.
+    Resizes the segmentation map to the original size of the input image and returns a PIL image of the resulting segmentation map.
+    @param: None
+    @return: None
+    """
 
     def __init__(self):
         # Create the Processor and load the model.

@@ -176,8 +176,8 @@ function inferInit() {
         "dropdown": true
     });
 
-    controlnetImageEditor = new ImageEditor("controlnetEditor", 512, 512);
-    inpaintImageEditor = new ImageEditor("inpaintEditor", 512, 512);
+    controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "75vh", false);
+    inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "75vh", false);
 
     let submit = document.getElementById("startInfer");
 
@@ -407,8 +407,6 @@ function setResolution(ratio) {
     height = Math.floor(height / 64) * 64;
     inferSettings.width = width;
     inferSettings.height = height;
-    controlnetImageEditor.scaleCanvas(width, height);
-
     console.log("Updated infer settings: ", inferSettings);
     return {width, height};
 }

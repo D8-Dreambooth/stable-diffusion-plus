@@ -1,34 +1,35 @@
 class ImageEditor {
-    constructor(containerId, width, height) {
+    constructor(containerId, width, height, points = false) {
         // Create the canvas and add it to the container
         this.canvasWrapper = document.createElement('div');
         this.canvasWrapper.classList.add("canvasWrapper");
+        this.canvasWrapper.style.width = width;
+        this.canvasWrapper.style.height = height;
         this.dropCanvas = document.createElement('canvas');
         this.dropCanvas.classList.add("editorCanvas");
         this.dropCanvas.style.cursor = 'none';
         this.canvas = document.createElement('canvas');
         this.canvas.classList.add("editorCanvas", "editCanvas");
-        this.canvas.style.cursor = 'crosshair';
+        this.canvas.style.cursor = 'none';
+        this.pointCanvas = document.createElement('canvas');
+        this.pointCanvas.classList.add("editorCanvas", "pointCanvas");
+        this.pointCanvas.style.cursor = 'none';
         this.container = document.getElementById(containerId);
         this.container.appendChild(this.canvasWrapper);
         this.canvasWrapper.appendChild(this.canvas);
+        this.canvasWrapper.appendChild(this.pointCanvas);
         this.canvasWrapper.appendChild(this.dropCanvas);
         this.buttonGroup = document.createElement("div");
         this.buttonGroup.classList.add("btn-group", "editorButtons");
         this.container.appendChild(this.buttonGroup);
         this.imageSource = null;
-
-        // Store the original resolution of the image
-        this.originalResolution = {
-            width: width,
-            height: height
-        };
+        this.points = [];
+        this.pointRadius = 5;
+        this.pointMode = points;
 
         // Initialize variables
         this.context = this.canvas.getContext('2d');
         this.isDrawing = false;
-        this.lastX = 0;
-        this.lastY = 0;
         this.undoStack = [];
         const ctx = this.canvas.getContext('2d');
         const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -38,16 +39,21 @@ class ImageEditor {
         this.brushColor = 'black';
         this.updateCursorStyle();
         this.scale = 1;
-        this.scaleCanvas(width, height);
+        //this.scaleCanvas(width, height);
         // Add event listeners for canvas interaction
-        this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
-        this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
-        this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
-        this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-        this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-        this.canvas.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
-        this.canvas.addEventListener('mouseenter', this.handleMouseEnter.bind(this));
+        this.canvas.addEventListener('touchstart', this.handleInputStart.bind(this));
+        this.canvas.addEventListener('mousedown', this.handleInputStart.bind(this));
+        this.canvas.addEventListener('mouseenter', this.handleInputStart.bind(this));
+
+        this.canvas.addEventListener('touchmove', this.handleInputMove.bind(this));
+        this.canvas.addEventListener('mousemove', this.handleInputMove.bind(this));
+
+        // These all do the same thing
+        this.canvas.addEventListener('touchend', this.handleInputEnd.bind(this));
+        this.canvas.addEventListener('mouseleave', this.handleInputEnd.bind(this));
+        this.canvas.addEventListener('mouseup', this.handleInputEnd.bind(this));
+
+        this.canvas.addEventListener('dblclick', this.handleMouseDoubleClick.bind(this));
         this.canvas.addEventListener('dragover', this.handleDragOver.bind(this));
         this.canvas.addEventListener('drop', this.handleDrop.bind(this));
         //this.canvas.addEventListener('contextmenu', this.handleContextMenu.bind(this));
@@ -80,68 +86,6 @@ class ImageEditor {
     }
 
 
-    scaleCanvas(width, height) {
-        // Get the current image data from the canvases
-        const imageData = {
-            main: this.canvas.getContext('2d').getImageData(0, 0, this.canvas.width, this.canvas.height)
-        };
-        this.undoStack = [];
-        // Resize the canvas elements to the new dimensions
-        this.dropCanvas.width = width;
-        this.dropCanvas.height = height;
-        let resizedState = this.getResizedImageData(imageData.main, this.canvas.width, this.canvas.height);
-        this.undoStack.push({imageData: resizedState, type: "draw"});
-        if (null !== this.imageSource) {
-            const src_image = new Image();
-            src_image.src = this.imageSource;
-            const scale = Math.min(
-                this.dropCanvas.width / src_image.width,
-                this.dropCanvas.height / src_image.height
-            );
-            const width = src_image.width * scale;
-            const height = src_image.height * scale;
-            const x = (this.dropCanvas.width - width) / 2;
-            const y = (this.dropCanvas.height - height) / 2;
-            const ctx = this.dropCanvas.getContext('2d');
-            ctx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
-            const state = ctx.getImageData(0, 0, this.dropCanvas.width, this.dropCanvas.height);
-            this.undoStack.push({imageData: state, type: "drop"});
-            ctx.drawImage(src_image, x, y, width, height);
-        }
-        this.canvas.width = width;
-        this.canvas.height = height;
-
-        // Redraw the image data onto the resized canvases
-        this.canvas.getContext('2d').putImageData(resizedState, 0, 0);
-    }
-
-    getResizedImageData(imageData, width, height) {
-        // Create a new canvas element to resize the image data
-        const canvas = document.createElement('canvas');
-        canvas.width = imageData.width;
-        canvas.height = imageData.height;
-
-        // Draw the image data onto the canvas
-        canvas.getContext('2d').putImageData(imageData, 0, 0);
-
-        // Create a new image object to hold the resized image data
-        const resizedImage = new ImageData(width, height);
-
-        // Draw the canvas onto the resized image object
-        const sourceX = (canvas.width - width) / 2;
-        const sourceY = (canvas.height - height) / 2;
-        const sourceWidth = width;
-        const sourceHeight = height;
-        const destX = 0;
-        const destY = 0;
-        const destWidth = width;
-        const destHeight = height;
-        resizedImage.data.set(canvas.getContext('2d').getImageData(sourceX, sourceY, sourceWidth, sourceHeight).data, 0);
-
-        // Return the resized image data
-        return resizedImage;
-    }
-
     // Add a button to the top-right corner of the container
     addButton(iconName, action) {
         const button = document.createElement('button');
@@ -171,9 +115,17 @@ class ImageEditor {
     updateCursorStyle() {
         const brushSize = this.brushSize;
         const brushColor = this.brushColor;
-        const circleSize = brushSize;
-        const viewBoxSize = brushSize * 2;
+
+        // Calculate the scale factor
+        const scaleFactor = this.canvas.clientHeight / this.canvas.height;
+        const scaledBrushSize = brushSize * scaleFactor;
+        console.log("Scale factor is " + scaleFactor);
+        this.pointRadius = 5 / scaleFactor;
+
+        const circleSize = scaledBrushSize;
+        const viewBoxSize = scaledBrushSize * 2;
         const hotspot = circleSize;
+
         const svgString = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${viewBoxSize} ${viewBoxSize}' width='${viewBoxSize}' height='${viewBoxSize}'><circle cx='${circleSize}' cy='${circleSize}' r='${circleSize / 2}' fill='${brushColor}'/></svg>`;
         this.canvas.style.cursor = `url("data:image/svg+xml,${encodeURIComponent(svgString)}") ${hotspot} ${hotspot}, auto`;
     }
@@ -295,82 +247,135 @@ class ImageEditor {
         document.addEventListener('click', onDocumentClick);
     }
 
-
-    // Draw a line from the last position to the current position
-
-
     getCursorPosition(event) {
+        let data = event;
+        // Determine if the event is from mouse or touch and get the appropriate position
+        if (event.changedTouches) {
+            data = event.changedTouches[0];
+        } else if (event.touches) {
+            data = event.touches[0];
+        }
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
+        const x = (data.clientX - rect.left) * scaleX;
+        const y = (data.clientY - rect.top) * scaleY;
         return [x, y];
     }
 
-    handleMouseDown(event) {
-        if (event.button !== 0) return;
+    handleMouseDoubleClick(event) {
+        if (!this.pointMode) return;
+        const [x, y] = this.getCursorPosition(event);
+        console.log("double click", x, y);
+        this.drawPoint(x, y, 'red');
+        this.points.push({x, y, connectedPoint: null}); // store point in the points array
+    }
+
+    handleInputStart(event) {
+        const isNotSingleTouchOrLeftButtonNotPressed = !(event.type.startsWith('touch') && event.touches.length === 1) && !(event.type === 'mousemove') && !(event.type === 'mousedown' && event.button === 0);
+        if (isNotSingleTouchOrLeftButtonNotPressed) return;
+
+        console.log("Input start", event);
+        event.preventDefault();
+
+        let x, y;
+        [x, y] = this.getCursorPosition(event);
+        // Determine if the event is from mouse or touch and get the appropriate position
+        console.log("Input start", x, y);
+        // check if input is on an existing point
+        const point = this.points.find(p => Math.hypot(p.x - x, p.y - y) < this.pointRadius);
+        if (this.pointMode && point) {
+            this.selectedPoint = point;
+            return;
+        }
         this.isDrawing = true;
-        const [x, y] = this.getCursorPosition(event);
-        this.lastX = x;
-        this.lastY = y;
-
-        const ctx = this.canvas.getContext('2d');
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-
-
+        this.context.beginPath();
+        this.context.moveTo(x, y);
     }
 
-    handleMouseMove(event) {
-        if (!this.isDrawing) return;
-        const [x, y] = this.getCursorPosition(event);
-        this.drawLine(x, y);
-        this.lastX = x;
-        this.lastY = y;
+
+    handleInputMove(event) {
+        const isNotSingleTouchOrLeftButtonNotPressed = !(event.type.startsWith('touch') && event.touches.length === 1) && !(event.type === 'mousemove') && !(event.type === 'mousedown' && event.button === 0);
+        if (isNotSingleTouchOrLeftButtonNotPressed) return;
+
+        event.preventDefault();
+        let x, y;
+        [x, y] = this.getCursorPosition(event);
+        if (this.selectedPoint !== null && this.pointMode) {
+            console.log("Pointing: ", x, y);
+            this.updatePoint(x, y);
+            return;
+        }
+
+        if (this.isDrawing) {
+            console.log("Drawing: ", x, y);
+            this.drawLine(x, y);
+        }
     }
 
-    handleMouseUp() {
+    handleInputEnd(event) {
+        let x, y;
+        [x, y] = this.getCursorPosition(event);
+
+        console.log("Input end: ", x, y);
+        if (this.pointMode && this.selectedPoint !== null) {
+            this.updatePoint(x, y);
+            this.selectedPoint = null;
+            return;
+        }
+
         if (!this.isDrawing) return;
         this.isDrawing = false;
         const ctx = this.canvas.getContext('2d');
         const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-
-        // push 'draw' action to stack
         this.undoStack.push({type: 'draw', imageData: state});
     }
 
-    handleTouchStart(event) {
-        this.isDrawing = true;
-        const [x, y] = this.getCursorPosition(event.touches[0]);
-        this.lastX = x;
-        this.lastY = y;
-
-        const ctx = this.canvas.getContext('2d');
-        ctx.beginPath();
-        ctx.moveTo(x, y);
+    updatePoint(x, y) {
+        const pointIndex = this.points.findIndex(p => p === this.selectedPoint);
+        if (pointIndex !== -1) {
+            this.points[pointIndex].connectedPoint = {x, y};
+            this.selectedPoint = this.points[pointIndex];
+            this.redrawAllPoints();
+        }
     }
 
-    handleTouchMove(event) {
-        if (!this.isDrawing) return;
-        const [x, y] = this.getCursorPosition(event.touches[0]);
-        this.drawLine(x, y);
-        this.lastX = x;
-        this.lastY = y;
+    redrawAllPoints() {
+        this.pointCanvas.getContext('2d').clearRect(0, 0, this.pointCanvas.width, this.pointCanvas.height);
+        for (let point of this.points) {
+            this.drawPoint(point.x, point.y, 'red');
+            if (point.isHighlighted) {
+                this.drawPoint(point.x, point.y, 'blue');
+            }
+            if (point.connectedPoint) {
+                this.drawPointLine(point.x, point.y, point.connectedPoint.x, point.connectedPoint.y);
+                this.drawPoint(point.connectedPoint.x, point.connectedPoint.y, 'green');
+            }
+        }
     }
 
-    handleTouchEnd() {
-        if (!this.isDrawing) return;
-        this.isDrawing = false;
-        const ctx = this.canvas.getContext('2d');
-        const state = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    drawPointLine(x1, y1, x2, y2, color = "white") {
+        let pointContext = this.pointCanvas.getContext('2d');
+        pointContext.strokeStyle = color;
+        pointContext.lineWidth = 4;
+        pointContext.beginPath();
+        pointContext.moveTo(x1, y1);
+        pointContext.lineTo(x2, y2);
+        pointContext.stroke();
+    }
 
-        // push 'draw' action to stack
-        this.undoStack.push({type: 'draw', imageData: state});
+    drawPoint(x, y, color) {
+        let pointContext = this.pointCanvas.getContext('2d');
+        pointContext.beginPath();
+        pointContext.arc(x, y, this.pointRadius, 0, 2 * Math.PI, false);
+        pointContext.fillStyle = color;
+        pointContext.fill();
+        pointContext.closePath();
     }
 
     drawLine(x, y) {
         const ctx = this.canvas.getContext('2d');
+        //const scaleFactor = this.canvas.clientHeight / this.canvas.height;
         ctx.lineWidth = this.brushSize;
         ctx.strokeStyle = this.brushColor;
         ctx.lineTo(x, y);
@@ -378,9 +383,7 @@ class ImageEditor {
     }
 
     undo() {
-        if (this.undoStack.length === 0) {
-            return;
-        }
+        if (this.undoStack.length === 0) return;
 
         const lastAction = this.undoStack.pop();
 
@@ -393,51 +396,6 @@ class ImageEditor {
         }
     }
 
-
-    handleContextMenu(event) {
-        event.preventDefault();
-        this.panStartX = event.clientX;
-        this.panStartY = event.clientY;
-        window.addEventListener('mousemove', this.handleContextMenuMouseMove);
-        window.addEventListener('mouseup', this.handleContextMenuMouseUp);
-    }
-
-    // handleContextMenuMouseMove = (event) => {
-    //     const dx = event.clientX - this.panStartX;
-    //     const dy = event.clientY - this.panStartY;
-    //     this.panStartX = event.clientX;
-    //     this.panStartY = event.clientY;
-    //     this.translateX += dx / this.scale;
-    //     this.translateY += dy / this.scale;
-    //     this.updateCanvas();
-    // }
-
-    handleWheel = (event) => {
-        const delta = event.wheelDelta ? event.wheelDelta / 40 : event.deltaY ? event.deltaY : 0;
-        if (delta) {
-            const x = event.offsetX;
-            const y = event.offsetY;
-            const zoom = Math.exp(delta * 0.02);
-            this.scale *= zoom;
-            this.translateX *= zoom;
-            this.translateY *= zoom;
-            this.translateX -= x * (zoom - 1);
-            this.translateY -= y * (zoom - 1);
-            this.updateCanvas();
-        }
-        event.preventDefault();
-    }
-
-    handleMouseLeave(event) {
-        this.isDrawing = false;
-    }
-
-    handleMouseEnter(event) {
-        // If the mouse is clicked, set this.isDrawing to true
-        if (event.buttons === 1) {
-            this.isDrawing = true;
-        }
-    }
 
     handleDragOver(event) {
         event.preventDefault();
@@ -453,34 +411,47 @@ class ImageEditor {
             const image = new Image();
             image.addEventListener('load', () => {
                 // Store the original resolution
-                this.originalResolution = {
-                    width: image.width,
-                    height: image.height
-                };
-                const scale = Math.min(
-                    this.dropCanvas.width / image.width,
-                    this.dropCanvas.height / image.height
-                );
-                const width = image.width * scale;
-                const height = image.height * scale;
-                const x = (this.dropCanvas.width - width) / 2;
-                const y = (this.dropCanvas.height - height) / 2;
+                this.dropCanvas.width = image.width;
+                this.dropCanvas.height = image.height;
+                // Preserve the current contents of this.canvas
+                const canvasCtx = this.canvas.getContext('2d');
+                const currentContent = canvasCtx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+
+                // Store the old dimensions
+                const oldWidth = this.canvas.width;
+                const oldHeight = this.canvas.height;
+
+                // Resize this.canvas
+                this.canvas.width = image.width;
+                this.canvas.height = image.height;
+                
+                this.pointCanvas.width = image.width;
+                this.pointCanvas.height = image.height;
+                // Clear the pointCanvas
+                this.pointCanvas.getContext('2d').clearRect(0, 0, this.pointCanvas.width, this.pointCanvas.height);
+                // Calculate offsets to center the image data on the new canvas
+                const xOffset = (this.canvas.width - oldWidth) / 2;
+                const yOffset = (this.canvas.height - oldHeight) / 2;
+
+                // Restore its contents at the calculated offsets
+                canvasCtx.putImageData(currentContent, xOffset, yOffset);
+                // Set the cursor to the new size
+                this.updateCursorStyle();
                 const ctx = this.dropCanvas.getContext('2d');
                 ctx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
                 const state = ctx.getImageData(0, 0, this.dropCanvas.width, this.dropCanvas.height);
-                ctx.drawImage(image, x, y, width, height);
+                ctx.drawImage(image, 0, 0, this.dropCanvas.width, this.dropCanvas.height);
                 this.undoStack.push({type: 'drop', imageData: state});
+                this.undoStack.push({
+                    type: 'draw',
+                    imageData: canvasCtx.getImageData(0, 0, this.canvas.width, this.canvas.height)
+                });
+
             });
             image.src = reader.result;
             this.imageSource = image.src;
         });
 
         reader.readAsDataURL(file);
-    }
-
-
-    handleContextMenuMouseUp = (event) => {
-        document.removeEventListener('mousemove', this.handleContextMenuMouseMove);
-        document.removeEventListener('mouseup', this.handleContextMenuMouseUp);
     }
 }

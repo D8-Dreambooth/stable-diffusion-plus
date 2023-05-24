@@ -35,10 +35,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 enabled_modules.push(module_id);
                 for (let module of modules) {
                     const camelCaseId = module_id.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+                    console.log("Comparing ", module.id, " to ", camelCaseId);
                     if (module.id === camelCaseId) {
                         module.enabled = true;
                         module.init(module_settings, module_defaults, module_locales);
                         newDefaults[module_id] = module.enumerateInputs();
+                        console.log("MATCHED: ", module.id, " to ", camelCaseId);
                         break;
                     }
                 }

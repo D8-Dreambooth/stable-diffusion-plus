@@ -25,7 +25,7 @@ function initAnalyze() {
             "showSelectButton": true,
             "selectedElement": "outputs\\inference"
         });
-    analyzeImageEditor = new ImageEditor("analyzeFileContent", 512, 512);
+    analyzeImageEditor = new ImageEditor("analyzeFileContent", "512px", "auto", false);
 
     $("#analyzeFileButton").click(function() {
         let selectedFile = analyzeFileBrowser.val();
