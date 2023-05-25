@@ -151,6 +151,8 @@ class ConfigHandler:
         protected_dir = dir_handler.protected_path
         for source in sources:
             s_dir = os.path.join(source_dir, source)
+            if not os.path.exists(s_dir):
+                os.makedirs(s_dir)
             dest_dir = os.path.join(protected_dir, source)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
