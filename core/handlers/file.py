@@ -77,13 +77,12 @@ class FileHandler:
 
     async def pass_dir_content(self, request):
         data = request["data"]
-        self.logger.debug(f"Passing dir content: {data}")
         protected = data["protected"] if "protected" in data else False
         shared = data["shared"] if "shared" in data else False
         user = request["user"] if "user" in request else None
         user_data = get_user(user)
         show_protected = user_data["admin"] if user_data else False
-        show_shared = True
+        show_shared = user_data["admin"] if user_data else False
         base_path = self.user_dir
         if shared:
             base_path = self.shared_dir
@@ -95,7 +94,6 @@ class FileHandler:
             if not user_data["admin"]:
                 return {"error": "User is not admin, required for protected directories."}
             base_path = self.protected_dir
-        self.logger.debug(f"Base path: {base_path}")
         thumbs = data["thumbs"] if "thumbs" in data else False
         thumb_size = data["thumb_size"] if "thumb_size" in data else 128
         res = self.get_dir_content(base_path, data["start_dir"], data["include_files"], data["recursive"], data["filter"])
@@ -328,7 +326,6 @@ class FileHandler:
 
     async def save_file_async(self, request):
         data = request["data"]
-        self.logger.debug(f"Saving file: {data}")
         path = data["path"]
         file_data = data["file_data"]
         protected = data["protected"]
@@ -467,7 +464,5 @@ def is_image(path: str, feats=None):
     filename, file_ext = os.path.splitext(path.strip())
     file_ext = file_ext.lower()
     is_img = os.path.isfile(path) and file_ext in supported_extensions
-    if not is_img:
-        logging.getLogger(__name__).debug(f"File {path}({file_ext}) is not an image: {supported_extensions}")
     return is_img
 

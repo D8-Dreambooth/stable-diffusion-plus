@@ -141,6 +141,7 @@ class UserHandler:
 
     def initialize(self, app: FastAPI, handler):
         handler.register("change_password", self.update_password)
+        handler.register("update_user", self._socket_update_user)
 
         # Add an endpoint to fastAPI for updating the user data
         @app.post("/users/user")
@@ -148,48 +149,60 @@ class UserHandler:
             if current_user["disabled"]:
                 raise HTTPException(status_code=403, detail="Not enough privileges")
             user_data = user.dict()
-            existing_users = self.config_handler.get_config_protected("users")
-            existing_user = None
-            message = ""
-            updated_users = {}
-            for ex_user in existing_users:
-                if ex_user == user_data["name"]:
-                    existing_user = ex_user
-                    break
-                updated_users[ex_user] = existing_users[ex_user]
-
-            if not current_user["admin"]:
-                # Don't allow non-admins to create users
-                if not existing_user:
-                    raise HTTPException(status_code=403, detail="Not enough privileges")
-                # Don't allow non-admins to change the data of other users
-                if existing_user["name"] != current_user:
-                    raise HTTPException(status_code=403, detail="Not enough privileges")
-                # Don't allow non-admins to upgrade themselves to admin
-                if user.admin:
-                    raise HTTPException(status_code=403, detail="Not enough privileges")
-
-            if "password" in user_data:
-                password = user_data.pop("password")
-                if not password.startswith("$2") and not password.startswith("$3"):
-                    # if password is not already hashed, hash it using bcrypt
-                    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-                    user_data["password"] = hashed_password.decode()
-                    message = f"User {user_data['name']} created"
-
-            if existing_user:
-                for key in existing_user:
-                    existing_user[key] = user_data[key]
-                user_data = existing_user
-                message = f"User {existing_user['name']} updated"
-            else:
-                self.register_user(user_data["name"])
-
-            updated_users[user_data["name"]] = user_data
-            self.config_handler.set_config_protected(updated_users, "users")
-            return JSONResponse(status_code=200, content={"message": message, "user": user_data})
+            response = self.update_user_config(user_data, current_user)
+            if response["error"]:
+                raise HTTPException(status_code=403, detail=response["error"])
+            return JSONResponse(status_code=200, content={"message": response["message"], "user": response["user"]})
 
         self.register_users()
+
+    async def _socket_update_user(self, request):
+        user = request["data"]
+        current_user = request["user"]
+        current_user = get_user(current_user)
+        response = self.update_user_config(user, current_user)
+        if response["error"]:
+            return {"message": response["error"]}
+        return {"message": response["message"], "user": response["user"]}
+
+    def update_user_config(self, new_user_data: Dict, request_user: Dict):
+        if "name" not in new_user_data:
+            return {"message": "Unable to update user", "error": "No user name specified", "user": new_user_data}
+        user_name = new_user_data["name"]
+        current_user_data = self.config_handler.get_item_protected(user_name, "users", None)
+        error = None
+        if not request_user["admin"]:
+            if "admin" in new_user_data:
+                del new_user_data["admin"]
+            if "disabled" in new_user_data:
+                del new_user_data["disabled"]
+            # Don't allow non-admins to create users
+            if not current_user_data or current_user_data["name"] != request_user["name"] or request_user["admin"]:
+                error = "Not enough privileges"
+            if error:
+                return {"message": "Unable to update user", "error": error, "user": new_user_data}
+
+        if "pass" in new_user_data:
+            password = new_user_data.pop("pass")
+            if not password.startswith("$2") and not password.startswith("$3"):
+                # if password is not already hashed, hash it using bcrypt
+                hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+                new_user_data["pass"] = hashed_password.decode()
+                message = f"User {new_user_data['name']} created"
+        logger.debug(f"Updating user: {current_user_data}")
+        if current_user_data:
+            for key in current_user_data:
+                if key in new_user_data:
+                    current_user_data[key] = new_user_data[key]
+            new_user_data = current_user_data
+            message = f"User {current_user_data['name']} updated"
+            self.config_handler.set_item_protected(user_name, new_user_data, "users")
+        else:
+            self.register_user(new_user_data["name"])
+
+        if "pass" in new_user_data:
+            del new_user_data["pass"]
+        return {"message": "User updated successfully", "error": None, "user": new_user_data}
 
     def register_users(self):
         users = self.config_handler.get_config_protected("users")

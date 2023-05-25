@@ -114,9 +114,10 @@ async def _download_model(request):
 class ImportExportModule(BaseModule):
 
     def __init__(self):
+        self.id = "import_export"
         self.name: str = "Import/Export"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
         self._initialize_api(app)

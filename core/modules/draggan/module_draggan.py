@@ -1,12 +1,11 @@
 import asyncio
-import os
 import logging
+import os
 from typing import Dict
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from starlette.responses import JSONResponse
 
-from core.handlers.file import FileHandler
 from core.handlers.models import ModelHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
@@ -20,8 +19,9 @@ class SampleModule(BaseModule):
     def __init__(self):
         # Rename this variable to match your module name
         self.name: str = "DragGAN"
+        self.id = "draggan"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     # This method is called when the module is loaded by the server
     def initialize(self, app: FastAPI, handler: SocketHandler):

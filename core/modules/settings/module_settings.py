@@ -16,14 +16,14 @@ logger = logging.getLogger(__name__)
 class SettingsModule(BaseModule):
 
     def __init__(self):
+        self.id = "settings"
         self.name = "Settings"
         self.path = os.path.abspath(os.path.dirname(__file__))
         self.config_handler = ConfigHandler()
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
         socket_handler = SocketHandler()
-        socket_handler.register("get_settings", self.get_settings)
         socket_handler.register("set_settings", self.set_settings)
         socket_handler.register("test_push", self.test_push)
 
@@ -35,31 +35,6 @@ class SettingsModule(BaseModule):
         mh = ModelHandler(user_name="admin")
         asyncio.create_task(self.refresh_after_delay(mh))
         return {"status": "ACK ACK"}
-
-    async def get_settings(self, req):
-        user = req.get("user", None)
-        ch = ConfigHandler(user_name=user)
-        shared_config, protected_config, user_config = ch.get_all_protected()
-        user_data = ch.get_item_protected(user, "users", None)
-        users = []
-        if "users" in protected_config.keys():
-            for user, ud in protected_config["users"].items():
-                users.append(ud)
-        pc = {"users": [user_data]}
-        if user:
-            if user_data:
-                is_admin = user_data.get("admin", False)
-                if is_admin:
-                    pc = protected_config
-                    sorted_users = sorted(users, key=lambda u: u.get("name") != user)
-                    pc["users"] = sorted_users
-                else:
-                    pc = {"users": []}
-                    for u in users:
-                        if u.get("name") == user:
-                            u.pop("admin", None)
-                            pc["users"].append(u)
-        return {"status": "ACK ACK", "shared": shared_config, "protected": pc, "user": user_config}
 
     async def set_settings(self, req):
         data = req["data"] if "data" in req else {}
@@ -73,7 +48,7 @@ class SettingsModule(BaseModule):
             if section == "core" or section == "users":
                 updated = self.config_handler.set_item_protected(key, value, section)
             else:
-                updated = self.config_handler.set_item(key, value, section)
+                updated = self.config_handler.set_item_protected(key, value, section)
 
         status = {"status": "Updated" if updated else "Invalid key or section", "key": key, "value": value}
         return status
@@ -94,7 +69,7 @@ class SettingsModule(BaseModule):
             if is_admin or update_user == user:
                 encrypted_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
                 user_data["pass"] = encrypted_pass.decode()
-                ch.set_item_protected(user,user_data, "users")
+                ch.set_item_protected(user, user_data, "users")
                 return {"status": "Password updated successfully."}
             return {"status": "Unable to update password."}
 

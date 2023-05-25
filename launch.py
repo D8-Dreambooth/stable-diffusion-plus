@@ -88,9 +88,12 @@ def install_requirements(venv_path, requirements_path):
     Installs the requirements specified in the given requirements file into the virtual environment at the given path.
     """
     logger.info(f"Installing requirements from {requirements_path} into virtual environment at {venv_path}")
-    pip_exe = os.path.join(venv_path, "Scripts", "pip.exe") if sys.platform == "win32" else os.path.join(venv_path,
-                                                                                                         "bin", "pip")
-    subprocess.run([pip_exe, "install", "-r", requirements_path], check=False)
+    pip_exe = os.path.join(venv_path, "Scripts", "pip.exe") if sys.platform == "win32" else os.path.join(venv_path, "bin", "pip")
+    process = subprocess.Popen([pip_exe, "install", "-r", requirements_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    for line in process.stdout:
+        if "Requirement already satisfied" not in line:
+            logger.info(line.strip())
+    process.communicate()  # Wait for the process to complete
 
 
 def get_latest_git_tag(git_path, repo_path):
@@ -165,12 +168,12 @@ if __name__ == "__main__":
     # Set base path
     base_path = os.path.abspath(os.path.dirname(__file__))
     launch_settings_path = os.path.join(base_path, "launch_settings.json")
-    conf_src = os.path.join(base_path, "conf_src")
+    config_templates = os.path.join(base_path, "templates", "config")
 
     if not os.path.exists(launch_settings_path):
-        shutil.copy(os.path.join(conf_src, "launch_settings.json"), launch_settings_path)
+        shutil.copy(os.path.join(config_templates, "launch_settings.json"), launch_settings_path)
 
-    with open(os.path.join(conf_src, "launch_settings.json"), "r") as ls_base:
+    with open(os.path.join(config_templates, "launch_settings.json"), "r") as ls_base:
         launch_settings_base = json.load(ls_base)
     # Load launch settings
     with open(launch_settings_path, "r") as ls:
@@ -193,8 +196,22 @@ if __name__ == "__main__":
             json.dump(launch_settings, ls, indent=4)
 
     debug = launch_settings.get("debug", False)
+    debug_level = launch_settings.get("debug_level", "debug")
+    if debug_level == "debug":
+        level = logging.DEBUG
+    elif debug_level == "info":
+        level = logging.INFO
+    elif debug_level == "warning":
+        level = logging.WARNING
+    elif debug_level == "error":
+        level = logging.ERROR
+    elif debug_level == "critical":
+        level = logging.CRITICAL
+    else:
+        level = logging.DEBUG
+        logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
     logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s',
-                        level=logging.INFO if not debug else logging.DEBUG)
+                        level=logging.INFO if not debug else debug_level)
     logger = logging.getLogger("launch")
     # Set up logging
     to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio",

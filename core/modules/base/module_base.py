@@ -6,6 +6,7 @@ import traceback
 from fastapi import FastAPI
 
 from core.handlers.config import ConfigHandler
+from core.handlers.directories import DirectoryHandler
 from core.handlers.websocket import SocketHandler
 
 
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 class BaseModule:
 
-    def __init__(self, name, path):
+    def __init__(self, id, name, path):
+        self.id = id
         self.name = name
         self.path = path
         self.logger = logger
@@ -26,21 +28,36 @@ class BaseModule:
         if not os.path.exists(icon_path):
             icon_path = None
         templates_dir = os.path.join(self.path, "templates")
-        locale_data = None
         if os.path.exists(templates_dir):
-            ch = ConfigHandler()
-            existing_locales = ch.get_item_protected(self.name, "locales", {})
+            dh = DirectoryHandler()
+            protected_dir = dh.protected_path
+            locales_dir = os.path.join(protected_dir, "locales")
+            defaults_dir = os.path.join(protected_dir, "defaults")
+            locales_file = os.path.join(locales_dir, f"locales.json")
+            if not os.path.exists(locales_dir):
+                os.makedirs(locales_dir)
+            if not os.path.exists(defaults_dir):
+                os.makedirs(defaults_dir)
+            existing_locales = {}
+            if os.path.exists(locales_file):
+                logger.debug(f"Loading existing locales {locales_file}")
+                with open(locales_file, "r") as f:
+                    existing_locales = json.load(f)
             updated = False
-            for file in os.listdir(templates_dir):
-                if ".json" not in file or "titles" not in file:
-                    continue
-                with open(os.path.join(templates_dir, file), "r") as f:
-                    locale_data = json.load(f)
-                file_key = file.replace(".json", "")
-                file_key = file_key.replace("titles_", "")
-                # Loop through default locales and add missing keys, remove extra keys
-                if file_key in existing_locales:
-                    existing_locale = existing_locales[file_key]
+            module_locales = os.path.join(templates_dir, "locales")
+            if os.path.exists(module_locales):
+                logger.debug(f"Enumerating module locales {module_locales}")
+                for file in os.listdir(module_locales):
+                    if ".json" not in file or "titles" not in file:
+                        continue
+                    with open(os.path.join(module_locales, file), "r") as f:
+                        locale_data = json.load(f)
+                    lang_key = file.replace(".json", "")
+                    lang_key = lang_key.replace("titles_", "")
+                    logger.debug("LANG KEY: " + lang_key)
+                    existing_lang = existing_locales.get(lang_key, {})
+                    existing_locale = existing_lang.get(f"module_{self.id}", {})
+                    # Loop through default locales and add missing keys, remove extra keys
                     for key, value in locale_data.items():
                         if key not in existing_locale:
                             updated = True
@@ -49,26 +66,19 @@ class BaseModule:
                         if key not in locale_data:
                             updated = True
                             existing_locale.pop(key)
-                    existing_locales[file_key] = existing_locale
-                else:
-                    updated = True
-                    existing_locales[file_key] = locale_data
+                    existing_lang[f"module_{self.id}"] = existing_locale
+                    existing_locales[lang_key] = existing_lang
+
             if updated:
-                ch.set_item_protected(self.name, existing_locales, "locales")
+                logger.debug(f"Updating locale: {self.id}")
+                with open(locales_file, "w") as f:
+                    json.dump(existing_locales, f, indent=4)
 
         self.icon = icon_path
         self._set_defaults()
 
     def get_files(self):
         return self.css_files, self.js_files, self.custom_files, self.source
-
-    def get_locale(self, lang: str = "en"):
-        ch = ConfigHandler()
-        locales_data = ch.get_item_protected(self.name, "locales", {})
-        locale_data = {}
-        if lang in locales_data:
-            locale_data = locales_data[lang]
-        return locale_data
 
     def _enum_files(self):
         css_dir = os.path.join(self.path, "css")
@@ -95,14 +105,20 @@ class BaseModule:
         return config_handler.get_module_defaults(self.name)
 
     def _set_defaults(self):
-        config_dir = os.path.join(self.path, "config")
         templates_dir = os.path.join(self.path, "templates")
+        config_dir = os.path.join(templates_dir, "config")
+        defaults_dir = os.path.join(templates_dir, "defaults")
         # Get default system language
         config_handler = ConfigHandler()
-        if os.path.exists(templates_dir):
-            default_file = os.path.join(templates_dir, f"defaults.json")
-            if os.path.exists(default_file):
-                config_handler.set_module_default(default_file, self.name)
+        if os.path.exists(defaults_dir):
+            for file in os.listdir(defaults_dir):
+                if ".json" not in file:
+                    continue
+                default_file = os.path.abspath(os.path.join(defaults_dir, file))
+                default_name = file.replace(".json", "")
+                if default_name == "defaults":
+                    default_name = self.name
+                config_handler.set_module_default(default_file, default_name)
         if os.path.exists(config_dir):
             files = os.listdir(config_dir)
             for file in files:
@@ -114,7 +130,7 @@ class BaseModule:
                         file_key = file.replace(".json", "")
                         file_data = json.load(f)
                         # Tries to set default values for a module if none exist
-                        config_handler.set_default_config(file_data, file_key, False)
+                        config_handler.set_default_config(file_data, file_key, True)
                 except Exception as e:
                     logger.warning(f"Exception loading default JSON: {e}")
                     traceback.print_exc()

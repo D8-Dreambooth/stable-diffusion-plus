@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 class FileBrowserModule(BaseModule):
 
     def __init__(self):
+        self.id = "file_browser"
         self.name = "Files"
         self.path = os.path.abspath(os.path.dirname(__file__))
         self.user_handler = None
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
         self.user_handler = UserHandler()

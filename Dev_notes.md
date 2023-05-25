@@ -54,7 +54,7 @@ The config handler also contains methods to get and set full sections, as well a
 
 This is where the FastAPI app is created, and handlers are initialized. It's also the location for module discovery and initialization.
 
-/conf_src - Contains default configuration files for core application functionality. Individual module/extension configs are NOT stored here.
+/templates/config - Contains default configuration files for core application functionality. Individual module/extension configs are NOT stored here.
 
 /core - Contains the core application code. This is where the bulk of the application logic is.
 

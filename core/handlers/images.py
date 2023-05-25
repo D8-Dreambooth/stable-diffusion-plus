@@ -190,6 +190,8 @@ class ImageHandler:
         if prompt_data is not None:
             for k, v in prompt_data.__dict__.items():
                 try:
+                    if k == "model":
+                        v = v.__dict__
                     val = json.dumps(v)
                     pnginfo_data.add_text(k, val)
                 except TypeError:
