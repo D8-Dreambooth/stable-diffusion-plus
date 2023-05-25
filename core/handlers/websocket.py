@@ -29,10 +29,10 @@ class ConnectionManager:
     async def send_personal_message(self, message: Dict):
         try:
             websocket = message.pop("socket")
-
             # Make sure the websocket isn't closed already
             await websocket.send_json(message)
         except:
+            logger.debug(f"Error sending personal message: {traceback.format_exc()}")
             pass
 
     async def broadcast(self, message: Dict):
@@ -165,7 +165,6 @@ class SocketHandler:
                         csrf_token = csrf_token.split(" ")[1]
                         payload = jwt.decode(csrf_token, self.user_handler.secret,
                                              algorithms=[self.user_handler.algorithm])
-                        logger.debug(f"Socket payload: {payload}")
                         username: str = payload.get("sub")
                     if username is None:
                         raise credentials_exception
@@ -181,7 +180,6 @@ class SocketHandler:
                 await self.manager.register_session(websocket, username)
 
             await self.manager.connect(websocket)
-            logger.debug(f"Socket connected: {username}")
             while True:
                 await asyncio.sleep(0)
                 try:
@@ -223,7 +221,6 @@ class SocketHandler:
                         logger.warning(f"Exception parsing socket message: {e}")
                         traceback.print_exc()
                 except WebSocketDisconnect as d:
-                    logger.debug("Socket disconnected.")
                     self.manager.disconnect(websocket)
                     break
                 except Exception as f:

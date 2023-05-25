@@ -9,12 +9,13 @@ class Module {
         this.reload_method = reload_method;
         this.systemConfig = null;
         this.moduleDefaults = null;
-        this.moduleLink = null
-        console.log("Registering: ", this);
+        this.moduleLink = null;
+        this.localeData = null;
         registerModule(this);
     }
 
     async init(systemConfig, moduleDefaults, locales) {
+        console.log("Initializing: ", this.name, systemConfig, moduleDefaults, locales);
         this.systemConfig = systemConfig;
         this.moduleDefaults = moduleDefaults;
         let module_id = this.id;
@@ -91,18 +92,27 @@ class Module {
     }
 
     localize(module_locales) {
+        if (module_locales === null || module_locales === undefined) {
+            console.log("No locales for", this.id);
+            return;
+        }
+        this.localeData = module_locales;
         const container = document.getElementById(this.id);
         const elements = container.querySelectorAll("*");
         let mapped = {};
-        if (module_locales["module"]) {
-            let {label, title} = module_locales["module"];
-            if (label) {
-                this.moduleLink.querySelector(".nav_name").innerHTML = label;
-                moduleIds[this.id] = label;
+        if (module_locales.hasOwnProperty("module")) {
+            if (module_locales["module"]) {
+                let {label, title} = module_locales["module"];
+                if (label) {
+                    this.moduleLink.querySelector(".nav_name").innerHTML = label;
+                    moduleIds[this.id] = label;
+                }
+                if (title) {
+                    this.moduleLink.setAttribute("title", title);
+                }
             }
-            if (title) {
-                this.moduleLink.setAttribute("title", title);
-            }
+        } else {
+            console.log("No module module in locales for", this.id);
         }
         elements.forEach((element) => {
             let elem_id = null;

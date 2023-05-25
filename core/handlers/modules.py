@@ -20,22 +20,20 @@ class ModuleHandler:
     loaded_modules = []
     socket_handler = None
 
-    def __new__(cls, module_dir, socket_handler: SocketHandler = None):
+    def __new__(cls, module_dir: str = None, socket_handler: SocketHandler = None):
         if cls._instance is None and module_dir is not None and socket_handler is not None:
             cls._instance = super(ModuleHandler, cls).__new__(cls)
             cls._instance.module_dir = module_dir
             cls._instance.initialize_modules()
             cls._instance.socket_handler = socket_handler
-            socket_handler.register("get_modules", cls._instance._get_modules)
         return cls._instance
 
-    async def _get_modules(self, data):
+    async def get_module_data(self):
         self.initialize_modules()
         ch = ConfigHandler()
         module_data = {}
         for module_name, module in self.active_modules.items():
-            logger.debug("Getting config for " + module_name)
-            model_config = ch.get_config(module_name.replace("module_", ""))
+            model_config = ch.get_config_protected(module_name.replace("module_", ""))
             model_defaults = {}
             try:
                 model_defaults = module.get_defaults()
@@ -46,9 +44,7 @@ class ModuleHandler:
                 "config": model_config if model_config else {},
                 "defaults": model_defaults
             }
-            logger.debug("Config got.")
-        logger.debug("Done, returning.")
-        return {"module_data": module_data}
+        return module_data
 
     def initialize_modules(self):
         for root, dirs, files in os.walk(self.module_dir):

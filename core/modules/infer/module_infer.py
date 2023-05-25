@@ -27,10 +27,11 @@ class InferenceModule(BaseModule):
         Returns: None
 
         """
+        self.id = "infer"
         self.name = "Inference"
         self.path = os.path.abspath(os.path.dirname(__file__))
 
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
         self._initialize_api(app)

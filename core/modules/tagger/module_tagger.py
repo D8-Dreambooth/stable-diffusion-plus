@@ -21,9 +21,10 @@ logger = logging.getLogger(__name__)
 class TaggerModule(BaseModule):
 
     def __init__(self):
+        self.id = "tagger"
         self.name: str = "Tagger"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
         mm = ModelManager()
 
     def initialize(self, app: FastAPI, handler: SocketHandler):

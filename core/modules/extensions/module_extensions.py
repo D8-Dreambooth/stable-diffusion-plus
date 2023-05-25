@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 class ExtensionModule(BaseModule):
 
     def __init__(self):
+        self.id = "extensions"
         self.name = "Extension Manager"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
         self._initialize_api(app)

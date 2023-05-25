@@ -5,9 +5,9 @@ let userConfig;
 let controlnetImageEditor;
 let controlnetFileBrowser;
 let ratiosSet = false;
-const inferModelSelect = $("#inferModel").modelSelect();
-const vaeModelSelect = $("#inferVae").modelSelect();
-const loraModelSelect = $("#inferLoraModels").modelSelect();
+let inferModelSelect;
+let vaeModelSelect;
+let loraModelSelect;
 
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
@@ -72,7 +72,9 @@ function inferInit() {
     keyListener.register("ctrl+ArrowDown", "#infer_prompt", decreaseWeight);
     keyListener.register("ctrl+ArrowUp", "#infer_negative_prompt", increaseWeight);
     keyListener.register("ctrl+ArrowDown", "#infer_negative_prompt", decreaseWeight);
-
+    inferModelSelect = $("#inferModel").modelSelect();
+    vaeModelSelect = $("#inferVae").modelSelect();
+    loraModelSelect = $("#inferLoraModels").modelSelect();
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     historyTracker.registerHistory(promptEl);
@@ -239,7 +241,8 @@ function inferInit() {
     }
 
     let moduleSettings = inferModule.systemConfig;
-    loadSettings(moduleSettings);
+    console.log("Loading inference settings(1) from: ", moduleSettings);
+    loadInferSettings(moduleSettings);
     sendMessage("get_controlnets", {}, true).then((data) => {
         console.log("Controlnets: ", data);
         let controlnetSelect = document.getElementById("controlnet_type");
@@ -260,7 +263,7 @@ function inferInit() {
 }
 
 function inferRefresh() {
-    loadSettings(inferModule.systemConfig);
+    loadInferSettings(inferModule.systemConfig);
     sendMessage("get_controlnets", {}, true).then((data) => {
         console.log("Controlnets: ", data);
         let controlnetSelect = document.getElementById("controlnet_type");
@@ -335,8 +338,8 @@ function decreaseWeight() {
     input.setSelectionRange(selectionStart, selectionEnd);
 }
 
-function loadSettings(data) {
-    console.log("Data: ", data);
+function loadInferSettings(data) {
+    console.log("Loading inference settings: ", data);
     userConfig = data;
     if (data.hasOwnProperty("basic_infer")) {
         if (data.basic_infer) {
@@ -348,11 +351,13 @@ function loadSettings(data) {
     }
 
     if (data["show_aspect_ratios"]) {
+        console.log("Show aspect ratios");
         addRatioCards();
         ratioContainer.show();
         inferWidth.hide();
         inferHeight.hide();
     } else {
+        console.log("Hide aspect ratios");
         ratioContainer.hide();
         inferWidth.show();
         inferHeight.show();

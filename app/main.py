@@ -51,7 +51,7 @@ dirs = {}
 logger = logging.getLogger(__name__)
 
 
-def get_files(dir_handler: DirectoryHandler, theme_only=False, user_data: User = None):
+def get_files(dir_handler: DirectoryHandler, theme_only=False, user_data: Dict = None):
     file_config_handler = ConfigHandler(user_name=user_data["name"] if user_data is not None else None)
     css_files = []
     js_files = []
@@ -75,14 +75,12 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, user_data: User =
             css_files.append(os.path.join(mount_path, os.path.basename(theme_check)))
             app.mount(mount_path, StaticFiles(directory=file_dir), name="static")
     if theme_only:
-        return css_files, js_files, js_files_ext, custom_files, html, locales
-    user_lang = file_config_handler.get_item("language", "core", default="en")
+        return css_files, js_files, js_files_ext, custom_files, html
+    user_lang = file_config_handler.get_item_protected("language", "core", default="en")
     for active_dict in (active_modules, active_extensions):
         for module_name, module in active_dict.items():
             if module_name == "Settings" and not is_admin:
                 continue
-            locale_data = getattr(module, "get_locale", user_lang)()
-            locales[module_name] = locale_data if locale_data is not None else {}
             for dest, attr in [(css_files, "css_files"), (js_files, "js_files"), (custom_files, "custom_files")]:
                 if attr == "js_files" and dict_idx == 1:
                     dest = js_files_ext
@@ -99,7 +97,7 @@ def get_files(dir_handler: DirectoryHandler, theme_only=False, user_data: User =
                     html.append(file.read())
             dict_idx += 1
     locales = json.dumps(locales)
-    return css_files, js_files, js_files_ext, custom_files, html, locales
+    return css_files, js_files, js_files_ext, custom_files, html
 
 
 def load_settings():
@@ -110,20 +108,7 @@ def load_settings():
     with open(launch_settings_path, "r") as ls:
         launch_settings = json.load(ls)
     # Set the global debugging level
-    debug_level = launch_settings.get("debug_level", "debug")
-    if debug_level == "debug":
-        level = logging.DEBUG
-    elif debug_level == "info":
-        level = logging.INFO
-    elif debug_level == "warning":
-        level = logging.WARNING
-    elif debug_level == "error":
-        level = logging.ERROR
-    elif debug_level == "critical":
-        level = logging.CRITICAL
-    else:
-        level = logging.DEBUG
-        logging.warning(f"Unknown debug_level value: {debug_level}. Defaulting to DEBUG level.")
+
     directory_handler = DirectoryHandler(app_path, launch_settings)
     config_handler = ConfigHandler()
     cpu_only = config_handler.get_item_protected("cpu_only", "core", False)
@@ -142,6 +127,7 @@ def initialize_app():
     socket_handler = SocketHandler(app, user_handler)
 
     # Register config handler callbacks
+    socket_handler.register("get_all", config_handler.socket_get_all)
     socket_handler.register("get_config", config_handler.socket_get_config)
     socket_handler.register("set_config", config_handler.socket_set_config)
     socket_handler.register("get_config_item", config_handler.socket_get_config_item)
@@ -236,8 +222,9 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
     ch = ConfigHandler(user_name=current_user)
     page_title = ch.get_item_protected("title", "core", "Stable-Diffusion Plus")
     show_snark = ch.get_item_protected("snarky_loaders", "core", True)
+    language = ch.get_item_protected("language", "core", "en")
     if show_snark:
-        loaders = ch.get_config_protected("loading")
+        loaders = ch.get_locales("loading", language)
         # Select a random item from the loaders list
         loader = random.choice(loaders)
     else:
@@ -251,7 +238,7 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
     if user_handler.user_auth:
         if current_user and not user_data["disabled"]:
             # User is logged in, show the usual home page
-            css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, False, user_data)
+            css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, user_data)
             return templates.TemplateResponse(
                 "base.html",
                 {
@@ -263,7 +250,6 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
                     "custom_files": custom_files,
                     "module_html": html,
                     "timestamp": timestamp,
-                    "locales": locales,
                     "loader": loader
                 }
             )
@@ -273,7 +259,7 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
             return RedirectResponse(url="/login")
     else:
         # Authentication not required, show the usual home page
-        css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, False, None)
+        css_files, js_files, js_files_ext, custom_files, html = get_files(dh, False, None)
         return templates.TemplateResponse(
             "base.html",
             {
@@ -285,7 +271,6 @@ async def home(request: Request, user_data: Dict = Depends(get_current_active_us
                 "custom_files": custom_files,
                 "module_html": html,
                 "timestamp": timestamp,
-                "locales": locales,
                 "loader": loader
             }
         )
@@ -329,7 +314,7 @@ async def login(request: Request):
     dh = DirectoryHandler()
     ch = ConfigHandler()
     page_title = ch.get_item_protected("title", "core", "Stable-Diffusion Plus")
-    css_files, js_files, js_files_ext, custom_files, html, locales = get_files(dh, True)
+    css_files, js_files, js_files_ext, custom_files, html = get_files(dh, True)
     return templates.TemplateResponse(
         "login.html",
         {

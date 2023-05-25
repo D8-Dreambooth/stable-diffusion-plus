@@ -41,13 +41,15 @@ class DirectoryHandler:
         
     def initialize_directories(self):
         # Check/set shared directories based on launch settings
-        shared_path = self._launch_settings.get("shared_dir", "")
-        self.shared_path = shared_path if shared_path != "" else os.path.join(self.app_path, "data_shared")
+        self.shared_path = self._launch_settings.get("shared_dir", "")
+        if self.shared_path == "":
+            self.shared_path = os.path.join(self.app_path, "data_shared")
         if not os.path.exists(self.shared_path):
             os.mkdir(self.shared_path)
 
-        protected_path = self._launch_settings.get("protected_dir", "")
-        self.protected_path = protected_path if protected_path != "" else os.path.join(self.app_path, "data_protected")
+        self.protected_path = self._launch_settings.get("protected_dir", "")
+        if self.protected_path == "":
+            self.protected_path = os.path.join(self.app_path, "data_protected")
         if not os.path.exists(self.protected_path):
             os.mkdir(self.protected_path)
 
@@ -100,15 +102,15 @@ class DirectoryHandler:
         if self.shared_path in os.path.abspath(full_path):
             output = full_path
         else:
-            self.logger.warning("Directory not found in shared directories.")
+            self.logger.warning(f"Directory '{directory}' not found in shared dir: {self.shared_path}")
         return output
 
     def get_protected_directory(self, directory: str):
         output = None
         if directory in self.protected_dirs:
-            output = os.path.join(self.shared_path, directory)
+            output = os.path.join(self.protected_path, directory)
         else:
-            self.logger.warning("Directory not found in shared directories.")
+            self.logger.warning(f"Directory '{directory}' not found in protected dir: {self.protected_path}")
         return output
 
 

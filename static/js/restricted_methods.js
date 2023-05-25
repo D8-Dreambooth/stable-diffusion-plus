@@ -6,63 +6,83 @@ let localData = {};
 // region ModuleHandling
 
 document.addEventListener("DOMContentLoaded", function () {
-    initializeCore();
-    console.log("Getting module data...");
-    sendMessage("get_modules", {}).then(function (response) {
-        let module_data = response["module_data"];
-        console.log("Got module data: ", module_data);
+    initializeRestricted().then(r => console.log("Restricted methods initialized"));
+});
+
+async function initializeRestricted() {
+    console.log("DOM loaded, initializing core...");
+    sendMessage("get_all", {}, true).then(data => {
+        console.log("Data retrieved: ", data);
+        let coreSettings = {};
+        if (data.hasOwnProperty("protected") && data["protected"].hasOwnProperty("core")) {
+            coreSettings = data["protected"]["core"];
+            initializeCore(coreSettings);
+        }
+        console.log("Core initialized, initializing module data...");
+        let module_data = data["modules"];
+        console.log("Module data retrieved, loading: ", module_data);
         loadDiv.addClass("loaded");
         let enabled_modules = [];
+        let localeData = data["locales"];
         // Parse module data, which is a dict of lists where the key is the module ID, and the value is a list with two
         // elements, the first being the module settings, and the second being the module defaults.
-        const localeDataElement = document.getElementById("locale-data");
-        let localeInner = localeDataElement.textContent;
-        const localeData = JSON.parse(localeInner);
         let newDefaults = {};
+
         for (let module_id in module_data) {
             let module_settings = module_data[module_id]["config"];
             let module_defaults = module_data[module_id]["defaults"];
             let module_locales = localeData[module_id];
             let enableModule = false;
+
             if (module_settings.hasOwnProperty("enable")) {
                 enableModule = module_settings["enable"];
             }
+
             if (module_id === "module_settings") {
                 enableModule = true;
             }
+
             // Check if the module is enabled
             if (enableModule) {
                 enabled_modules.push(module_id);
+
                 for (let module of modules) {
                     const camelCaseId = module_id.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
-                    console.log("Comparing ", module.id, " to ", camelCaseId);
+
                     if (module.id === camelCaseId) {
+                        console.log("Initializing module: ", module_settings, module_defaults, module_locales);
                         module.enabled = true;
-                        module.init(module_settings, module_defaults, module_locales);
+                        if (module_id === "module_settings") {
+                            module.currentUser = data["user"];
+                            module.init(data["protected"], data["modules"], data["locales"]);
+                        } else {
+                            // Await module.init() before proceeding to the next iteration
+                            module.init(module_settings, module_defaults, module_locales);
+                        }
+
                         newDefaults[module_id] = module.enumerateInputs();
-                        console.log("MATCHED: ", module.id, " to ", camelCaseId);
                         break;
                     }
                 }
             }
         }
+
         // Uncomment this to grab default configs after adding/changing stuff.
         // console.log("New defaults: ", newDefaults);
-        fitty(".fit",
-            {
-                minSize: 10,
-                maxSize: 16,
-                multiLine: false,
-            });
+        fitty(".fit", {
+            minSize: 10,
+            maxSize: 16,
+            multiLine: false,
+        });
     });
-});
 
+}
 
 
 // Register a UI Module in the menu
 function registerModule(module) {
     if (modules.indexOf(module) !== -1) {
-        console.log ("Module already registered: ", module);
+        console.log("Module already registered: ", module);
         return;
     }
     modules.push(module);

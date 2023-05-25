@@ -6,15 +6,12 @@ const historyTracker = new HistoryTracker();
 let messages = [];
 // region Initialization
 
-function initializeCore() {
-    console.log("Initializing core methods.");
+function initializeCore(data) {
     connectSocket();
     showNavbar();
-    sendMessage("get_config", {"section_key": "core"}).then((data) => {
-        console.log("Loading core settings");
-        loadCoreSettings(data);
-    });
-    const $buttons = $('.cancelButton').cancelButton();
+    console.log("Initializing core methods.");
+    loadCoreSettings(data);
+    $('.cancelButton').cancelButton();
     console.log("Core initialized.");
 }
 
@@ -194,6 +191,7 @@ function sendMessage(name, data, await = true, target = null) {
                 }
                 // This is the response we're waiting for
                 globalSocket.removeEventListener("message", handleResponse);
+                console.log("Received: ", response);
                 resolve(response.data);
             }
         }

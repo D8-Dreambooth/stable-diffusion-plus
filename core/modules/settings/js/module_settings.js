@@ -1,42 +1,53 @@
 const settingsModule = new Module("Settings", "moduleSettings", "cog", false, 1000, initSettings);
-
+let userFormCreated = false;
+let currentUser;
 function initSettings() {
+    let protectedData = this.systemConfig;
+    let modules = this.moduleDefaults;
+    let locales = this.localeData;
+    console.log("Initializing settings module", protectedData, modules, locales);
     // Register the module with the UI. Icon is from boxicons by default.
-    sendMessage("get_settings", {}, true).then((res) => {
-        parseObject(res);
-    });
-    $("#testPush").click(() => {
-        sendMessage("test_push", {}, true).then((res) => {
-            console.log(res);
-        });
-    });
+    let adminUser = false;
+    if (this.currentUser !== undefined) {
+        adminUser = this.currentUser["admin"];
+    }
+    loadSettings(protectedData, adminUser);
 }
 
-function parseObject(obj) {
-    const systemSection = obj.shared.core;
-    const usersSection = obj.protected.users;
-    const otherSections = Object.entries(obj.shared).filter(
-        ([key]) => key !== 'core'
-    );
-    const systemForm = createForm(systemSection, 'System');
+function loadSettings(settingData, adminUser) {
+    console.log("Retrieved settings, loading (2)", settingData, currentUser);
+    const systemSection = settingData["core"];
+    const usersSection = settingData["users"];
+
+
+    let tabs = [];
+
     let usersForm;
     if (usersSection !== undefined && usersSection[0] !== null) {
         usersForm = createUserForm(usersSection);
     }
-    const otherForms = otherSections.map(([key, value]) => {
-        const titleCaseKey = key.replace(/_/g, ' ').toTitleCase();
-        const form = createForm(value, titleCaseKey);
-        return {name: titleCaseKey, content: form};
-    });
 
-    let tabs = [
-        {name: 'System', content: systemForm},
-    ];
     if (usersForm !== undefined) {
         tabs.push({name: 'Users', content: usersForm});
     }
-    tabs = tabs.concat(otherForms);
 
+    if (adminUser) {
+        const otherSections = Object.entries(settingData).filter(
+            ([key]) => key !== 'core' && key !== "users"
+        );
+
+        const systemForm = createForm(systemSection, 'System');
+        tabs.push({name: 'System', content: systemForm});
+
+        const otherForms = otherSections.map(([key, value]) => {
+            const titleCaseKey = key.replace(/_/g, ' ').toTitleCase();
+            const form = createForm(value, titleCaseKey);
+            return {name: titleCaseKey, content: form};
+        });
+
+
+        tabs = tabs.concat(otherForms);
+    }
     const tabContainer = document.getElementById('appSettingsContainer');
     tabContainer.innerHTML = '';
     createTabs(tabs, tabContainer);
@@ -138,12 +149,21 @@ function createTabs(sections, parent) {
         if (timeoutId !== null) {
             clearTimeout(timeoutId);
         }
+        let endpoint = "set_settings";
+        let data = {};
+        if ($(this).attr("data-section") === "users") {
+            endpoint = "update_user";
 
+            data = {"name": sectionName};
+            data[paramName] = paramValue;
+        } else {
+            data = {"section": sectionName, "key": paramName, "value": paramValue};
+        }
         timeoutId = setTimeout(() => {
-            sendMessage("set_settings", {"section": sectionName, "key": paramName, "value": paramValue}).then((res) => {
-            });
-            timeoutId = null;
-            if (sectionName !== "core") {
+            sendMessage(endpoint, data).then((res) => {
+                timeoutId = null;
+            if (res.name === "update_user") return;
+            if (sectionName !== "core" && sectionName !== "users") {
                 console.log("Refreshing section: " + sectionName, modules);
                 for (let i = 0; i < modules.length; i++) {
                     console.log(modules[i].id.toLowerCase(), "module" + sectionName);
@@ -155,7 +175,7 @@ function createTabs(sections, parent) {
                     }
                 }
             }
-
+            });
         }, 500);
     });
 }
@@ -169,11 +189,16 @@ String.prototype.toTitleCase = function () {
 
 
 function createUserForm(users) {
+    userFormCreated = true;
+    console.log("Creating user form: ", users);
     const form = document.createElement("form");
     form.setAttribute("data-section", "users");
     form.setAttribute("class", "row g-2");
 
-    users.forEach((user) => {
+    Object.entries(users).forEach(([key, user]) => {
+        console.log("Creating user: ", user);
+        const userDiv = document.createElement("div");
+        userDiv.setAttribute("class", "user-div col-12");
         const username = user.name;
         const passwordDiv = document.createElement("div");
         passwordDiv.setAttribute("class", "password-div col-12");
@@ -276,37 +301,37 @@ function createUserForm(users) {
             confirmPasswordInput.value = "";
         });
 
-        form.appendChild(document.createElement("hr"));
-        form.appendChild(document.createElement("div"));
-        form.lastChild.setAttribute("class", "col-12");
-        form.lastChild.appendChild(document.createTextNode(`User: ${username.toTitleCase()}`));
+        userDiv.appendChild(document.createElement("hr"));
+        userDiv.appendChild(document.createElement("div"));
+        userDiv.lastChild.setAttribute("class", "col-6 col-md-12");
+        userDiv.lastChild.appendChild(document.createTextNode(`User: ${username.toTitleCase()}`));
         let adminCheckbox = "";
         if (user.hasOwnProperty("admin")) {
-            adminCheckbox = createCheckbox(user.admin, "Admin User", "admin");
-            form.lastChild.appendChild(adminCheckbox);
+            adminCheckbox = createCheckbox(user.admin, "Admin User", user.name + "_admin", true);
+            userDiv.lastChild.appendChild(adminCheckbox);
         }
 
-        form.appendChild(changePasswordButton);
-        form.appendChild(passwordDiv);
+        userDiv.appendChild(changePasswordButton);
+        userDiv.appendChild(passwordDiv);
         passwordDiv.appendChild(passwordInput);
         passwordDiv.appendChild(confirmPasswordInput);
         passwordDiv.appendChild(updateButton);
         passwordDiv.appendChild(cancelButton);
-
+        form.appendChild(userDiv);
     });
 
     return form;
 }
 
 
-function createCheckbox(value, label, name) {
+function createCheckbox(value, label, name, user= false) {
     const formCheck = document.createElement('div');
     formCheck.setAttribute('class', 'form-check form-switch');
 
     const checkbox = document.createElement('input');
     checkbox.setAttribute('type', 'checkbox');
     checkbox.setAttribute('class', 'form-check-input sysInput');
-    checkbox.setAttribute('data-section', 'system');
+    checkbox.setAttribute('data-section', user ? "users" : "core");
     checkbox.setAttribute('data-name', name.split('_')[1]);
     checkbox.setAttribute('name', name);
     checkbox.checked = value;

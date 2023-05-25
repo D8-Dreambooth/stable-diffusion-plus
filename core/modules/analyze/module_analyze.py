@@ -25,8 +25,9 @@ class AnalyzeModule(BaseModule):
     def __init__(self):
         # Rename this variable to match your module name
         self.name: str = "Analyze"
+        self.id = "analyze"
         self.path = os.path.abspath(os.path.dirname(__file__))
-        super().__init__(self.name, self.path)
+        super().__init__(self.id, self.name, self.path)
 
     # This method is called when the module is loaded by the server
     def initialize(self, app: FastAPI, handler: SocketHandler):
