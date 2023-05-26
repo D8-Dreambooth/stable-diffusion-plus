@@ -56,7 +56,7 @@ class ConfigHandler:
                     user_instance._protected_dir = None
                 user_instance._user_dir = os.path.join(dir_handler.protected_path, "users", user_name, "config")
                 user_instance.config_user = {}
-                user_instance._base_defaults = os.path.join(dir_handler.protected_path, "users", user_name, "defaults")
+                user_instance._base_defaults = cls._instance._base_defaults
                 # Enumerate all files in cls._base_defaults and copy to user defaults if not already present
                 user_instance._create_directories()
 
