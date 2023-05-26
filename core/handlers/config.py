@@ -22,6 +22,7 @@ class ConfigHandler:
     config_protected = {}
     config_user = None
     user_instances = {}
+    script_path = None
 
     def __new__(cls, user_name=None):
         if cls._instance is None:
@@ -91,6 +92,12 @@ class ConfigHandler:
             if is_admin:
                 sorted_users = sorted(users.values(), key=lambda u: u.get("name") != user_data.get("name"))
                 ui_users = sorted_users
+                if self.script_path is not None:
+                    launch_settings_path = os.path.join(self.script_path, "launch_settings.json")
+                    if os.path.isfile(launch_settings_path):
+                        with open(launch_settings_path, "r") as f:
+                            protected_config["launch_settings"] = json.load(f)
+
             else:
                 ui_data = user_data.copy()
                 del ui_data["admin"]
@@ -145,6 +152,7 @@ class ConfigHandler:
     def _check_defaults(self, script_path):
         if not any(frame.filename == __file__ for frame in inspect.getouterframes(inspect.currentframe(), 2)):
             raise NotImplementedError('This method can only be called by the ConfigHandler instance.')
+        self.script_path = script_path
         source_dir = os.path.join(script_path, "templates")
         sources = ["config", "defaults", "locales"]
         dir_handler = DirectoryHandler()
@@ -157,6 +165,8 @@ class ConfigHandler:
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
             for file in [f for f in os.listdir(s_dir) if os.path.splitext(f)[1] == ".json"]:
+                if "launch_settings" in file:
+                    continue
                 src_path = os.path.join(s_dir, file)
                 if self._protected_dir:
                     dst_path = os.path.join(dest_dir, file)
