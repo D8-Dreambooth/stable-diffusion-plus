@@ -192,9 +192,12 @@ class ConfigHandler:
         if os.path.exists(default_file):
             with open(default_file, "r") as file:
                 return json.load(file)
+        else:
+            logger.warning(f"Module defaults file not found: {default_file}")
         return {}
 
-    def update_keys(self, template_path, live_path):
+    @staticmethod
+    def update_keys(template_path, live_path):
         try:
             # Load the template and live JSON data from files
             with open(template_path, "r") as template_file:
