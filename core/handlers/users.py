@@ -182,16 +182,21 @@ class UserHandler:
             if error:
                 return {"message": "Unable to update user", "error": error, "user": new_user_data}
 
-        if "pass" in new_user_data:
-            password = new_user_data.pop("pass")
+        if "pass" in new_user_data or "password" in new_user_data:
+            password = new_user_data.pop("pass") if "pass" in new_user_data else new_user_data.pop("password")
+            logger.debug(f"Popped pass: {password}")
+
             if not password.startswith("$2") and not password.startswith("$3"):
                 # if password is not already hashed, hash it using bcrypt
                 hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
                 new_user_data["pass"] = hashed_password.decode()
+                logger.debug(f"Hashed pass: {new_user_data['pass']}")
                 message = f"User {new_user_data['name']} created"
         logger.debug(f"Updating user: {current_user_data}")
         if current_user_data:
             for key in current_user_data:
+                if key == "password":
+                    key = "pass"
                 if key in new_user_data:
                     current_user_data[key] = new_user_data[key]
             new_user_data = current_user_data
