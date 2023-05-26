@@ -231,12 +231,12 @@ class UserHandler:
             from core.handlers.file import FileHandler
             from core.handlers.models import ModelHandler
             from core.handlers.images import ImageHandler
-            logger.info(f"Registering handlers for user: {user}")
-            DirectoryHandler(user_name=user)
-            StatusHandler(user_name=user)
-            FileHandler(user_name=user)
-            ModelHandler(user_name=user)
-            ImageHandler(user_name=user)
+            logger.info(f"Registering handlers for user.name: {user.name}")
+            DirectoryHandler(user_name=user.name)
+            StatusHandler(user_name=user.name)
+            FileHandler(user_name=user.name)
+            ModelHandler(user_name=user.name)
+            ImageHandler(user_name=user.name)
 
     def verify_password(self, plain_password, hashed_password):
         return self.pwd_context.verify(plain_password, hashed_password)
