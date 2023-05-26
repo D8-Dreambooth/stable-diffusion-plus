@@ -196,9 +196,9 @@ class UserHandler:
                     current_user_data[key] = new_user_data[key]
             new_user_data = current_user_data
             message = f"User {current_user_data['name']} updated"
-            self.config_handler.set_item_protected(user_name, new_user_data, "users")
         else:
-            self.register_user(new_user_data["name"])
+            self.register_user(new_user_data)
+        self.config_handler.set_item_protected(user_name, new_user_data, "users")
 
         if "pass" in new_user_data:
             del new_user_data["pass"]

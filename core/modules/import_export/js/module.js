@@ -18,7 +18,8 @@ function initImportExport() {
     const modelMergePrimary = $("#modelMergePrimary").modelSelect({"model_type": "diffusers"});
     const modelMergeSecondary = $("#modelMergeSecondary").modelSelect({"model_type": "diffusers"});
     const modelMergeTertiary = $("#modelMergeTertiary").modelSelect({"model_type": "diffusers"});
-
+    const loraModelSource = $("#io_lora_src").modelSelect({});
+    const loraModelBase = $("#io_lora_base").modelSelect({});
     const startExtract = document.getElementById("startExtract");
     const startCompile = document.getElementById("startCompile");
     const extractLora = document.getElementById("startExtractLora");
@@ -54,11 +55,9 @@ function initImportExport() {
 
         // Define an empty object
         const values = {};
-        let srcFS = $("#io_lora_src").modelSelect({});
-        let baseFS = $("#io_lora_base").modelSelect({});
         // Get the selected value from each of the select elements and add it to the object
-        values.tuned = srcFS.getModel();
-        values.src = baseFS.getModel();
+        values.tuned = loraModelSource.getModel();
+        values.src = loraModelBase.getModel();
         values.precision = loraPrecisionSelect.value;
         console.log("Dims: ", loraNetworkDimensionRange, loraConvDimensionRange);
         // Get the current value from each of the range input elements and add it to the object
