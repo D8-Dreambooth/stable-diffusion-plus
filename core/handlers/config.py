@@ -187,7 +187,7 @@ class ConfigHandler:
             self.update_keys(file, default_file)
 
     def get_module_defaults(self, module_name):
-        module_name = re.sub(r'[^a-zA-Z0-9]', '', module_name)
+        module_name = re.sub(r'[^a-zA-Z0-9_]', '', module_name)
         default_file = os.path.join(self._base_defaults, f"{module_name}.json")
         if os.path.exists(default_file):
             with open(default_file, "r") as file:
