@@ -323,7 +323,7 @@ class ConfigHandler:
         return self._set_item_in_dict(key, value, section_key, is_user=True)
 
     def set_default_config(self, config, section_key=None, protected=False):
-        if section_key and section_key not in self.config_shared.keys():
+        if section_key and section_key not in self.config_protected.keys():
             self._set_config_dict(config, section_key, protected)
 
     def get_all_protected(self) -> Tuple[Dict, Dict, Dict]:
