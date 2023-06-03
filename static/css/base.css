@@ -346,6 +346,10 @@ input[type="number"]:active::-webkit-inner-spin-button{
     width: 0;
 }
 
+.form-group:empty {
+  display: none;
+}
+
 .module {
     margin-left: var(--nav-width);
     overflow-y: auto;

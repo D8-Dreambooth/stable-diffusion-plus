@@ -28,24 +28,6 @@ class FileBrowser {
         this.sortOrder = "desc";
         this.sortId = "fileSortButton" + Math.floor(Math.random() * 1000000);
 
-        if (options["selectedElement"] !== undefined && options["selectedElement"] !== "") {
-            const path = options["selectedElement"];
-            const lastSeparatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-            if (lastSeparatorIndex !== -1) {
-                const parentDirectory = path.slice(0, lastSeparatorIndex);
-                const directory = path.slice(lastSeparatorIndex + 1);
-                this.setCurrentPath(parentDirectory);
-                this.selectedLinks = [];
-                this.selected = directory;
-                this.value = path;
-            } else {
-                this.selectedLinks = [];
-                this.selected = path;
-                this.value = path;
-            }
-            this.setValue(path);
-        }
-
         this.treeContainer = document.createElement("div");
         this.treeContainer.classList.add("tree");
 
@@ -84,6 +66,24 @@ class FileBrowser {
         this.addKeyboardListener();
 
         let inputGroup = this.buildInput();
+
+        if (options["selectedElement"] !== undefined && options["selectedElement"] !== "") {
+            const path = options["selectedElement"];
+            const lastSeparatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+            if (lastSeparatorIndex !== -1) {
+                const parentDirectory = path.slice(0, lastSeparatorIndex);
+                const directory = path.slice(lastSeparatorIndex + 1);
+                this.setCurrentPath(parentDirectory);
+                this.selectedLinks = [];
+                this.selected = directory;
+                this.value = path;
+            } else {
+                this.selectedLinks = [];
+                this.selected = path;
+                this.value = path;
+            }
+            this.setValue(path);
+        }
 
         this.buildTree().then(() => {
             this.parentElement.prepend(inputGroup);
@@ -166,8 +166,9 @@ class FileBrowser {
 
     setValue(value) {
         this.value = value;
+        this.input.value = value;
         this.container.dataset.value = value;
-
+        this.currentParent = value;
     }
 
     setCurrentPath(path) {

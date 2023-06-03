@@ -32,6 +32,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     model_handler = ModelHandler(user_name=user)
     status_handler = StatusHandler(user_name=user, target=target)
     image_handler = ImageHandler(user_name=user)
+    prompt_count = 0
     ch = ConfigHandler()
     status_handler.start(inference_settings.num_images * inference_settings.steps, "Starting inference.")
     await status_handler.send_async()
@@ -40,6 +41,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
     # List of prompts and images to pass to the actual pipeline
     input_prompts = []
+    p2p_prompts = []
     negative_prompts = []
     control_images = []
 
@@ -123,8 +125,32 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
     else:
-        input_prompts = [inference_settings.prompt]
-        negative_prompts = [inference_settings.negative_prompt]
+        # If newlines are in the prompt, split it up
+        if "\n" in inference_settings.prompt:
+            prompts = inference_settings.prompt.split("\n")
+            for p in prompts:
+                if p.strip() != "":
+                    input_prompts.append(p.strip())
+            prompt_count = len(prompts)
+        else:
+            input_prompts = [inference_settings.prompt]
+            prompt_count = 1
+        # If newlines are in the negative prompt, split it up
+        if "\n" in inference_settings.negative_prompt:
+            prompts = inference_settings.negative_prompt.split("\n")
+            for p in prompts:
+                if p.strip() != "":
+                    negative_prompts.append(p.strip())
+        else:
+            negative_prompts = [inference_settings.negative_prompt]
+
+    # Make sure we have the same number of prompts as negative prompts
+    if len(input_prompts) > len(negative_prompts):
+        for i in range(len(input_prompts) - len(negative_prompts)):
+            negative_prompts.append(inference_settings.negative_prompt)
+    elif len(negative_prompts) > len(input_prompts):
+        for i in range(len(negative_prompts) - len(input_prompts)):
+            input_prompts.append(inference_settings.prompt)
 
     status_handler.update("status", "Loading model.")
     logger.debug("Sending status(2)")
@@ -140,7 +166,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         except Exception as e:
             logger.debug(f"Unable to parse VAE JSON: {e}")
     logger.debug("Sent")
-    pipeline = model_handler.load_model("diffusers", model_data)
+    if inference_settings.mode == "p2p":
+        pipeline = model_handler.load_model("diffusers_prompt2prompt", model_data)
+    else:
+        pipeline = model_handler.load_model("diffusers", model_data)
 
     if not pipeline:
         logger.warning("No model selected.")
@@ -148,13 +177,14 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         return [], []
 
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
-    input_prompts = input_prompts * inference_settings.num_images
-    negative_prompts = negative_prompts * inference_settings.num_images
+    input_prompts = [val for val in input_prompts for _ in range(inference_settings.num_images)]
+    negative_prompts = [val for val in negative_prompts for _ in range(inference_settings.num_images)]
 
     if len(control_images):
         gen_height = 0
         gen_width = 0
-        control_images = control_images * inference_settings.num_images
+        control_images = [val for val in control_images for _ in range(inference_settings.num_images)]
+
     total_images = len(input_prompts)
 
     out_images = []
@@ -168,6 +198,11 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         # If the seed is a string, parse it
         if isinstance(inference_settings.seed, str):
             initial_seed = int(inference_settings.seed)
+
+        if initial_seed is None:
+            initial_seed = -1
+        if initial_seed == -1:
+            initial_seed = int(random.randrange(21474836147))
 
         pbar = mytqdm(
             desc="Making images.",
@@ -245,18 +280,18 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 use_embeds = False
             else:
                 batch_control = []
-            if initial_seed is None:
-                initial_seed = -1
-            if initial_seed == -1:
-                seed = int(random.randrange(21474836147))
-            else:
-                if len(out_images) > 0:
-                    initial_seed = initial_seed + 1
-                if initial_seed > 21474836147:
-                    initial_seed = int(random.randrange(21474836147))
-                seed = initial_seed
-            inference_settings.seed = seed
-            generator = torch.manual_seed(seed)
+
+            infer_seed = initial_seed
+            if len(out_images) % prompt_count == 0 and len(out_images) > 0:
+                infer_seed = infer_seed + int(len(out_images) / prompt_count)
+            if infer_seed > 21474836147:
+                infer_seed = 21474836147 - infer_seed
+
+            inference_settings.seed = infer_seed
+            generator = torch.Generator(device='cuda')
+            generator.manual_seed(infer_seed)
+            # Set the generator to the same device as inference pipe
+
             loop = asyncio.get_event_loop()
             # Here's the magic sauce
             preview_steps = ch.get_item("preview_steps", default=5)
@@ -290,7 +325,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 if inference_settings.use_sag:
                     kwargs["sag_scale"] = 1.0
                 logger.debug(f"Mode: {inference_settings.mode}")
-                skip_modes = ["img2img", "inpaint", "depth2img"]
+                skip_modes = ["img2img", "inpaint", "depth2img", "p2p"]
                 if inference_settings.mode in skip_modes and inference_settings.infer_image is not None:
                     # Load PIL Image from data:image/png
                     image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])

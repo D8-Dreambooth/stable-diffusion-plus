@@ -1,6 +1,5 @@
 import base64
 import decimal
-import logging
 import re
 from dataclasses import dataclass
 from io import BytesIO
@@ -37,6 +36,7 @@ class InferSettings:
     negative_prompt: str = ""
     num_images: int = 1
     prompt: str = ""
+    prompts = []
     scale: float = 7.5
     seed: int = -1
     use_sag = False

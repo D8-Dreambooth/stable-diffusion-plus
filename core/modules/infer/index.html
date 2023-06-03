@@ -76,6 +76,19 @@
                                        value="img2img">
                                 <label class="form-check-label" for="infer_img2img">Img2Img</label>
                             </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="inferMode" id="infer_p2p"
+                                       value="p2p">
+                                <label class="form-check-label" for="infer_p2p">Prompt2Prompt</label>
+                            </div>
+                        </div>
+                        <div class="form-group prompt2prompt advancedInfer" id="infer_prompt2prompt">
+                            <select id="infer_p2p_controller" name="inferP2PController">
+                                <option value="edit">Edit</option>
+                                <option value="replace">Replace</option>
+                                <option value="refine">Refine</option>
+                                <option value="reweight">Reweight</option>
+                            </select>
                         </div>
                         <div class="form-group advancedInfer" id="inpaintContainer">
                             <label for="inpaintEditor">Input Image:</label>

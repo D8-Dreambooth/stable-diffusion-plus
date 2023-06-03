@@ -229,6 +229,7 @@ function inferInit() {
 
     for (let i = 0; i < radioButtons.length; i++) {
         radioButtons[i].addEventListener('change', function () {
+            let p2pElements = $(".prompt2prompt")
             if (this.value === "txt2img") {
                 inpaintContainer.hide();
             } else {
@@ -236,6 +237,12 @@ function inferInit() {
             }
             if (this.value === "img2img") {
 
+            }
+            if (this.value === "p2p") {
+                console.log("Prompt2prompt");
+                p2pElements.show();
+            } else {
+                p2pElements.hide();
             }
         });
     }

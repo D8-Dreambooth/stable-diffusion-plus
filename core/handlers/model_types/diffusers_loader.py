@@ -12,6 +12,7 @@ from safetensors.torch import load_file
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data
+from core.pipelines.pipeline_prompt2prompt import Prompt2PromptPipeline
 from core.pipelines.pipeline_stable_diffusion_inpaint_controlnet import StableDiffusionInpaintPipeline
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,32 @@ def load_diffusers_img2img(model_data: ModelData):
             if len(nets):
                 pipe_args["controlnet"] = nets
             pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(**pipe_args)
+            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
+        except Exception as e:
+            logger.warning(f"Exception loading pipeline: {e}")
+            traceback.print_exc()
+    return pipeline
+
+
+def load_diffusers_prompt2prompt(model_data: ModelData):
+    model_path = model_data.path
+    if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
+        logger.debug(f"Adding working to dreambooth model path: {model_path}")
+        model_path = os.path.join(model_path, "working")
+
+    pipeline = None
+    if not os.path.exists(model_path):
+        logger.debug(f"Unable to load model: {model_path}")
+    else:
+        try:
+            nets = initialize_controlnets(model_data)
+            pipe_args = {
+                "pretrained_model_name_or_path": model_path,
+                "torch_dtype": torch.float16,
+            }
+            if len(nets):
+                pipe_args["controlnet"] = nets
+            pipeline = Prompt2PromptPipeline.from_pretrained(**pipe_args)
             pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
@@ -243,3 +270,4 @@ def register_function(model_handler):
     model_handler.register_loader("diffusers", load_diffusers)
     model_handler.register_loader("diffusers_inpaint", load_diffusers_inpaint)
     model_handler.register_loader("diffusers_img2img", load_diffusers_img2img)
+    model_handler.register_loader("diffusers_prompt2prompt", load_diffusers_prompt2prompt)

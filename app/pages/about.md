@@ -15,11 +15,9 @@ This project uses <a href="https://fastapi.tiangolo.com/">FastAPI</a>, <a href="
 
 ```sh
 accelerate>=0.16.0
-albumentations>=1.3.0
 bitsandbytes==0.35.4
 diffusers>=0.12.1
 fastapi>=0.91.0
-ftfy>=6.1.1
 modelcards>=0.1.6
 tensorboard>=2.12.0
 tensorflow>=2.11.0; sys_platform != 'darwin' or platform_machine != 'arm64'

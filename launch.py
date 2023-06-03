@@ -1,3 +1,4 @@
+import filecmp
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ import shutil
 import site
 import subprocess
 import sys
+import sysconfig
 
 from venv import EnvBuilder
 
@@ -17,6 +19,26 @@ to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "te
            "tensorboard"]
 for skip in to_skip:
     logging.getLogger(skip).setLevel(logging.WARNING)
+
+
+def check_bitsandbytes():
+    """
+    Check for "different" B&B Files and copy only if necessary
+    """
+    if os.name == "nt":
+        try:
+            bnb_src = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bitsandbytes_windows")
+            bnb_dest = os.path.join(sysconfig.get_paths()["purelib"], "bitsandbytes")
+            filecmp.clear_cache()
+            for file in os.listdir(bnb_src):
+                src_file = os.path.join(bnb_src, file)
+                if file == "main.py" or file == "paths.py":
+                    dest = os.path.join(bnb_dest, "cuda_setup")
+                else:
+                    dest = bnb_dest
+                shutil.copy2(src_file, dest)
+        except:
+            pass
 
 
 def create_venv(venv_dir):
@@ -88,12 +110,27 @@ def install_requirements(venv_path, requirements_path):
     Installs the requirements specified in the given requirements file into the virtual environment at the given path.
     """
     logger.info(f"Installing requirements from {requirements_path} into virtual environment at {venv_path}")
-    pip_exe = os.path.join(venv_path, "Scripts", "pip.exe") if sys.platform == "win32" else os.path.join(venv_path, "bin", "pip")
-    process = subprocess.Popen([pip_exe, "install", "-r", requirements_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    for line in process.stdout:
+
+    pip_exe = os.path.join(venv_path, "Scripts", "pip.exe") if sys.platform == "win32" else os.path.join(venv_path,
+                                                                                                         "bin", "pip")
+
+    upgrade_process = subprocess.Popen([pip_exe, "install", "--upgrade", "pip"], stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, universal_newlines=True)
+    upgrade_process.communicate()
+
+    wheel_install_process = subprocess.Popen([pip_exe, "install", "wheel"], stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE, universal_newlines=True)
+    wheel_install_process.communicate()
+
+    requirements_install_process = subprocess.Popen([pip_exe, "install", "-r", requirements_path],
+                                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                                    universal_newlines=True)
+    for line in requirements_install_process.stdout:
         if "Requirement already satisfied" not in line:
             logger.info(line.strip())
-    process.communicate()  # Wait for the process to complete
+    for line in requirements_install_process.stderr:
+        logger.error(line.strip())
+    requirements_install_process.communicate()  # Wait for the process to complete
 
 
 def get_latest_git_tag(git_path, repo_path):
@@ -156,17 +193,11 @@ if __name__ == "__main__":
         logger.error("Please upgrade your python version to 3.10 or higher.")
         sys.exit()
 
-    sys.path.append(os.getcwd())
-
-    # Make safetensors faster
-    os.environ["SAFETENSORS_FAST_GPU"] = "1"
-
-    if os.name == "posix":
-        # For now disable Torch2 Dynamo on Linux
-        os.environ["TORCHDYNAMO_DISABLE"] = "1"
-
-    # Set base path
     base_path = os.path.abspath(os.path.dirname(__file__))
+
+    # Set our venv
+
+    venv_dir = os.path.join(base_path, "venv")
     launch_settings_path = os.path.join(base_path, "launch_settings.json")
     config_templates = os.path.join(base_path, "templates", "config")
 
@@ -194,6 +225,45 @@ if __name__ == "__main__":
             del launch_settings[key]
         with open(launch_settings_path, "w") as ls:
             json.dump(launch_settings, ls, indent=4)
+
+    if "venv" in launch_settings:
+        user_venv = launch_settings["venv"]
+        if user_venv:
+            venv_dir = user_venv
+
+    if os.name == 'nt':
+        # For Windows
+        python = os.path.join(venv_dir, "Scripts", "python.exe")
+    else:
+        # For Unix or Linux
+        python = os.path.join(venv_dir, "bin", "python")
+    logger.debug(f"Venv dir and python path are {venv_dir} and {python}")
+    if not os.path.isdir(venv_dir) or not os.path.exists(python):
+        create_venv(venv_dir)
+
+    # Check if running in venv, and if not, relaunch with the proper python
+    if sys.executable != python:
+        logger.debug("Relaunching with proper python executable")
+        os.execl(python, '"' + python + '"', *sys.argv)
+
+    sys.path.append(os.getcwd())
+
+    # Install extensions first
+    install_extensions()
+
+    # Install the requirements
+    requirements = os.path.join(base_path, "requirements.txt")
+    install_requirements(venv_dir, requirements)
+
+    check_bitsandbytes()
+    # Make safetensors faster
+    os.environ["SAFETENSORS_FAST_GPU"] = "1"
+
+    if os.name == "posix":
+        # For now disable Torch2 Dynamo on Linux
+        os.environ["TORCHDYNAMO_DISABLE"] = "1"
+
+    # Set base path
 
     debug = launch_settings.get("debug", False)
     debug_level = launch_settings.get("debug_level", "debug")
@@ -225,35 +295,8 @@ if __name__ == "__main__":
     if os.environ.get("PORT", None):
         port = int(os.environ.get("PORT"))
 
-    # Set our venv
-
-    venv_dir = os.path.join(base_path, "venv")
-
-    if "venv" in launch_settings:
-        user_venv = launch_settings["venv"]
-        if user_venv:
-            venv_dir = user_venv
-
-    if os.name == 'nt':
-        # For Windows
-        python = os.path.join(venv_dir, "Scripts", "python.exe")
-    else:
-        # For Unix or Linux
-        python = os.path.join(venv_dir, "bin", "python")
-
-    if not os.path.isdir(venv_dir) or not os.path.exists(python):
-        create_venv(venv_dir)
-
-    # Check if running in venv, and if not, relaunch with the proper python
-    if sys.executable != python:
-        logger.debug("Relaunching with proper python executable")
-        os.execl(python, '"' + python + '"', *sys.argv)
-
     # Activate the virtual environment
     activate_venv(venv_dir)
-
-    # Install extensions first
-    install_extensions()
 
     sys.path.append(venv_dir)
 
@@ -283,10 +326,6 @@ if __name__ == "__main__":
     else:
         if not os.path.exists(dreambooth_path):
             logger.warning("Unable to find git, and dreambooth is not installed. Training will not be available.")
-
-    # Install the requirements
-    requirements = os.path.join(base_path, "requirements.txt")
-    install_requirements(venv_dir, requirements)
 
     # in the main part of your script
     try:

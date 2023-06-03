@@ -30,7 +30,6 @@ from core.handlers.status import StatusHandler
 from core.handlers.users import UserHandler, User, get_current_active_user
 from core.handlers.websocket import SocketHandler
 from core.helpers.model_watcher import ModelWatcher
-from .library.helpers import *
 
 # I think some of these can go away.
 clients = []

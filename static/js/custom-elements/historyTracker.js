@@ -49,19 +49,75 @@ class HistoryTracker {
                 }
             });
 
-            this.registeredElements.set(id, { textfield, history, index });
+            // Touch events for mobile users
+            let touchStartX, touchStartTime, tapCount = 0;
+
+            textfield.addEventListener("touchstart", (event) => {
+                touchStartX = event.touches[0].clientX;
+                touchStartTime = Date.now();
+            });
+
+            textfield.addEventListener("touchend", (event) => {
+                const touchEndX = event.changedTouches[0].clientX;
+                const touchEndTime = Date.now();
+                const deltaPosition = touchEndX - touchStartX;
+                const deltaTime = touchEndTime - touchStartTime;
+
+                if (deltaTime < 200 && Math.abs(deltaPosition) < 50) {  // Thresholds for a tap
+                    tapCount += 1;
+                    setTimeout(() => {
+                        tapCount = 0;
+                    }, 400);  // Reset tapCount after 400ms
+                    if (tapCount === 2) {
+                        // Double-tap: Show hidden select menu
+                        this.showHistorySelectMenu(textfield, history);
+                    }
+                } else if (deltaTime < 500 && Math.abs(deltaPosition) > 50) {  // Thresholds for a swipe
+                    if (deltaPosition > 0) {
+                        // Swipe left: next value
+                        index = Math.min(history.length, index + 1);
+                    } else {
+                        // Swipe right: previous value
+                        index = Math.max(0, index - 1);
+                    }
+                    textfield.value = history[index] || "";
+                }
+            });
+
+            this.registeredElements.set(id, {textfield, history, index});
         }
     }
 
     storeHistory(textfield) {
         const id = `${this.username}-${textfield.id}`;
-        const { history, index } = this.registeredElements.get(id);
+        const {history, index} = this.registeredElements.get(id);
 
-        if (textfield.value !== history[history.length - 1]) {
-            history.push(textfield.value);
-            this.saveHistory(id, history);
-            this.registeredElements.set(id, { textfield, history, index: history.length });
+        const valueIndex = history.indexOf(textfield.value);
+        if (valueIndex !== -1) {
+            // Remove the existing value from the history
+            history.splice(valueIndex, 1);
         }
+
+        history.push(textfield.value);
+        this.saveHistory(id, history);
+        this.registeredElements.set(id, {textfield, history, index: history.length});
+    }
+
+    showHistorySelectMenu(textfield, history) {
+        // Implementation of the select menu depends on your actual DOM structure and CSS
+        // Here is a simple example:
+        let selectMenu = document.getElementById("hiddenSelectMenu");
+        if (!selectMenu) {
+            selectMenu = document.createElement("select");
+            selectMenu.id = "hiddenSelectMenu";
+            document.body.appendChild(selectMenu);
+        }
+        selectMenu.innerHTML = history.map(value => `<option>${value}</option>`).join("");
+        selectMenu.style.display = "block";
+        selectMenu.addEventListener("change", () => {
+            textfield.value = selectMenu.value;
+            selectMenu.style.display = "none";
+        });
     }
 
     loadHistory(id) {
