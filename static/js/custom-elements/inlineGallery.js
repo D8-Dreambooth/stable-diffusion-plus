@@ -2,6 +2,7 @@ class InlineGallery {
     constructor(parentSelector, options = {}) {
         this.parent = typeof parentSelector === "string" ? document.querySelector(parentSelector) : parentSelector;
         this.options = this._readOptions(options);
+        this.currentIndex = 0;
         this._initGallery();
         let selector = "";
         if (this.parent.hasAttribute("id")) {
@@ -10,22 +11,31 @@ class InlineGallery {
             selector = "." + this.parent.getAttribute("class").split(" ").join(".");
         }
         keyListener.register("ArrowLeft", selector, function () {
-            this.selectPrevious();
+            this.updateIndex(-1);
         }.bind(this));
         keyListener.register("ArrowRight", selector, function () {
-            this.selectNext();
+            this.updateIndex(1);
         }.bind(this));
         registerSocketMethod("inlineGallery2", "status", this.socketUpdate.bind(this));
     }
 
-    selectPrevious() {
-        let leftArrow = this.primaryContainer.querySelector('.left-arrow');
-        leftArrow.click();
+    _initGallery() {
+        this._createContainers();
+        this._populateGallery();
+        this._addEventListeners();
     }
 
-    selectNext() {
-        let rightArrow = this.primaryContainer.querySelector('.right-arrow');
-        rightArrow.click();
+    updateIndex(index) {
+        let newIndex = this.currentIndex + index;
+        if (newIndex < 0) {
+            newIndex = this.options.loop ? this.options.data.length - 1 : 0;
+        } else if (newIndex >= this.options.data.length) {
+            newIndex = this.options.loop ? 0 : this.currentIndex;
+        }
+        console.log("Update index: ", index, this.currentIndex, newIndex);
+
+        this.currentIndex = newIndex;
+        this.updateGallery(newIndex);
     }
 
     _readOptions(options) {
@@ -49,12 +59,6 @@ class InlineGallery {
         }, {});
 
         return Object.assign({}, defaultOptions, dataAttributes, options);
-    }
-
-    _initGallery() {
-        this._createContainers();
-        this._populateGallery();
-        this._addEventListeners();
     }
 
     _createContainers() {
@@ -167,6 +171,13 @@ class InlineGallery {
             const downloadButton = document.createElement('div');
             downloadButton.classList.add('download-button', 'inlineButton');
             this.primaryContainer.appendChild(downloadButton);
+            downloadButton.addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.href = this.options.data[this.currentIndex].src;
+                link.download = this.options.data[this.currentIndex].download || '';
+                link.target = '_blank';
+                link.click();
+            });
         }
 
         // Add navigation arrows
@@ -177,105 +188,16 @@ class InlineGallery {
         const rightArrow = document.createElement('button');
         rightArrow.classList.add('right-arrow', 'inlineButton');
         this.primaryContainer.appendChild(rightArrow);
-    }
-
-    _addEventListeners() {
-        const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
-        const captions = this.captionContainer ? this.captionContainer.querySelectorAll('.caption') : [];
-        const thumbnails = this.thumbnailContainer ? this.thumbnailContainer.querySelectorAll('.thumbnail') : [];
-
-        let currentIndex = 0;
-
-        // Disable clicks on primaryImages
-        primaryImages.forEach((primaryImage) => {
-            primaryImage.addEventListener('click', (event) => {
-                event.preventDefault();
-            });
-        });
-        const updateGallery = (newIndex) => {
-            // If we have a latent image and the gallery was selected, make it a thumbnail button
-            let latentImage = this.previewContainer.querySelector('.latent-image');
-            if (latentImage) {
-                this.previewContainer.classList.add("thumb-container");
-                latentImage.classList.add('thumb-btn');
-                latentImage.addEventListener('click', () => {
-                    latentImage.classList.remove('thumb-btn');
-                    this.previewContainer.classList.remove("thumb-container");
-                });
-            }
-            // Hide all elements in primaryImages and captions
-            primaryImages.forEach((primaryImage) => {
-                primaryImage.style.display = 'none';
-            });
-            captions.forEach((caption) => {
-                caption.style.display = 'none';
-            });
-            thumbnails.forEach((thumbnail) => {
-                thumbnail.classList.remove('active');
-            });
-
-            if (newIndex < primaryImages.length) primaryImages[newIndex].style.display = 'block';
-
-            if (this.options.showCaptions && newIndex < captions.length) captions[newIndex].style.display = 'block';
-
-            if (this.options.showThumbnails && newIndex < thumbnails.length) _scrollToThumbnail(newIndex);
-
-            if (this.options.allowDownload) downloadButton.href = this.options.data[newIndex].src;
-            currentIndex = newIndex;
-        };
-
-        let totalImages = this.galleryContainer.querySelectorAll('.primary-image').length;
-        const downloadButton = this.primaryContainer.querySelector('.download-button');
-        const leftArrow = this.primaryContainer.querySelector('.left-arrow');
-        const rightArrow = this.primaryContainer.querySelector('.right-arrow');
-        const fullscreenButton = this.primaryContainer.querySelector('.fullscreen-button');
-
-        if (totalImages === 0) {
-            $(".inlineButton").hide();
-        } else if (totalImages === 1) {
-            downloadButton.style.display = 'block';
-            fullscreenButton.style.display = 'block';
-        } else {
-            $(".inlineButton").show();
-        }
 
         leftArrow.addEventListener('click', () => {
-            let newIndex = currentIndex - 1;
-            if (newIndex < 0) {
-                newIndex = this.options.loop ? this.options.data.length - 1 : 0;
-            }
-            updateGallery(newIndex);
+            this.updateIndex(-1);
         });
 
         rightArrow.addEventListener('click', () => {
-            let newIndex = currentIndex + 1;
-            if (newIndex >= this.options.data.length) {
-                newIndex = this.options.loop ? 0 : this.options.data.length - 1;
-            }
-            updateGallery(newIndex);
+            this.updateIndex(1);
         });
-        const _scrollToThumbnail = (index) => {
-            if (!this.options.showThumbnails || !this.thumbnailContainer) {
-                return;
-            }
 
-            const thumbnail = this.thumbnailContainer.querySelectorAll('.thumbnail')[index];
-            if (!thumbnail) {
-                return;
-            }
-
-            thumbnail.classList.add('active');
-            const containerWidth = this.thumbnailContainer.clientWidth;
-            const containerScrollLeft = this.thumbnailContainer.scrollLeft;
-            const thumbnailLeft = thumbnail.offsetLeft;
-            const thumbnailWidth = thumbnail.clientWidth;
-
-            const scrollPosition = thumbnailLeft - (containerWidth / 2) + (thumbnailWidth / 2);
-            this.thumbnailContainer.scrollTo({
-                left: scrollPosition,
-                behavior: 'smooth'
-            });
-        };
+        const fullscreenButton = this.primaryContainer.querySelector('.fullscreen-button');
 
         if (this.options.allowFullscreen) {
             fullscreenButton.addEventListener('click', () => {
@@ -298,26 +220,104 @@ class InlineGallery {
                     } else {
                         requestFullscreenMethod.call(this.primaryContainer).then(r => r);
                     }
-                } catch {
-
-                }
+                } catch {}
             });
+        }
+
+    }
+
+    updateGallery(newIndex) {
+        const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
+        const captions = this.captionContainer ? this.captionContainer.querySelectorAll('.caption') : [];
+        const thumbnails = this.thumbnailContainer ? this.thumbnailContainer.querySelectorAll('.thumbnail') : [];
+
+        // If we have a latent image and the gallery was selected, make it a thumbnail button
+        let latentImage = this.previewContainer.querySelector('.latent-image');
+        if (latentImage) {
+            this.previewContainer.classList.add("thumb-container");
+            latentImage.classList.add('thumb-btn');
+            latentImage.addEventListener('click', () => {
+                latentImage.classList.remove('thumb-btn');
+                this.previewContainer.classList.remove("thumb-container");
+            });
+        }
+        // Hide all elements in primaryImages and captions
+        primaryImages.forEach((primaryImage) => {
+            primaryImage.style.display = 'none';
+        });
+        captions.forEach((caption) => {
+            caption.style.display = 'none';
+        });
+        thumbnails.forEach((thumbnail) => {
+            thumbnail.classList.remove('active');
+        });
+
+
+        if (newIndex < primaryImages.length) primaryImages[newIndex].style.display = 'block';
+        if (this.options.showCaptions && newIndex < captions.length) captions[newIndex].style.display = 'block';
+        if (this.options.showThumbnails && newIndex < thumbnails.length) this._scrollToThumbnail(newIndex);
+        const downloadButton = this.primaryContainer.querySelector('.download-button');
+
+        if (this.options.allowDownload) {
+            //downloadButton.href = this.options.data[newIndex].src;
+        }
+    };
+
+    _scrollToThumbnail(index) {
+            if (!this.options.showThumbnails || !this.thumbnailContainer) return;
+
+            const thumbnail = this.thumbnailContainer.querySelectorAll('.thumbnail')[index];
+            if (!thumbnail) return;
+
+            thumbnail.classList.add('active');
+            const containerWidth = this.thumbnailContainer.clientWidth;
+            const thumbnailLeft = thumbnail.offsetLeft;
+            const thumbnailWidth = thumbnail.clientWidth;
+
+            const scrollPosition = thumbnailLeft - (containerWidth / 2) + (thumbnailWidth / 2);
+            this.thumbnailContainer.scrollTo({
+                left: scrollPosition,
+                behavior: 'smooth'
+            });
+        };
+
+
+    _addEventListeners() {
+        const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
+        const thumbnails = this.thumbnailContainer ? this.thumbnailContainer.querySelectorAll('.thumbnail') : [];
+        const totalImages = this.galleryContainer.querySelectorAll('.primary-image').length;
+        const downloadButton = this.primaryContainer.querySelector('.download-button');
+        const fullscreenButton = this.primaryContainer.querySelector('.fullscreen-button');
+
+        // Disable clicks on primaryImages
+        primaryImages.forEach((primaryImage) => {
+            primaryImage.addEventListener('click', (event) => {
+                event.preventDefault();
+            });
+        });
+
+
+        if (totalImages === 0) {
+            $(".inlineButton").hide();
+        } else if (totalImages === 1) {
+            downloadButton.style.display = 'block';
+            fullscreenButton.style.display = 'block';
+        } else {
+            $(".inlineButton").show();
         }
 
         if (this.options.showThumbnails) {
             thumbnails.forEach((thumbnail, index) => {
                 thumbnail.addEventListener('click', () => {
-                    updateGallery(index);
-                    _scrollToThumbnail(index);
+                    this.updateGallery(index);
+                    this._scrollToThumbnail(index);
                 });
             });
         }
     }
 
     async socketUpdate(data) {
-        if (data.hasOwnProperty("target") && data.target !== this.options.id) {
-            return;
-        }
+        if (data.hasOwnProperty("target") && data.target !== this.options.id) return;
 
         let [imageList, latent, append] = this.extractImageData(data);
         this.update(imageList, latent, append);
@@ -325,50 +325,28 @@ class InlineGallery {
     }
 
     extractImageData(data) {
-        const status = data.status;
-        let append = true;
-        let latent = null;
+    const { status: { active: append, latents: latent = null, images = [], descriptions = [], prompts = [] } } = data;
 
-        if (!status.active) {
-            append = false;
-        }
+    const imageList = images.map((imagePath, i) => {
+        const caption = typeof prompts[i] === 'string' ? prompts[i] : '';
+        const description = typeof descriptions[i] === 'string' ? descriptions[i] : '';
 
-        if (status.hasOwnProperty("latents")) {
-            latent = status.latents;
-        }
+        return { src: imagePath, caption, description };
+    });
 
-        const images = status.images || [];
-        const descriptions = status.descriptions || [];
-        const prompts = status.prompts || [];
-
-        const imageList = [];
-        for (let i = 0; i < images.length; i++) {
-            const imagePath = images[i];
-
-            let caption = '';
-            if (prompts.length > i && typeof prompts[i] === 'string') {
-                caption = prompts[i];
-            }
-
-            let description = '';
-            if (descriptions.length > i && typeof descriptions[i] === 'string') {
-                description = descriptions[i];
-            }
-
-            imageList.push({src: imagePath, caption: caption, description: description});
-        }
-
-        return [imageList, latent, append];
-    }
+    return [imageList, latent, append];
+}
 
     update(imageList, latent, append = false) {
         if (!append) {
             this._clearGallery();
+            this.currentIndex = 0;
         }
 
         // Preview
+        let latentImage = this.previewContainer.querySelector('.latent-image');
+
         if (latent !== null) {
-            let latentImage = this.previewContainer.querySelector('.latent-image');
             if (latentImage !== null) {
                 latentImage.src = latent;
                 this.previewContainer.classList.remove("hidden");
@@ -428,7 +406,7 @@ class InlineGallery {
                     thumbnail.classList.add('selected');
                 }
                 // If more than one image, show thumbnails
-                if (this.thumbnailContainer.children.length > 1) {
+                if (this.thumbnailContainer.children.length > 1 || (this.thumbnailContainer.length > 0 && latentImage !== null)) {
                     this.thumbnailContainer.style.display = 'flex';
                 } else {
                     this.thumbnailContainer.style.display = 'none';
