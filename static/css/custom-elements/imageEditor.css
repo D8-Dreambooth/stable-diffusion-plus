@@ -33,17 +33,20 @@
 }
 
 .editorCanvas {
-    width: auto;
-    height: 100%;
+    width: 100%;
     max-height: 70vh;
-}
-
-.editCanvas, .pointCanvas {
-    position: absolute;
-}
-
-.editCanvas {
+    max-width: 100%;
     z-index: 1;
+}
+
+.drawCanvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.dropCanvas {
+    z-index: -1;
     cursor: crosshair !important;
 }
 

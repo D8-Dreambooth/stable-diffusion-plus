@@ -3,6 +3,8 @@ let socketMethods = {};
 
 const keyListener = new KeyListener();
 const historyTracker = new HistoryTracker();
+const imageReceivers = {};
+const maskReceivers = {};
 let messages = [];
 // region Initialization
 
@@ -45,8 +47,6 @@ const getCookie = (name) => {
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
-
-
 function loadCoreSettings(data) {
     const settingsButton = $("#settingsButton");
     if (data["show_settings"]) {
@@ -85,6 +85,13 @@ function loadCoreSettings(data) {
 
 // region UiMethods
 
+function registerImageReceiver(receiverName, callback) {
+    imageReceivers[receiverName] = callback;
+}
+
+function registerMaskReceiver(receiverName, callback) {
+    maskReceivers[receiverName] = callback;
+}
 // Show error modal on socket disconnect or other errors.
 function showError(message) {
     // Set the error message in the modal body
