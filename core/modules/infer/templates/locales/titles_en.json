@@ -88,10 +88,10 @@
     "description": "Upload Input Image",
     "title": "Upload an image to use as input for the control network."
   },
-  "autoLoadResolutionOn": {
-    "label": "Auto-load resolution:",
-    "description": "Enable Auto-Loading Resolution",
-    "title": "Automatically load the input image's resolution to use as output resolution for the control network."
+  "use_control_resolution": {
+    "label": "Use Control Resolution",
+    "description": "Us the resolution of the input image as the output resolution for the control network.",
+    "title": "Automatically load the input image's resolution to use as output resolution for the control network. This will be scaled down to the max resolution set for infernce."
   },
   "controlnetBatchUsePrompt": {
     "label": "Use prompt from input images:",

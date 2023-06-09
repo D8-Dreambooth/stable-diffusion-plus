@@ -15,7 +15,8 @@ function initTagger() {
         "showTitle": false,
         "showInfo": false,
         "multiselect": false,
-        "dropdown": true
+        "dropdown": true,
+        "label": "Select Directory"
     });
     tagProgress = new ProgressGroup(document.getElementById("tagProgressGroup"), {"id": "tagProgressGroup"});
     tagProgress.setOnComplete(() => {
@@ -24,14 +25,72 @@ function initTagger() {
     thresholdSlider = $("#tagThreshold").BootstrapSlider({});
     characterSlider = $("#tagCharThreshold").BootstrapSlider({});
 
-    imageFileBrowser.addOnSelect((file) => {
-        console.log("FILE: ", file);
-        loadImages(file);
+    $("#loadTagImages").click(() => {
+        let directory = imageFileBrowser.value;
+        let recurse = $("#imageRecurse").is(":checked");
+        if (directory !== "") {
+            let tagContainer = document.getElementById("tagContainer");
+            tagContainer.innerHTML = "Loading...";
+            loadImages(directory);
+            sendMessage("tag_cloud", {
+                path: directory,
+                recurse: recurse
+            }).then((response) => {
+                loadTags(response["src"], response["tags"]);
+            });
+        }
+    });
+
+    // Add a document-wide listener for clicks on any .tagDeleteButton element
+    document.addEventListener("click", (event) => {
+        if (event.target.classList.contains("tagDeleteButton")) {
+            event.preventDefault();
+            // Get the "tag" from the event target parent's dataset
+            const tag = event.target.parentElement.dataset.tag;
+            const recurse = $("#imageRecurse").is(":checked");
+            const directory = imageFileBrowser.value;
+            sendMessage("tag_delete", {
+                "tag": tag,
+                "path": directory,
+                "recurse": recurse
+            }).then((response) => {
+                event.target.parentNode.remove();
+                // Enumerate all the thumbs again
+                const updated = response["updated"];
+                const thumbs = document.getElementById("imageBrowser").querySelectorAll(".thumb");
+                // For each thumb, check the data-path against the keys in updated
+                thumbs.forEach((thumb) => {
+                    const path = thumb.dataset.path;
+                    if (updated[path] !== undefined) {
+                        // If the path is in updated, update the tags
+                        thumb.dataset.tag = updated[path];
+                    }
+                });
+            });
+        }
+    });
+
+    $("#tag_edit_toggle").click(() => {
+        $(".tagDeleteButton").toggle();
+        $(this).toggleClass("active");
     });
 
     imageFileBrowser.addOnRefresh((file) => {
-        loadImages(lastPath);
+        let directory = imageFileBrowser.value;
+        let recurse = $("#imageRecurse").is(":checked");
+        if (directory !== "") {
+            loadImages(directory);
+            sendMessage("tag_cloud", {
+                path: directory,
+                recurse: recurse
+            }).then((response) => {
+                loadTags(response["src"], response["tags"]);
+            });
+        }
     });
+
+    document.getElementById('sortType').addEventListener('change', sortTags);
+    document.getElementById('sortOrder').addEventListener('change', sortTags);
 
     let selectedIndex = 0;
     // Add a keyboard listener to the document
@@ -183,8 +242,77 @@ function initTagger() {
         let selected = document.querySelectorAll("#imageBrowser .thumb");
         startCaption(selected);
     });
+    $("#tag_cloud").on("click", function () {
+        let directory = imageFileBrowser.value;
+        console.log("Directory: ", directory);
+        let recurse = $("#imageRecurse").is(":checked");
+        sendMessage("tag_cloud", {
+            path: directory,
+            recurse: recurse
+        }).then((response) => {
+            loadTags(response["src"], response["tags"]);
+        });
+
+    });
 }
 
+function loadTags(cloudImage, tags) {
+    console.log("Loading tags: ", tags);
+    $("#cloudImage").attr("src", cloudImage);
+    let tagContainer = $("#tagContainer");
+    tagContainer.empty();
+    // Enumerate tags, which is a dictionary
+    for (let tag in tags) {
+        let tag_count = tags[tag].length;
+        console.log("Tag: ", tag, "Count: ", tag_count);
+        let tag_badge = $("<span data-count='" + tag_count + "' data-tag='"+tag+"' " +
+            "class='badge tagPill rounded-pill bg-secondary'>(" + tag_count + ") "+ tag + "" +
+            "<span class='badge bg-danger tagDeleteButton'>X</span></span>");
+        tag_badge.on("click", function (event) {
+            console.log("Clicked tag: ", $(this).attr("data-tag"));
+            $(this).toggleClass("bg-secondary bg-primary");
+            // If control isn't pressed, deselect all other tags
+            if (!event.ctrlKey) {
+                $(".tagPill").not(this).removeClass("bg-primary").addClass("bg-secondary");
+                updateTagSelection();
+            }
+        });
+        tagContainer.append(tag_badge);
+    }
+    $(".tagDeleteButton").hide();
+    sortTags();
+}
+
+// Define a function to sort the tags
+function sortTags() {
+    let sortType = document.getElementById('sortType').value;
+    let sortOrder = document.getElementById('sortOrder').value;
+    
+    let container = document.getElementById('tagContainer');
+    let tags = Array.from(container.children);
+    
+    tags.sort(function(a, b) {
+        let aValue = sortType === 'alphabetical' ? a.getAttribute('data-tag') : a.getAttribute('data-count');
+        let bValue = sortType === 'alphabetical' ? b.getAttribute('data-tag') : b.getAttribute('data-count');
+        
+        if (sortType !== 'alphabetical') {
+            aValue = parseInt(aValue, 10);
+            bValue = parseInt(bValue, 10);
+        }
+        
+        if (aValue < bValue) {
+            return sortOrder === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+            return sortOrder === 'ascending' ? 1 : -1;
+        }
+        return 0;
+    });
+    
+    tags.forEach(function(tag) {
+        container.appendChild(tag);
+    });
+}
 function startCaption(selected) {
 
     if (selected.length > 0) {
@@ -205,12 +333,54 @@ function startCaption(selected) {
         params["captioners"] = caps;
         params["threshold"] = thresholdSlider.value;
         params["char_threshold"] = characterSlider.value;
+        params["whitelist"] = $("#tagWhitelist").val();
         params["blacklist"] = $("#tagBlacklist").val();
         params["append_existing"] = $("#appendExisting").is(":checked");
         sendMessage("caption_image", params, await = false).then((response) => {
             console.log("Captioned: ", response);
         });
     }
+}
+
+function updateTagSelection() {
+    // Enumerate the selected tags
+    let selectedTags = [];
+    $(".tagPill.bg-primary").each(function () {
+        selectedTags.push($(this).attr("data-tag"));
+    });
+    console.log("Selected tags: ", selectedTags);
+    let imageThumbs = document.querySelectorAll("#imageBrowser .thumb");
+    for (let i = 0; i < imageThumbs.length; i++) {
+        let thumb = imageThumbs[i];
+        let tags = thumb.getAttribute("data-tag").split(",");
+        // Strip tags and convert to lower, just in case
+        for (let j = 0; j < tags.length; j++) {
+            tags[j] = tags[j].trim().toLowerCase();
+        }
+        let tagMatch = false;
+        for (let j = 0; j < selectedTags.length; j++) {
+            let tag = selectedTags[j];
+            tagMatch = tags.includes(tag);
+        }
+        if (tagMatch) {
+            thumb.classList.add("selected");
+        } else {
+            thumb.classList.remove("selected");
+        }
+    }
+    updateThumbSelection().then(() => {
+        // Sort the thumbs with the selected ones first
+        let selected = document.querySelectorAll("#imageBrowser .thumb.selected");
+        let unselected = document.querySelectorAll("#imageBrowser .thumb:not(.selected)");
+        let imageBrowser = document.getElementById("imageBrowser");
+        imageBrowser.innerHTML = "";
+        for (let i = 0; i < selected.length; i++) {
+            imageBrowser.appendChild(selected[i]);
+        }
+        for (let i = 0; i < unselected.length; i++) {
+            imageBrowser.appendChild(unselected[i]);
+        }
+    });
 }
 
 async function updateThumbSelection() {

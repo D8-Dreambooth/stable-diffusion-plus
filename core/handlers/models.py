@@ -339,12 +339,11 @@ class ModelHandler:
             self.model_finders[model_type] = callback
 
     def load_model(self, model_type: str, model_data: ModelData, unload: bool = True):
-        self.logger.debug(f"Loading model ({model_type}): {model_data.serialize()}")
+        self.logger.debug(f"Loading model ({model_type})")
         if model_type in self.loaded_models:
             loaded_model_data, model = self.loaded_models[model_type]
-            self.logger.debug(f"Loaded model: {loaded_model_data.serialize()} vs {model_data.serialize()}")
             if model_data != loaded_model_data and unload:
-                self.logger.debug(f"Unloading model: {self.loaded_models[model_type]}")
+                self.logger.debug(f"Unloading model...")
                 del model
                 del self.loaded_models[model_type]
                 if torch.has_cuda:

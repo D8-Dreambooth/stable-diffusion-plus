@@ -1,13 +1,13 @@
 let gallery;
 let inferProgress;
-let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider, loraWeight, denoiseStrength;
+let scaleTest, stepTest, numImages, batchSize, widthSlider, heightSlider, loraWeight;
 let userConfig;
 let controlnetImageEditor;
 let controlnetFileBrowser;
-let ratiosSet = false;
 let inferModelSelect;
 let vaeModelSelect;
 let loraModelSelect;
+let pipelineData = {};
 
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
@@ -17,33 +17,36 @@ const inpaintContainer = $("#inpaintContainer");
 
 let inpaintImageEditor;
 let inferSettings = {
-    "prompt": "",
-    "mode": "infer",
-    "negative_prompt": "",
-    "steps": 20,
-    "scale": 7.5,
-    "use_sag": true,
-    "num_images": 1,
-    "batch_size": 1,
-    "width": 512,
-    "height": 512,
-    "denoise_strength": 0.6,
-    "model": undefined,
-    "vae": undefined,
-    "loras": undefined,
-    "lora_weight": 0.9,
-    "infer_mask": undefined,
-    "infer_image": undefined,
-    "controlnet_mask": undefined,
-    "controlnet_image": undefined,
-    "controlnet": false,
-    "controlnet_type": undefined,
-    "controlnet_preprocess": true,
-    "controlnet_batch": false,
-    "controlnet_batch_dir": "",
-    "controlnet_batch_find": "",
-    "controlnet_batch_replace": "",
-    "controlnet_batch_use_prompt": false
+    batch_size: 1,
+    controlnet_batch: false,
+    controlnet_batch_dir: "",
+    controlnet_batch_find: "",
+    controlnet_batch_replace: "",
+    controlnet_batch_use_prompt: "",
+    controlnet_image: null,
+    controlnet_mask: null,
+    controlnet_preprocess: true,
+    controlnet_type: null,
+    height: 512,
+    infer_image: null,
+    infer_mask: null,
+    invert_mask: true,
+    lora_weight: 0.9,
+    loras: null,  // Assuming ModelData will be an array
+    model: "None",  // Assuming ModelData will be a string
+    negative_prompt: "",
+    num_images: 1,
+    pipeline: "auto",
+    pipeline_settings: {},
+    prompt: "",
+    prompts: [],
+    scale: 7.5,
+    seed: -1,
+    steps: 30,
+    use_control_resolution: true,
+    use_input_resolution: true,
+    vae: null,  // Assuming this will be an object
+    width: 512
 }
 
 advancedElements.hide();
@@ -160,14 +163,6 @@ function inferInit() {
         step: 0.01,
     });
 
-    denoiseStrength = $("#infer_denoise_strength").BootstrapSlider({
-        min:0.01,
-        max:1,
-        value:0.6,
-        step:0.01,
-        label:"Denoise Strength"
-    });
-
     controlnetFileBrowser = $("#controlnetBatchFileSelect").fileBrowser({
         "file_type": "image",
         "showSelectButton": true,
@@ -177,9 +172,8 @@ function inferInit() {
         "multiselect": false,
         "dropdown": true
     });
-
-    controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "75vh", false);
-    inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "75vh", false);
+    controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "", false);
+    inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "", false);
 
     let submit = document.getElementById("startInfer");
 
@@ -215,7 +209,6 @@ function inferInit() {
     });
 
     $("#controlnet_batch").change(function () {
-        console.log("Controlnet changed", this.checked);
         if (this.checked) {
             $(".controlnetSingle").hide();
             $(".controlnetBatch").show();
@@ -265,7 +258,151 @@ function inferInit() {
             controlnetSelect.add(option);
         }
     });
-    getInferSettings();
+    sendMessage("get_pipelines", {}, true).then((data) => {
+        console.log("Pipelines: ", data);
+        let pipelineSelect = document.getElementById("infer_pipeline");
+        let pipe_data = data["pipelines"];
+        pipelineData = pipe_data;
+        // Enumerate keyvalues in pipe_data
+        let options = [];
+        for (let key in pipe_data) {
+            if (key === "StableDiffusionPipeline") {
+                continue;
+            }
+            let option = document.createElement("option");
+            option.value = key;
+            option.text = key.replace("StableDiffusion", "").replace("Pipeline", "");
+            options.push(option);
+        }
+        options.sort(function (a, b) {
+            return a.text.localeCompare(b.text);
+        });
+        console.log("Sorted options:", options);
+        for (let i = 0; i < options.length; i++) {
+            pipelineSelect.add(options[i]);
+        }
+    });
+
+    $("#infer_prompt2prompt").hide();
+    $("#controlnetSettings").hide();
+    $("#infer_pipeline").change(function () {
+        console.log("Pipeline changed: ", this.value);
+        let pipelineParams = $("#pipelineParams");
+        pipelineParams.empty();
+        if (this.value !== "auto") {
+            let pipeline = pipelineData[this.value];
+            console.log("Pipeline: ", pipeline);
+            // Enumerate keyvalues in pipeline
+            let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
+                "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
+            if (pipeline.hasOwnProperty("image")) {
+                $("#inpaintContainer").show();
+            } else {
+                $("#inpaintContainer").hide();
+            }
+            if (this.value === "StableDiffusionControlNetPipeline" || this.value === "StableDiffusionControlNetSAGPipeline") {
+                $("#inpaintContainer").hide();
+            }
+            for (let key in pipeline) {
+                if (keysToIgnore.includes(key)) continue;
+
+                let inputContainer = document.createElement("div");
+                inputContainer.className = "form-group mb-3";
+                let inputElement;
+                inputContainer.id = "pipeline_" + key;
+                pipelineParams.append(inputContainer);
+                if (key === "width" || key === "height" || key === "image" || key === "latents") continue;
+                let value = pipeline[key];
+                console.log("Key: ", key, " Value: ", value);
+                // Split the key by underscores and title case it
+                let keySplit = key.split("_");
+                let keyTitle = "";
+                for (let i = 0; i < keySplit.length; i++) {
+                    keyTitle += " " + keySplit[i].charAt(0).toUpperCase() + keySplit[i].slice(1);
+                }
+                // If the value is a float, create a BootstrapSlider
+                if (typeof value === "number") {
+                    inputElement = document.createElement("div");
+
+                    let slider = $("#pipeline_" + key).BootstrapSlider({
+                        min: 0,
+                        max: 1,
+                        value: value,
+                        step: 0.01,
+                        label: keyTitle
+                    });
+
+                }
+                // if the value is a boolean, create a bootstrap switch
+                if (typeof value === "boolean") {
+                    inputElement = document.createElement("div");
+                    inputElement.className = "form-check form-switch";
+                    let input = document.createElement("input");
+                    input.className = "form-check-input";
+                    input.type = "checkbox";
+                    input.id = "pipeline_" + key;
+                    input.checked = value;
+                    let label = document.createElement("label");
+                    label.className = "form-check-label";
+                    label.htmlFor = "pipeline_" + key;
+                    label.innerText = keyTitle;
+                    inputElement.appendChild(input);
+                    inputElement.appendChild(label);
+                }
+                // If the value is a string, set inputElement to be a text input and create a label
+                if (typeof value === "string" || key.indexOf("prompt") !== -1) {
+                    let label = document.createElement("label");
+                    label.innerText = keyTitle;
+                    label.htmlFor = "pipeline_" + key;
+                    inputElement = document.createElement("input");
+                    inputElement.className = "form-control";
+                    inputElement.id = "pipeline_" + key;
+                    inputElement.type = "text";
+                    inputElement.value = value;
+                    inputContainer.appendChild(label);
+                }
+                if (inputElement !== undefined) inputContainer.appendChild(inputElement);
+            }
+            if (pipeline.hasOwnProperty("DOCSTRING")) {
+                let docstring = document.createElement("div");
+                docstring.className = "form-text hintBox";
+                docstring.innerText = pipeline["DOCSTRING"];
+                pipelineParams.prepend(docstring);
+                if (!$("#pipeHelpButton").hasClass("active")) $(".hintBox").hide();
+            }
+        } else {
+            $("#inpaintContainer").hide();
+            $("#infer_prompt2prompt").hide();
+            $("#controlnetSettings").hide();
+        }
+        if (this.value === "StableDiffusionPrompt2PromptPipeline") {
+            $("#infer_prompt2prompt").show();
+        } else {
+            $("#infer_prompt2prompt").hide();
+        }
+        if (this.value.indexOf("ControlNet") !== -1) {
+            $("#controlnetSettings").show();
+        } else {
+            $("#controlnetSettings").hide();
+        }
+    });
+
+    $("#controlnet_type").change(function () {
+        console.log("Controlnet type changed: ", this.value);
+        if (this.value === "ControlNet Reference") {
+            console.log("SHOW.");
+            $(".refParam").show();
+        } else {
+            console.log("HIDE.");
+            $(".refParam").hide();
+        }
+    });
+
+    $("#pipeHelpButton").click(function () {
+        $(".hintBox").toggle();
+        $("#pipeHelpButton").toggleClass("active");
+    });
+
     console.log("Infer settings: ", inferSettings);
 }
 
@@ -293,7 +430,6 @@ function inferRefresh() {
 function getSelectedText(input) {
     return input.value.substring(input.selectionStart, input.selectionEnd);
 }
-
 
 function increaseWeight() {
     const input = document.activeElement;
@@ -415,8 +551,8 @@ function setResolution(ratio) {
     let width = Math.round(Math.min(maxRes, ratioValue * maxRes));
     let height = Math.round(Math.min(maxRes, maxRes / ratioValue));
 
-    width = Math.floor(width / 64) * 64;
-    height = Math.floor(height / 64) * 64;
+    width = Math.floor(width / 8) * 8;
+    height = Math.floor(height / 8) * 8;
     inferSettings.width = width;
     inferSettings.height = height;
     console.log("Updated infer settings: ", inferSettings);
@@ -447,26 +583,12 @@ function applyInferSettings(decodedSettings) {
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
-    let enableControlNet = document.getElementById("enable_controlnet");
-    let controlnetType = document.getElementById("controlnet_type");
     let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
-    let enableSag = document.getElementById("infer_sag");
-    let controlnet_mask = controlnetImageEditor.getMask();
-    let controlnet_image = controlnetImageEditor.getDropped();
-    let infer_mask = inpaintImageEditor.getMask();
-    let infer_image = inpaintImageEditor.getDropped();
 
     promptEl.value = decodedSettings.prompt;
     negEl.value = decodedSettings.negative_prompt;
     seedEl.value = decodedSettings.seed.toString();
-    enableControlNet.checked = decodedSettings.enable_controlnet;
-    controlnetType.value = decodedSettings.controlnet_type;
     autoLoadResolution.checked = false;  // Set to true if image is set below
-    enableSag.checked = decodedSettings.use_sag;
-    // controlnetImageEditor.setMask(decodedSettings.controlnet_mask);
-    // controlnetImageEditor.setDropped(decodedSettings.controlnet_image);
-    // inpaintImageEditor.setMask(decodedSettings.infer_mask);
-    // inpaintImageEditor.setDropped(decodedSettings.infer_image);
 
     const radioButtons = document.getElementsByName('inferMode');
     let inferMode = decodedSettings.mode;
@@ -478,7 +600,7 @@ function applyInferSettings(decodedSettings) {
         }
     }
 
-    if (decodedSettings.enable_controlnet && decodedSettings.image !== undefined) {
+    if (decodedSettings.image !== undefined) {
         autoLoadResolution.checked = true;
         controlnetImageEditor.setResolution(decodedSettings.width, decodedSettings.height);
         controlnetImageEditor.setImage(decodedSettings.image);
@@ -538,64 +660,70 @@ function getInferSettings() {
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
-    let enableControlNet = document.getElementById("enable_controlnet");
     let controlnetType = document.getElementById("controlnet_type");
     let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
-    let enableSag = document.getElementById("infer_sag");
-    let controlnet_mask = controlnetImageEditor.getMask();
-    let controlnet_image = controlnetImageEditor.getDropped();
-    let infer_mask = inpaintImageEditor.getMask();
-    let infer_image = inpaintImageEditor.getDropped();
     const loras = loraModelSelect.getModel();
-    const radioButtons = document.getElementsByName('inferMode');
-    let inferMode = 'txt2img';
-
-    for (let i = 0; i < radioButtons.length; i++) {
-        if (radioButtons[i].checked) {
-            inferMode = radioButtons[i].value;
-            break;
-        }
-    }
-    const model = inferModelSelect.getModel();
-    const vae = vaeModelSelect.getModel();
-    inferSettings.mode = inferMode;
-    inferSettings.vae = vae;
-    inferSettings.model = model;
     inferSettings.loras = loras ? loras : [];
+    inferSettings.model = inferModelSelect.getModel();
+    inferSettings.vae = vaeModelSelect.getModel();
     inferSettings.prompt = promptEl.value;
+    inferSettings.pipeline = $("#infer_pipeline").val();
     inferSettings.negative_prompt = negEl.value;
     inferSettings.seed = parseInt(seedEl.value);
     inferSettings.scale = scaleTest.value;
-    inferSettings.use_sag = enableSag.checked;
     inferSettings.steps = parseInt(stepTest.value);
     inferSettings.num_images = parseInt(numImages.value);
     inferSettings.batch_size = parseInt(batchSize.value);
     inferSettings.lora_weight = loraWeight.value;
-    inferSettings.controlnet_mask = controlnet_mask;
-    inferSettings.controlnet_image = controlnet_image;
-    inferSettings.infer_mask = infer_mask;
-    inferSettings.infer_image = infer_image;
-    inferSettings.enable_controlnet = enableControlNet.checked;
+    inferSettings.controlnet_mask = controlnetImageEditor.getMask();
+    inferSettings.controlnet_image = controlnetImageEditor.getDropped();
+    inferSettings.infer_mask = inpaintImageEditor.getMask();
+    inferSettings.infer_image = inpaintImageEditor.getDropped();
     inferSettings.controlnet_type = controlnetType.value;
-    inferSettings.denoise_strength = parseFloat(denoiseStrength.value);
     inferSettings.controlnet_preprocess = document.getElementById("controlnet_preprocess").checked;
     inferSettings.controlnet_batch = document.getElementById("controlnet_batch").checked;
     inferSettings.controlnet_batch_dir = controlnetFileBrowser.value;
     inferSettings.controlnet_batch_find = document.getElementById("controlnet_batch_find").value;
     inferSettings.controlnet_batch_replace = document.getElementById("controlnet_batch_replace").value;
     inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnet_batch_use_prompt").checked;
+    inferSettings.use_control_resolution = $("#use_control_resolution").is(":checked");
+    inferSettings.use_input_resolution = $("#use_input_resolution").is(":checked");
 
-    if (enableControlNet.checked && autoLoadResolution.checked && inferSettings.image !== undefined) {
-        inferSettings.width = controlnetImageEditor.originalResolution.width;
-        inferSettings.height = controlnetImageEditor.originalResolution.height
-        inferSettings.image = controlnetImageEditor.imageSource;
-    } else {
-        if (userConfig["show_aspect_ratios"]) {
-            const selectedRatio = document.querySelector(".aspectButton.btn-selected");
-            setResolution(selectedRatio.dataset.ratio);
-        } else {
-            inferSettings.width = parseInt(widthSlider.value);
-            inferSettings.height = parseInt(heightSlider.value);
+    const pipelineElements = document.querySelectorAll('[id^="pipeline_"]');
+    inferSettings.pipeline_settings = {};
+    pipelineElements.forEach((element) => {
+        let elementId = element.id;
+        // If the element's ID has "_container" or "_range" in it, continue
+        if (element.id.includes("_container") || element.id.includes("_range")) {
+            return;
         }
+        if (elementId === "pipeline_controller" && inferSettings.pipeline !== "StableDiffusionPrompt2PromptPipeline") {
+            return;
+        }
+        let eleValue = element.value;
+
+        // If the element's ID has "_number" in it, remove _number from the "key" and parse the value as a float
+        if (element.id.includes("_number")) {
+            elementId = element.id.replace("_number", "");
+            eleValue = parseFloat(element.value);
+        }
+
+        // Make sure we parse check values
+        if (element.type === "checkbox") {
+            eleValue = element.checked;
+        }
+        elementId = elementId.replace("pipeline_", "");
+        inferSettings.pipeline_settings[elementId] = eleValue;
+    });
+    if (inferSettings.pipeline.indexOf("ControlNet") > -1 && inferSettings.image !== undefined) {
+        inferSettings.image = controlnetImageEditor.imageSource;
     }
+    if (userConfig["show_aspect_ratios"]) {
+        const selectedRatio = document.querySelector(".aspectButton.btn-selected");
+        setResolution(selectedRatio.dataset.ratio);
+    } else {
+        inferSettings.width = parseInt(widthSlider.value);
+        inferSettings.height = parseInt(heightSlider.value);
+    }
+    console.log("Infer settings: ", inferSettings);
 }

@@ -11,7 +11,7 @@ class FileBrowser {
         this.setValue = this.setValue.bind(this);
 
         let wrapper = document.createElement("div");
-        wrapper.classList.add("row", "fileBrowserContainer");
+        wrapper.classList.add("fileBrowserContainer");
         parentElement.innerHTML = "";
         this.container = parentElement;
         this.parentElement = wrapper;

@@ -1,53 +1,68 @@
+import importlib
+import inspect
 import logging
 import os.path
+import sys
 import traceback
 
 import tomesd
 import torch
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
-    StableDiffusionImg2ImgPipeline, StableDiffusionDepth2ImgPipeline, StableDiffusionPipeline, AutoencoderKL, \
-    StableDiffusionInpaintPipelineLegacy
+    AutoencoderKL, StableDiffusionPipeline
 from diffusers.models.attention_processor import AttnProcessor2_0
 from safetensors.torch import load_file
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.controlnet_processors import model_data as controlnet_data
-from core.pipelines.pipeline_prompt2prompt import Prompt2PromptPipeline
-from core.pipelines.pipeline_stable_diffusion_inpaint_controlnet import StableDiffusionInpaintPipeline
 
 logger = logging.getLogger(__name__)
 
 
 def initialize_pipeline(pipeline, loras, weight: float = 0.9):
-    pipeline.enable_model_cpu_offload()
-    pipeline.unet.set_attn_processor(AttnProcessor2_0())
-    if os.name != "nt":
-        pipeline.unet = torch.compile(pipeline.unet)
-    pipeline.enable_xformers_memory_efficient_attention()
-    # pipeline.vae.enable_slicing()
-    tomesd.apply_patch(pipeline, ratio=0.5)
-    pipeline.scheduler.config["solver_type"] = "bh2"
-    pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
+    try:
+        pipeline.unet.set_attn_processor(AttnProcessor2_0())
+        if os.name != "nt":
+            pipeline.unet = torch.compile(pipeline.unet)
+    except:
+        logger.debug("Unable to set attention processor.")
+
+    try:
+        pipeline.enable_xformers_memory_efficient_attention()
+    except AttributeError:
+        logger.debug("Unable to enable memory efficient attention.")
+
+    if issubclass(pipeline.__class__, StableDiffusionPipeline):
+        try:
+            tomesd.apply_patch(pipeline, ratio=0.5)
+        except:
+            logger.debug("Unable to apply tomesd patch.")
+        # If our pipeline inherits from StableDiffusionPipeline, we need to set the scheduler to UniPCMultistepScheduler
+        try:
+            logger.debug("Setting scheduler to UniPCMultistepScheduler.")
+            pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
+            pipeline.scheduler.config["solver_type"] = "bh2"
+        except:
+            logger.debug("Unable to initialize scheduler.")
+
     if len(loras):
         for lora in loras:
             if "path" in lora:
                 pipeline = apply_lora(pipeline, lora['path'], weight)
                 logger.debug(f"Loading lora: {lora['name']}")
-    return pipeline
+    return pipeline.to("cuda")
 
 
 def initialize_controlnets(model_data):
     nets = []
-    if "type" not in model_data.data:
-        logger.debug("No controlnet type specified.")
+    if "controlnet_type" not in model_data.data:
         return nets
 
-    controlnet_type = model_data.data["type"]
+    controlnet_type = model_data.data["controlnet_type"]
     if isinstance(controlnet_type, str):
         controlnet_type = [controlnet_type]
-    for _ in controlnet_type:
+    for controlnet_name in controlnet_type:
         for md in controlnet_data:
-            if md["name"] == controlnet_type:
+            if md["name"] == controlnet_name:
                 controlnet_url = md["model_url"]
                 controlnet = ControlNetModel.from_pretrained(controlnet_url, torch_dtype=torch.float16)
                 nets.append(controlnet)
@@ -57,9 +72,8 @@ def initialize_controlnets(model_data):
 def load_diffusers(model_data: ModelData):
     model_path = model_data.path
     if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
-        logger.debug(f"Adding working to dreambooth model path: {model_path}")
         model_path = os.path.join(model_path, "working")
-
+    pipeline_cls = model_data.data.get("pipeline", "DiffusionPipeline")
     pipeline = None
     if not os.path.exists(model_path):
         logger.debug(f"Unable to load model: {model_path}")
@@ -69,6 +83,8 @@ def load_diffusers(model_data: ModelData):
             pipe_args = {
                 "torch_dtype": torch.float16
             }
+            if "Onnx" in pipeline_cls:
+                pipe_args["export"] = True
             if "vae" in model_data.data:
                 pipe_args["vae"] = AutoencoderKL.from_pretrained(
                     model_data.data["vae"],
@@ -76,117 +92,126 @@ def load_diffusers(model_data: ModelData):
                 )
             if len(nets):
                 pipe_args["controlnet"] = nets
+            logger.debug(f"Loading pipeline: {pipeline_cls} from {model_path}")
+            # Instantiate pipeline using pipeline_cls string
+            if pipeline_cls == "DiffusionPipeline" or pipeline_cls is None or pipeline_cls == "auto":
+                src_pipe = DiffusionPipeline.from_pretrained(model_path, **pipe_args)
+            else:
+                pipe_obj = get_pipeline_cls(pipeline_cls)
+                src_pipe = pipe_obj.from_pretrained(model_path, **pipe_args)
 
-            text2img = DiffusionPipeline.from_pretrained(model_path, **pipe_args)
-            pipeline = initialize_pipeline(text2img, loras=model_data.data.get("loras", []), weight=model_data.data.get("lora_weight", 0.9))
+            pipeline = initialize_pipeline(src_pipe, loras=model_data.data.get("loras", []),
+                                           weight=model_data.data.get("lora_weight", 0.9))
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
     return pipeline
 
 
-def load_diffusers_img2img(model_data: ModelData):
-    model_path = model_data.path
-    if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
-        logger.debug(f"Adding working to dreambooth model path: {model_path}")
-        model_path = os.path.join(model_path, "working")
+def get_pipeline_cls(class_name):
+    subclasses_params = get_pipeline_parameters()
 
-    pipeline = None
-    if not os.path.exists(model_path):
-        logger.debug(f"Unable to load model: {model_path}")
+    if class_name in subclasses_params:
+        modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "optimum.onnxruntime"]
+        for module in modules:
+            try:
+                mod = importlib.import_module(module)
+
+                for name, obj in inspect.getmembers(mod):
+                    if inspect.isclass(obj) and name == class_name:
+                        pipe_class = getattr(sys.modules[module], class_name)
+                        return pipe_class
+
+            except Exception as e:
+                logger.debug(f"Exception loading module {module}: {e} {traceback.format_exc()}")
+
     else:
-        try:
-            nets = initialize_controlnets(model_data)
-            pipe_args = {
-                "pretrained_model_name_or_path": model_path,
-                "torch_dtype": torch.float16,
-            }
-            if len(nets):
-                pipe_args["controlnet"] = nets
-            pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
-        except Exception as e:
-            logger.warning(f"Exception loading pipeline: {e}")
-            traceback.print_exc()
-    return pipeline
+        return None
 
 
-def load_diffusers_prompt2prompt(model_data: ModelData):
-    model_path = model_data.path
-    if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
-        logger.debug(f"Adding working to dreambooth model path: {model_path}")
-        model_path = os.path.join(model_path, "working")
+def get_pipeline_parameters(ignore_keys=None):
+    filter_keys = [
+        "Onnx",
+        "Flax",
+        "UnCLIP",
+        "Pix2Pix",
+        "Depth2Img",
+        "ImageVariation",
+        "LatentUpscale",
+        "ModelEdit",
+        "Excite",
+        "Upscale",
+        "UnCLIP"
+    ]
+    filter_pipes = ["StableDiffusionInpaintPipeline"]
+    if ignore_keys is None:
+        ignore_keys = ["num_images_per_prompt", "num_inference_steps", "output_type", "return_dict", "eta", "self", "kwargs",
+                       "callback", "callback_steps"]
+    modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "optimum.onnxruntime"]
+    subclasses_params = {}
+    shared_keys = set()
+    for module in modules:
+        mod = importlib.import_module(module)
+        for name, obj in inspect.getmembers(mod):
+            if inspect.isclass(obj):
+                if issubclass(obj, DiffusionPipeline) or issubclass(obj, StableDiffusionPipeline):
+                    skip_class = False
+                    if name in subclasses_params:
+                        skip_class = True
+                    for key in filter_keys:
+                        if key in name:
+                            skip_class = True
+                    if name in filter_pipes:
+                        skip_class = True
+                    if skip_class:
+                        continue
+                    sig = inspect.signature(obj.__call__)
+                    params = sig.parameters
+                    subclasses_params[name] = {param_name: param.default if param.default is not param.empty else None
+                                               for param_name, param in params.items()}
+                    # Get the parent module of the actual class
+                    module = sys.modules[obj.__module__]
+                    if hasattr(module, 'EXAMPLE_DOC_STRING'):
+                        # Split the docstring by newlines, iterate each one
+                        docstring = getattr(module, 'EXAMPLE_DOC_STRING')
+                        start_index = 0
+                        line_index = -1
+                        cleaned_lines = []
+                        current_line = ""
+                        for line in docstring.split('\n'):
+                            if ">>>" not in line:
+                                current_line = f"{current_line} {line}"
+                            else:
+                                if current_line:
+                                    cleaned_lines.append(current_line)
+                                current_line = line
+                        for line in cleaned_lines:
+                            if ">>> pipe = " in line or ">>> pipeline = " in line:
+                                line_index = start_index + 1
+                            start_index += 1
+                        doc_out = []
+                        for line in cleaned_lines[line_index:]:
+                            doc_out.append(line.replace(">>>", "").strip())
+                        docstring = '\n'.join(doc_out)
+                        subclasses_params[name]['DOCSTRING'] = docstring
 
-    pipeline = None
-    if not os.path.exists(model_path):
-        logger.debug(f"Unable to load model: {model_path}")
-    else:
-        try:
-            nets = initialize_controlnets(model_data)
-            pipe_args = {
-                "pretrained_model_name_or_path": model_path,
-                "torch_dtype": torch.float16,
-            }
-            if len(nets):
-                pipe_args["controlnet"] = nets
-            pipeline = Prompt2PromptPipeline.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
-        except Exception as e:
-            logger.warning(f"Exception loading pipeline: {e}")
-            traceback.print_exc()
-    return pipeline
+                    if not shared_keys:
+                        # First time through, just set the shared keys to the parameters
+                        shared_keys = set(subclasses_params[name].keys())
+                    else:
+                        # Get the intersection of the current parameters and the already found shared keys
+                        shared_keys &= set(subclasses_params[name].keys())
 
+    # Add the ignored keys to the set of shared keys
+    shared_keys |= set(ignore_keys)
 
-def load_diffusers_inpaint(model_data: ModelData):
-    model_path = model_data.path
-    if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
-        logger.debug(f"Adding working to dreambooth model path: {model_path}")
-        model_path = os.path.join(model_path, "working")
+    # Remove the shared/ignored keys from each class's parameters
+    for params in subclasses_params.values():
+        for key in shared_keys:
+            if key != "DOCSTRING":
+                params.pop(key, None)
 
-    pipeline = None
-    if not os.path.exists(model_path):
-        logger.debug(f"Unable to load model: {model_path}")
-    else:
-        try:
-            nets = initialize_controlnets(model_data)
-            pipe_args = {
-                "pretrained_model_name_or_path": model_path,
-                "torch_dtype": torch.float16,
-            }
-            if len(nets):
-                pipe_args["controlnet"] = nets
-            pipeline = StableDiffusionInpaintPipelineLegacy.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
-        except Exception as e:
-            logger.warning(f"Exception loading pipeline: {e}")
-            traceback.print_exc()
-    return pipeline
-
-
-def load_diffusers_depth2img(model_data: ModelData):
-    model_path = model_data.path
-    if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
-        logger.debug(f"Adding working to dreambooth model path: {model_path}")
-        model_path = os.path.join(model_path, "working")
-
-    pipeline = None
-    if not os.path.exists(model_path):
-        logger.debug(f"Unable to load model: {model_path}")
-    else:
-        try:
-            nets = initialize_controlnets(model_data)
-            pipe_args = {
-                "pretrained_model_name_or_path": model_path,
-                "torch_dtype": torch.float16,
-            }
-            if len(nets):
-                pipe_args["controlnet"] = nets
-            pipeline = StableDiffusionDepth2ImgPipeline.from_pretrained(**pipe_args)
-            pipeline = initialize_pipeline(pipeline, loras=model_data.data.get("loras", []), weight=model_data.data["lora_weight"])
-        except Exception as e:
-            logger.warning(f"Exception loading pipeline: {e}")
-            traceback.print_exc()
-    return pipeline
+    return subclasses_params
 
 
 def apply_lora(pipeline, checkpoint_path, alpha=0.75):
@@ -268,6 +293,3 @@ def apply_lora(pipeline, checkpoint_path, alpha=0.75):
 
 def register_function(model_handler):
     model_handler.register_loader("diffusers", load_diffusers)
-    model_handler.register_loader("diffusers_inpaint", load_diffusers_inpaint)
-    model_handler.register_loader("diffusers_img2img", load_diffusers_img2img)
-    model_handler.register_loader("diffusers_prompt2prompt", load_diffusers_prompt2prompt)

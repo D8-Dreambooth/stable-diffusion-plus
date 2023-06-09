@@ -2,13 +2,13 @@ from typing import Callable, List, Optional, Union
 
 import torch
 from diffusers.models.cross_attention import CrossAttention
-from diffusers.pipelines.stable_diffusion import StableDiffusionPipeline
+from diffusers.pipeline_utils import DiffusionPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 
 from core.pipelines.ptp_utils import AttentionStore
 
 
-class Prompt2PromptPipeline(StableDiffusionPipeline):
+class StableDiffusionPrompt2PromptPipeline(DiffusionPipeline):
     r"""
     Pipeline for text-to-image generation using Stable Diffusion.
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
@@ -92,7 +92,7 @@ class Prompt2PromptPipeline(StableDiffusionPipeline):
                 The output format of the generate image. Choose between
                 [PIL](https://pillow.readthedocs.io/en/stable/): `PIL.Image.Image` or `np.array`.
             return_dict (`bool`, *optional*, defaults to `True`):
-                Whether or not to return a [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] instead of a
+                Whether to return a [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] instead of a
                 plain tuple.
             callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. The function will be

@@ -1,3 +1,5 @@
+import base64
+import io
 import logging
 import os
 import re
@@ -14,6 +16,7 @@ from core.helpers.captioners.blip2 import Blip2Captioner
 from core.helpers.captioners.blip_large import BlipLargeCaptioner
 from core.helpers.captioners.wolf import ConvCaptioner, Conv2Captioner, SwinCaptioner, VitCaptioner
 from core.modules.base.module_base import BaseModule
+from core.modules.tagger.src.cloud_builder import make_cloud
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,61 @@ class TaggerModule(BaseModule):
         super()._initialize_websocket(handler)
         handler.register("save_caption", _save_caption)
         handler.register("caption_image", self._tag_image)
+        handler.register("tag_cloud", self._tag_cloud)
+        handler.register("tag_delete", self._tag_delete)
+
+    async def _tag_delete(self, data):
+        image_dir = data["data"]["path"]
+        recurse = data["data"]["recurse"]
+        tag = data["data"]["tag"]
+        logger.debug(f"Deleting tag {tag} from {image_dir}")
+        updated = {}
+        for root, dirs, files in os.walk(image_dir):
+            for file in files:
+                if file.endswith(".txt"):
+                    file_path = os.path.join(root, file)
+                    logger.debug(f"Checking {file_path}")
+                    # Read the whole file, split by "," and remove whitespace
+                    with open(file_path, "r") as f:
+                        contents = f.read()
+                        tags = [t.strip() for t in contents.split(",")]
+                    if tag in tags:
+                        logger.debug(f"Removing {tag} from {file_path}")
+                        tags.remove(tag)
+                        with open(file_path, "w") as f:
+                            f.write(", ".join(tags))
+                        updated[file_path] = ", ".join(tags)
+            if not recurse:
+                dirs.clear()
+
+        output = {}
+        for updated_file, tags in updated.items():
+            # Find the image file, regardless of extension, by checking the parent directory for names that match
+            # the file name
+            parent_dir = os.path.dirname(updated_file)
+            file_name = os.path.basename(updated_file)
+            for file in os.listdir(parent_dir):
+                if file.startswith(file_name) and ".txt" not in file:
+                    image_file = os.path.join(parent_dir, file)
+                    output[image_file] = tags
+                    break
+
+        return {"updated": output}
+
+    async def _tag_cloud(self, data):
+        image_dir = data["data"]["path"]
+        recurse = data["data"]["recurse"]
+        img, tags = make_cloud(image_dir, recurse)
+
+        # Convert the PIL Image to a byte stream
+        cloud_dict = {}
+        with io.BytesIO() as output:
+            img.save(output, format="JPEG")
+            contents = output.getvalue()
+            cloud_dict["src"] = f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+        cloud_dict["tags"] = tags
+
+        return cloud_dict
 
     async def _tag_image(self, data):
         user = data["user"]
@@ -45,15 +103,34 @@ class TaggerModule(BaseModule):
         char_threshold = data["data"]["char_threshold"]
         keep_existing = data["data"]["append_existing"] if "append_existing" in data["data"] else False
         blacklist = data["data"]["blacklist"] if "blacklist" in data["data"] else []
-        if isinstance(blacklist, str):
-            if "," in blacklist:
-                blacklist = blacklist.split(",")
-            else:
-                blacklist = [blacklist]
-        nb = []
-        for b in blacklist:
-            nb.append(b.strip())
-        blacklist = nb
+        whitelist = data["data"]["whitelist"] if "whitelist" in data["data"] else []
+        my_lists = [blacklist, whitelist]
+        for list_idx in range(len(my_lists)):
+            check_list = my_lists[list_idx]
+            out_list = []
+            if isinstance(check_list, str):
+                if "\n" in check_list:
+                    out_list = check_list.split("\n")
+                else:
+                    out_list.append(check_list)
+            elif isinstance(check_list, list):
+                out_list = check_list
+            cleaned = []
+            for line in out_list:
+                if "," in line:
+                    lines = line.split(",")
+                else:
+                    lines = [line]
+                for l in lines:
+                    stripped = l.strip()
+                    if stripped:
+                        cleaned.append(stripped)
+
+            check_list = cleaned
+            my_lists[list_idx] = check_list
+        blacklist, whitelist = my_lists
+
+        logger.debug(f"Whitelist: {whitelist}")
         logger.debug(f"Blacklist: {blacklist}")
         status = None
         if len(image_path) == 0:
@@ -184,9 +261,12 @@ class TaggerModule(BaseModule):
                 caption = captioner.caption(raw_image, params, False)
                 if key == "blip_large":
                     cap_check = caption.split(" ")
-                    # If all of the elements in the caption are the same word
-                    if len(set(cap_check)) == 1:
-                        caption = cap_check[0]
+                    new_caption = [cap_check[0]]  # Start with the first word
+                    for i in range(1, len(cap_check)):
+                        if cap_check[i] != cap_check[i - 1]:
+                            new_caption.append(cap_check[i])
+                    caption = ' '.join(new_caption)
+
                 logger.debug(f"Response from {key}_{base}: {caption}")
                 outputs[f"{key}--{base}"] = caption
 
@@ -210,6 +290,8 @@ class TaggerModule(BaseModule):
                     stripped = re.sub(r'[^a-zA-Z0-9\s]+', '', part)
                     stripped = stripped.strip()
                     if stripped != "" and stripped not in caption_elements and stripped not in blacklist:
+                        if len(whitelist) and stripped not in whitelist:
+                            continue
                         caption_elements.append(stripped)
             if len(caption_elements) > 1:
                 cap_out = ", ".join(caption_elements)
@@ -219,7 +301,7 @@ class TaggerModule(BaseModule):
                 cap_out = caption
             file_captions[file] = cap_out
             logger.debug(f"File captions: {cap_out}")
-        await update_captions(file_captions, image_path, user, keep_existing)
+        await update_captions(file_captions, image_path, user, keep_existing, blacklist)
         sh.end("Captioning complete.")
 
 
@@ -232,7 +314,9 @@ async def _get_image(data):
     return data
 
 
-async def update_captions(file_captions, image_path, user, append=False):
+async def update_captions(file_captions, image_path, user, append=False, blacklist=None):
+    if blacklist is None:
+        blacklist = []
     fh = FileHandler(user_name=user)
     for image in image_path:
         base = os.path.basename(image)
@@ -251,7 +335,7 @@ async def update_captions(file_captions, image_path, user, append=False):
         clean_tags = []
         for tag in tag_items:
             cleaned = tag.strip()
-            if cleaned != "" and cleaned not in clean_tags:
+            if cleaned != "" and cleaned not in clean_tags and cleaned not in blacklist:
                 clean_tags.append(cleaned)
         tags = ", ".join(clean_tags) if len(clean_tags) > 1 else clean_tags[0] if len(clean_tags) == 1 else ""
         fh.save_file(dest_dir, filename, tags.encode())

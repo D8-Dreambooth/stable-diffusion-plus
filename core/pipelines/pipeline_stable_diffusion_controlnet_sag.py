@@ -31,6 +31,8 @@ from diffusers.utils import is_accelerate_available, is_accelerate_version, logg
     replace_example_docstring, PIL_INTERPOLATION
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
+from core.pipelines.pipeline_optim_mixin import PipelineOptimMixin
+
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 EXAMPLE_DOC_STRING = """
@@ -196,7 +198,7 @@ def check_image(image, prompt, prompt_embeds):
         )
 
 
-class StableDiffusionControlNetSAGPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
+class StableDiffusionControlNetSAGPipeline(DiffusionPipeline, TextualInversionLoaderMixin, PipelineOptimMixin):
     r"""
     Pipeline for text-to-image generation using Stable Diffusion with optional ControlNet guidance.
 
@@ -239,7 +241,7 @@ class StableDiffusionControlNetSAGPipeline(DiffusionPipeline, TextualInversionLo
         scheduler: KarrasDiffusionSchedulers,
         safety_checker: StableDiffusionSafetyChecker,
         feature_extractor: CLIPImageProcessor,
-        requires_safety_checker: bool = True,
+        requires_safety_checker: bool = False,
     ):
         super().__init__()
 

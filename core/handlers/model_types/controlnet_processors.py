@@ -7,6 +7,7 @@ from PIL.Image import Resampling
 from controlnet_aux import OpenposeDetector, MLSDdetector, HEDdetector, CannyDetector, MidasDetector
 from controlnet_aux import PidiNetDetector, NormalBaeDetector, LineartDetector, LineartAnimeDetector, ContentShuffleDetector
 
+from core.handlers.images import scale_image
 from core.handlers.status import StatusHandler
 from core.modules.infer.src.preprocessors.coco_detector import CocoDetector
 
@@ -124,6 +125,14 @@ model_data = [
         "model_url": "lllyasviel/control_v11e_sd15_shuffle",
         "image_type": "image",
         "preprocessor": "Shuffle"
+    },
+    {
+        "name": "ControlNet Reference",
+        "model_file": "",
+        "config_file": "",
+        "model_url": "",
+        "image_type": "image",
+        "preprocessor": "None"
     }
 ]
 
@@ -135,14 +144,11 @@ def get_model_data(model_name):
     return None
 
 
-def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str, max_res: int = 1024, process:bool = True, handler: StatusHandler = None):
+def preprocess_image(images: List[PIL.Image.Image], prompt: List[str], model_name: str, max_res: int = 1024, process:bool = True, handler: StatusHandler = None):
     model = get_model_data(model_name)
     if not len(images):
         logger.warning("NO IMAGE, STUPID")
-        return None, prompt
-    if model is None:
-        logger.warning("Couldn't get model.")
-        return None, prompt
+        return images, prompt
 
     converted = []
     status = {
@@ -157,8 +163,11 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str
         converted.append(img.convert("RGB"))
 
     images = converted
-
-    processor_name = model["preprocessor"] if process else None
+    processor_name = None
+    if model:
+        processor_name = model["preprocessor"] if process else None
+    else:
+        logger.debug("No preprocessing model selected.")
 
     processor = None
     processor_args = {"detect_resolution": max_res, "image_resolution": max_res}
@@ -205,36 +214,7 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: str, model_name: str
             if len(prompt) == len(images):
                 out_prompts.append(prompt[img_idx])
             img_idx += 1
-            width, height = img.size
-            logger.debug(f"Max res: {max_res}, width: {width}, height: {height}")
-            new_height = height
-            new_width = width
-            if width > max_res or height > max_res:
-                if width > max_res or height > max_res:
-                    max_dimension = max_res
-                    aspect_ratio = float(width) / float(height)
-
-                    if width > height:
-                        new_width = max_dimension
-                        new_height = int(new_width / aspect_ratio)
-                    else:
-                        new_height = max_dimension
-                        new_width = int(new_height * aspect_ratio)
-                    img = img.resize((new_width, new_height), Resampling.LANCZOS)
-                    width = new_width
-                    height = new_height
-
-            new_width = int(new_width / 16) * 16
-            new_height = int(new_height / 16) * 16
-
-            # Crop the image from center
-            if new_width != width or new_height != height:
-                left = (width - new_width) // 2
-                top = (height - new_height) // 2
-                right = (width + new_width) // 2
-                bottom = (height + new_height) // 2
-                img = img.crop((left, top, right, bottom))
-
+            img = scale_image(img, max_res)
             if processor:
                 processed = processor(img, **processor_args) if processor_args else processor(img)
                 output.append(processed.convert("RGB"))

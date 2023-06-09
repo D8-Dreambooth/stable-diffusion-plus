@@ -160,8 +160,9 @@ input[type="number"]::-webkit-inner-spin-button {
     transition: all .3s ease-in-out;
     bottom: 0;
 }
+
 input[type="number"]:hover::-webkit-inner-spin-button,
-input[type="number"]:active::-webkit-inner-spin-button{
+input[type="number"]:active::-webkit-inner-spin-button {
     display: block;
     width: 1em;
     box-shadow: 0 0 2px #0CF;
@@ -302,11 +303,40 @@ input[type="number"]:active::-webkit-inner-spin-button{
 
 .borderSection {
     padding: 10px;
-    margin: 10px 0;
     border-radius: 10px;
     background-color: var(--secondary-accent-color);
     border: 1px solid var(--secondary-accent-text-color);
     color: var(--secondary-accent-text-color);
+}
+
+.helpBtn {
+    float: right;
+    position: relative;
+    top: -5px;
+}
+.round-btn {
+    border: none;
+    color: var(--primary-accent-color);
+    padding: 0 8px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    transition-duration: 0.4s;
+    cursor: pointer;
+    border-radius: 50%;
+    line-height: 1.5;
+}
+
+.round-btn:hover {
+    background-color: var(--secondary-accent-color);
+    color: var(--secondary-accent-text-color);
+}
+
+.round-btn.active {
+    background-color: var(--primary-color);
+    color: var(--primary-text-color);
 }
 
 .textEditor {
@@ -316,11 +346,11 @@ input[type="number"]:active::-webkit-inner-spin-button{
 }
 
 .form-group {
-    margin-bottom: 1rem!important;
+    margin-bottom: 1rem !important;
 }
 
 .form-group > label {
-    margin-bottom: 0.25rem!important;
+    margin-bottom: 0.25rem !important;
 }
 
 .sectionLabel:not([class*="col-"]) {
@@ -347,7 +377,7 @@ input[type="number"]:active::-webkit-inner-spin-button{
 }
 
 .form-group:empty {
-  display: none;
+    display: none;
 }
 
 .module {

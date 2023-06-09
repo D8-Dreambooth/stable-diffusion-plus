@@ -178,7 +178,7 @@ def run_server(debug, port):
     server = None
     try:
         import uvicorn
-        config = uvicorn.Config("app.main:app", reload=debug, host="0.0.0.0", port=port, access_log=False)
+        config = uvicorn.Config("app.main:app", reload=debug, host="0.0.0.0", port=port, access_log=False, ws_max_size=16 * 1024 * 1024 * 20)
         server = uvicorn.Server(config=config)
         server.run()
     except KeyboardInterrupt:

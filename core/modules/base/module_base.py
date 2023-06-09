@@ -62,10 +62,7 @@ class BaseModule:
                         if key not in existing_locale:
                             updated = True
                             existing_locale[key] = value
-                    for key, value in existing_locale.items():
-                        if key not in locale_data:
-                            updated = True
-                            existing_locale.pop(key)
+                    existing_locale = {key: value for key, value in existing_locale.items() if key in locale_data}
                     existing_lang[f"module_{self.id}"] = existing_locale
                     existing_locales[lang_key] = existing_lang
 

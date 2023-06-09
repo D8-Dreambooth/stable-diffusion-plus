@@ -1,4 +1,4 @@
-#imageBrowser {
+#imageBrowser, #tagContainer {
     border: 1px solid var(--bs-border-dark);
     border-radius: 5px;
     display: flex;
@@ -27,21 +27,52 @@
 }
 
 .fullImgWrap {
-    width: 100%;
-    max-height: 70vh;
-    justify-content: center;
-    text-align: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-auto-rows: auto;
+    grid-gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
 }
 
 .fullImgWrap img {
-    max-width: 100%;
-    height: auto;
-    max-height: 50vh;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
+
 
 #imageCaption {
     min-height: 50px;
     max-height: 20vh;
     line-height: 1.5em;
     overflow-y: auto;
+}
+
+#tag_cloud_toggle {
+    position: absolute;
+    right: 10px;
+    width: 40px;
+    top: 7px;
+    color: var(--primary-text-color);
+    font-size: 23px;
+}
+
+#tag_edit_toggle {
+    position: absolute;
+    right: 50px;
+    width: 40px;
+    top: 7px;
+    color: var(--primary-text-color);
+    font-size: 23px;
+}
+
+#tag_cloud_toggle:hover, #tag_edit_toggle:hover, #tag_edit_toggle.active {
+    color: var(--primary-color);
+}
+
+.tagPill {
+    white-space: normal;
+    cursor: pointer;
+    font-size: 14px;
 }

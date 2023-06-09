@@ -6,9 +6,10 @@ from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
 from core.dataclasses.infer_data import InferSettings
+from core.handlers.model_types.controlnet_processors import model_data
+from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
-from core.handlers.model_types.controlnet_processors import model_data
 from core.modules.infer.src.infer_utils import start_inference
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ class InferenceModule(BaseModule):
         handler.register("start_inference", _start_inference)
         handler.register("get_controlnets", _get_controlnets)
         handler.register("mask_image", _mask_image)
+        handler.register("get_pipelines", _get_pipelines)
 
 
 async def _start_inference(msg):
@@ -103,6 +105,23 @@ async def _get_controlnets(msg):
     net_data = model_data
     logger.debug("Listing controlnets!")
     return {"nets": net_data}
+
+
+async def _get_pipelines(msg):
+    """
+    Returns a dictionary containing the pipelines.
+
+    The function receives a message and returns a dictionary containing the pipelines. It retrieves the pipelines from the model_data and returns them in the "pipelines" key of the dictionary.
+
+    Args:
+        msg (dict): A dictionary containing the message.
+
+    Returns:
+        dict: A dictionary containing the pipelines.
+    """
+    diffusers_data = get_pipeline_parameters()
+    logger.debug("Listing pipelines!")
+    return {"pipelines": diffusers_data}
 
 
 async def _mask_image(msg):

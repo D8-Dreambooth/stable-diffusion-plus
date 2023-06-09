@@ -10,6 +10,7 @@ from typing import Tuple, List, Dict
 
 import PIL
 from PIL import Image, PngImagePlugin
+from PIL.Image import Resampling
 
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.directories import DirectoryHandler
@@ -106,6 +107,38 @@ def create_image_grid(images):
         grid_image.paste(img, (x, y))
 
     return grid_image
+
+
+def scale_image(img: PIL.Image.Image, max_res: int):
+    width, height = img.size
+    new_height = height
+    new_width = width
+    if width > max_res or height > max_res:
+        if width > max_res or height > max_res:
+            max_dimension = max_res
+            aspect_ratio = float(width) / float(height)
+
+            if width > height:
+                new_width = max_dimension
+                new_height = int(new_width / aspect_ratio)
+            else:
+                new_height = max_dimension
+                new_width = int(new_height * aspect_ratio)
+            img = img.resize((new_width, new_height), Resampling.LANCZOS)
+            width = new_width
+            height = new_height
+
+    new_width = int(new_width / 8) * 8
+    new_height = int(new_height / 8) * 8
+
+    # Crop the image from center
+    if new_width != width or new_height != height:
+        left = (width - new_width) // 2
+        top = (height - new_height) // 2
+        right = (width + new_width) // 2
+        bottom = (height + new_height) // 2
+        img = img.crop((left, top, right, bottom))
+    return img
 
 
 class ImageHandler:

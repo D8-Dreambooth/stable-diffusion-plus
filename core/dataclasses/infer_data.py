@@ -1,5 +1,6 @@
 import base64
 import decimal
+import logging
 import re
 from dataclasses import dataclass
 from io import BytesIO
@@ -22,25 +23,25 @@ class InferSettings:
     controlnet_mask = None
     controlnet_preprocess = True
     controlnet_type = None
-    denoise_strength: float = 0.6
-    enable_controlnet = False
     height: int = 512
     infer_image = None
     infer_mask = None
     invert_mask = True
-    mode: str = "infer"
-    model: ModelData = "None"
-    vae: Dict = None
-    loras: List[ModelData] = None
     lora_weight = 0.9
+    loras: List[ModelData] = None
+    model: ModelData = "None"
     negative_prompt: str = ""
     num_images: int = 1
+    pipeline: str = "auto"
+    pipeline_settings = {}
     prompt: str = ""
     prompts = []
     scale: float = 7.5
     seed: int = -1
-    use_sag = False
-    steps: int = 20
+    steps: int = 30
+    use_control_resolution = True
+    use_input_resolution = True
+    vae: Dict = None
     width: int = 512
 
     def __init__(self, data: Dict):
@@ -111,7 +112,10 @@ class InferSettings:
                 if len(img_bytes) == 0:
                     print("Empty image data")
                     return None
-                return Image.open(BytesIO(img_bytes))
+
+                out_img = Image.open(BytesIO(img_bytes))
+                logging.getLogger(__name__).debug(f"Loaded controlnet image with size {out_img.size}")
+                return out_img
 
     def get_controlnet_mask(self) -> Union[Image.Image, None]:
         value = self.controlnet_mask

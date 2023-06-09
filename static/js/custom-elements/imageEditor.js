@@ -70,8 +70,23 @@ class ImageEditor {
     getDropped() {
         for (let i = 1; i < this.undoStack.length; i++) {
             if (this.undoStack[i].type === 'drop') {
-                return this.dropCanvas.toDataURL('image/png');
+                let img = this.dropCanvas.toDataURL('image/png');
+                let imgObj = new Image();
+                imgObj.src = img;
+                imgObj.onload = function () {
+                    console.log("Original Image dimensions: " + imgObj.width + "x" + imgObj.height);
+
+                    if (imgObj.width > 2048 || imgObj.height > 2048) {
+                        let scaleFactor = Math.max(imgObj.width / 2048, imgObj.height / 2048);
+                        let newWidth = Math.round(imgObj.width / scaleFactor);
+                        let newHeight = Math.round(imgObj.height / scaleFactor);
+                        console.log("Resized Image dimensions: " + newWidth + "x" + newHeight);
+                    }
+                };
+                return img;
             }
+
+
         }
         return "";
     }
@@ -424,7 +439,7 @@ class ImageEditor {
                 // Resize this.canvas
                 this.canvas.width = image.width;
                 this.canvas.height = image.height;
-                
+
                 this.pointCanvas.width = image.width;
                 this.pointCanvas.height = image.height;
                 // Clear the pointCanvas
@@ -442,6 +457,7 @@ class ImageEditor {
                 const state = ctx.getImageData(0, 0, this.dropCanvas.width, this.dropCanvas.height);
                 ctx.drawImage(image, 0, 0, this.dropCanvas.width, this.dropCanvas.height);
                 this.undoStack.push({type: 'drop', imageData: state});
+                console.log("Pushing dropped: ", this.canvas.width, this.canvas.height);
                 this.undoStack.push({
                     type: 'draw',
                     imageData: canvasCtx.getImageData(0, 0, this.canvas.width, this.canvas.height)
