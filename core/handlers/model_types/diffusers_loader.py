@@ -112,7 +112,7 @@ def get_pipeline_cls(class_name):
     subclasses_params = get_pipeline_parameters()
 
     if class_name in subclasses_params:
-        modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "optimum.onnxruntime"]
+        modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
         for module in modules:
             try:
                 mod = importlib.import_module(module)
@@ -147,7 +147,7 @@ def get_pipeline_parameters(ignore_keys=None):
     if ignore_keys is None:
         ignore_keys = ["num_images_per_prompt", "num_inference_steps", "output_type", "return_dict", "eta", "self", "kwargs",
                        "callback", "callback_steps"]
-    modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "optimum.onnxruntime"]
+    modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
     subclasses_params = {}
     shared_keys = set()
     for module in modules:

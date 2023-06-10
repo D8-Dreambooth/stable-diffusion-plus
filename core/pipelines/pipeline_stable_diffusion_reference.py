@@ -1,21 +1,45 @@
 # Inspired by: https://github.com/Mikubill/sd-webui-controlnet/discussions/1236
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 import PIL.Image
 import numpy as np
 import torch
-from diffusers.models import AutoencoderKL, UNet2DConditionModel
+from diffusers import StableDiffusionPipeline
 from diffusers.models.attention import BasicTransformerBlock
 from diffusers.models.unet_2d_blocks import CrossAttnDownBlock2D, CrossAttnUpBlock2D, DownBlock2D, UpBlock2D
-from diffusers import StableDiffusionPipeline
-from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker, StableDiffusionPipelineOutput
-from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, PNDMScheduler
+from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 from diffusers.utils import PIL_INTERPOLATION, logging, randn_tensor
-from transformers import CLIPTextModel, CLIPTokenizer, CLIPImageProcessor
 
 from core.pipelines.pipeline_optim_mixin import PipelineOptimMixin
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+
+EXAMPLE_DOC_STRING = """
+    Examples:
+        ```py
+        >>> import torch
+        >>> from diffusers import UniPCMultistepScheduler
+        >>> from diffusers.utils import load_image
+
+        >>> input_image = load_image("https://hf.co/datasets/huggingface/documentation-images/resolve/main/diffusers/input_image_vermeer.png")
+
+        >>> pipe = StableDiffusionReferencePipeline.from_pretrained(
+                "runwayml/stable-diffusion-v1-5",
+                safety_checker=None,
+                torch_dtype=torch.float16
+                ).to('cuda:0')
+
+        >>> pipe.scheduler = UniPCMultistepScheduler.from_config(pipe_controlnet.scheduler.config)
+
+        >>> result_img = pipe(ref_image=input_image,
+                        prompt="1girl",
+                        num_inference_steps=20,
+                        reference_attn=True,
+                        reference_adain=True).images[0]
+
+        >>> result_img.show()
+        ```
+"""
 
 
 def torch_dfs(model: torch.nn.Module):
@@ -54,16 +78,16 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
         return height, width
 
     def prepare_image(
-            self,
-            image,
-            width,
-            height,
-            batch_size,
-            num_images_per_prompt,
-            device,
-            dtype,
-            do_classifier_free_guidance=False,
-            guess_mode=False,
+        self,
+        image,
+        width,
+        height,
+        batch_size,
+        num_images_per_prompt,
+        device,
+        dtype,
+        do_classifier_free_guidance=False,
+        guess_mode=False,
     ):
         if not isinstance(image, torch.Tensor):
             if isinstance(image, PIL.Image.Image):
@@ -112,7 +136,7 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
         # encode the mask image into latents space so we can concatenate it to the latents
         if isinstance(generator, list):
             ref_image_latents = [
-                self.vae.encode(refimage[i: i + 1]).latent_dist.sample(generator=generator[i])
+                self.vae.encode(refimage[i : i + 1]).latent_dist.sample(generator=generator[i])
                 for i in range(batch_size)
             ]
             ref_image_latents = torch.cat(ref_image_latents, dim=0)
@@ -138,32 +162,32 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
 
     @torch.no_grad()
     def __call__(
-            self,
-            prompt: Union[str, List[str]] = None,
-            image: Union[torch.FloatTensor, PIL.Image.Image, List[torch.FloatTensor], List[PIL.Image.Image]] = None,
-            height: Optional[int] = None,
-            width: Optional[int] = None,
-            num_inference_steps: int = 50,
-            guidance_scale: float = 7.5,
-            negative_prompt: Optional[Union[str, List[str]]] = None,
-            num_images_per_prompt: Optional[int] = 1,
-            eta: float = 0.0,
-            generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-            latents: Optional[torch.FloatTensor] = None,
-            prompt_embeds: Optional[torch.FloatTensor] = None,
-            negative_prompt_embeds: Optional[torch.FloatTensor] = None,
-            output_type: Optional[str] = "pil",
-            return_dict: bool = True,
-            callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
-            callback_steps: int = 1,
-            cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-            attention_auto_machine_weight: float = 1.0,
-            gn_auto_machine_weight: float = 1.0,
-            style_fidelity: float = 1.0,
-            reference_attn: bool = True,
-            reference_adain: bool = True,
-            start_percentage: float = 0.0,
-            stop_percentage: float = 1.0
+        self,
+        prompt: Union[str, List[str]] = None,
+        image: Union[torch.FloatTensor, PIL.Image.Image] = None,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        num_inference_steps: int = 50,
+        guidance_scale: float = 7.5,
+        negative_prompt: Optional[Union[str, List[str]]] = None,
+        num_images_per_prompt: Optional[int] = 1,
+        eta: float = 0.0,
+        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+        latents: Optional[torch.FloatTensor] = None,
+        prompt_embeds: Optional[torch.FloatTensor] = None,
+        negative_prompt_embeds: Optional[torch.FloatTensor] = None,
+        output_type: Optional[str] = "pil",
+        return_dict: bool = True,
+        callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
+        callback_steps: int = 1,
+        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+        attention_auto_machine_weight: float = 1.0,
+        gn_auto_machine_weight: float = 1.0,
+        style_fidelity: float = 0.5,
+        reference_attn: bool = True,
+        reference_adain: bool = True,
+        start_percentage: float = 0.0,
+        stop_percentage: float = 1.0
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -172,7 +196,7 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
             prompt (`str` or `List[str]`, *optional*):
                 The prompt or prompts to guide the image generation. If not defined, one has to pass `prompt_embeds`.
                 instead.
-            ref_image (`torch.FloatTensor`, `PIL.Image.Image`):
+            image (`torch.FloatTensor`, `PIL.Image.Image`):
                 The Reference Control input condition. Reference Control uses this input condition to generate guidance to Unet. If
                 the type is specified as `Torch.FloatTensor`, it is passed to Reference Control as is. `PIL.Image.Image` can
                 also be accepted as an image.
@@ -216,7 +240,7 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                 The output format of the generate image. Choose between
                 [PIL](https://pillow.readthedocs.io/en/stable/): `PIL.Image.Image` or `np.array`.
             return_dict (`bool`, *optional*, defaults to `True`):
-                Whether or not to return a [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] instead of a
+                Whether to return a [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] instead of a
                 plain tuple.
             callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. The function will be
@@ -339,13 +363,14 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
         )
 
         def hacked_basic_transformer_inner_forward(
-                self,
-                hidden_states,
-                encoder_hidden_states=None,
-                timestep=None,
-                attention_mask=None,
-                cross_attention_kwargs=None,
-                class_labels=None,
+            self,
+            hidden_states: torch.FloatTensor,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            encoder_hidden_states: Optional[torch.FloatTensor] = None,
+            encoder_attention_mask: Optional[torch.FloatTensor] = None,
+            timestep: Optional[torch.LongTensor] = None,
+            cross_attention_kwargs: Dict[str, Any] = None,
+            class_labels: Optional[torch.LongTensor] = None,
         ):
             if self.use_ada_layer_norm:
                 norm_hidden_states = self.norm1(hidden_states, timestep)
@@ -411,7 +436,7 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                 attn_output = self.attn2(
                     norm_hidden_states,
                     encoder_hidden_states=encoder_hidden_states,
-                    attention_mask=attention_mask,
+                    attention_mask=encoder_attention_mask,
                     **cross_attention_kwargs,
                 )
                 hidden_states = attn_output + hidden_states
@@ -456,12 +481,13 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
             return x
 
         def hack_CrossAttnDownBlock2D_forward(
-                self,
-                hidden_states,
-                temb=None,
-                encoder_hidden_states=None,
-                attention_mask=None,
-                cross_attention_kwargs=None,
+            self,
+            hidden_states: torch.FloatTensor,
+            temb: Optional[torch.FloatTensor] = None,
+            encoder_hidden_states: Optional[torch.FloatTensor] = None,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+            encoder_attention_mask: Optional[torch.FloatTensor] = None,
         ):
             eps = 1e-6
 
@@ -474,13 +500,15 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                     hidden_states,
                     encoder_hidden_states=encoder_hidden_states,
                     cross_attention_kwargs=cross_attention_kwargs,
+                    attention_mask=attention_mask,
+                    encoder_attention_mask=encoder_attention_mask,
                     return_dict=False,
                 )[0]
                 if MODE == "write":
                     if gn_auto_machine_weight >= self.gn_weight:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
-                        self.mean_bank.append(mean)
-                        self.var_bank.append(var)
+                        self.mean_bank.append([mean])
+                        self.var_bank.append([var])
                 if MODE == "read":
                     if len(self.mean_bank) > 0 and len(self.var_bank) > 0:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
@@ -519,8 +547,8 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                 if MODE == "write":
                     if gn_auto_machine_weight >= self.gn_weight:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
-                        self.mean_bank.append(mean)
-                        self.var_bank.append(var)
+                        self.mean_bank.append([mean])
+                        self.var_bank.append([var])
                 if MODE == "read":
                     if len(self.mean_bank) > 0 and len(self.var_bank) > 0:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
@@ -549,14 +577,15 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
             return hidden_states, output_states
 
         def hacked_CrossAttnUpBlock2D_forward(
-                self,
-                hidden_states,
-                res_hidden_states_tuple,
-                temb=None,
-                encoder_hidden_states=None,
-                cross_attention_kwargs=None,
-                upsample_size=None,
-                attention_mask=None,
+            self,
+            hidden_states: torch.FloatTensor,
+            res_hidden_states_tuple: Tuple[torch.FloatTensor, ...],
+            temb: Optional[torch.FloatTensor] = None,
+            encoder_hidden_states: Optional[torch.FloatTensor] = None,
+            cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+            upsample_size: Optional[int] = None,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            encoder_attention_mask: Optional[torch.FloatTensor] = None,
         ):
             eps = 1e-6
             # TODO(Patrick, William) - attention mask is not used
@@ -570,14 +599,16 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                     hidden_states,
                     encoder_hidden_states=encoder_hidden_states,
                     cross_attention_kwargs=cross_attention_kwargs,
+                    attention_mask=attention_mask,
+                    encoder_attention_mask=encoder_attention_mask,
                     return_dict=False,
                 )[0]
 
                 if MODE == "write":
                     if gn_auto_machine_weight >= self.gn_weight:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
-                        self.mean_bank.append(mean)
-                        self.var_bank.append(var)
+                        self.mean_bank.append([mean])
+                        self.var_bank.append([var])
                 if MODE == "read":
                     if len(self.mean_bank) > 0 and len(self.var_bank) > 0:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
@@ -613,8 +644,8 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                 if MODE == "write":
                     if gn_auto_machine_weight >= self.gn_weight:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
-                        self.mean_bank.append(mean)
-                        self.var_bank.append(var)
+                        self.mean_bank.append([mean])
+                        self.var_bank.append([var])
                 if MODE == "read":
                     if len(self.mean_bank) > 0 and len(self.var_bank) > 0:
                         var, mean = torch.var_mean(hidden_states, dim=(2, 3), keepdim=True, correction=0)
@@ -756,6 +787,7 @@ class StableDiffusionReferencePipeline(StableDiffusionPipeline, PipelineOptimMix
                     if callback is not None and i % callback_steps == 0:
                         callback(i, t, latents)
 
+        has_nsfw_concept = None
         if output_type == "latent":
             image = latents
             has_nsfw_concept = None
