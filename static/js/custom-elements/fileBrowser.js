@@ -14,6 +14,7 @@ class FileBrowser {
         wrapper.classList.add("fileBrowserContainer");
         parentElement.innerHTML = "";
         this.container = parentElement;
+        this.container.classList.add("fileBrowser");
         this.parentElement = wrapper;
         this.infoPanel = undefined;
         this.currentPath = "";

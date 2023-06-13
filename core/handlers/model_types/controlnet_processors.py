@@ -111,10 +111,10 @@ model_data = [
         "preprocessor": None
     },
     {
-        "name": "ControlNet 1.1 Tile (Unfinished)",
+        "name": "ControlNet 1.1 Tile",
         "model_file": "control_v11u_sd15_tile.pth",
         "config_file": "control_v11u_sd15_tile.yaml",
-        "model_url": "lllyasviel/control_v11u_sd15_tile",
+        "model_url": "lllyasviel/control_v11f1e_sd15_tile",
         "image_type": "image",
         "preprocessor": None
     },
@@ -127,10 +127,11 @@ model_data = [
         "preprocessor": "Shuffle"
     },
     {
-        "name": "ControlNet Reference",
-        "model_file": "",
-        "config_file": "",
-        "model_url": "",
+        "name": "ControlNet Brightness",
+        "model_file": "diffusion_pytorch_model.safetensors",
+        "config_file": "config.json",
+        "subfolder": "models",
+        "model_url": "ioclab/control_v1p_sd15_brightness",
         "image_type": "image",
         "preprocessor": "None"
     }

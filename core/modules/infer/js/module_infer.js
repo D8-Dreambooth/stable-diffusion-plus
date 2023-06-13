@@ -9,6 +9,7 @@ let vaeModelSelect;
 let loraModelSelect;
 let pipelineData = {};
 
+
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
@@ -163,15 +164,17 @@ function inferInit() {
         step: 0.01,
     });
 
-    controlnetFileBrowser = $("#controlnetBatchFileSelect").fileBrowser({
+    controlnetFileBrowser = $("#controlnet_batch_dir").fileBrowser({
         "file_type": "image",
         "showSelectButton": true,
         "listFiles": false,
         "showTitle": false,
         "showInfo": false,
         "multiselect": false,
-        "dropdown": true
+        "dropdown": true,
+        "label": "Controlnet Batch Directory"
     });
+
     controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "", false);
     inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "", false);
 
@@ -199,7 +202,7 @@ function inferInit() {
                     sendMessage("read_image_info", {"image": base64Data}).then((data) => {
                         if (data.hasOwnProperty("image_data")) {
                             console.log("Image info: ", data);
-                            applyInferSettings(data["image_data"]);
+                            applyInferSettingsNew(data["image_data"]);
                         }
                     });
                 };
@@ -217,28 +220,6 @@ function inferInit() {
             $(".controlnetBatch").hide();
         }
     });
-
-    const radioButtons = document.getElementsByName('inferMode');
-
-    for (let i = 0; i < radioButtons.length; i++) {
-        radioButtons[i].addEventListener('change', function () {
-            let p2pElements = $(".prompt2prompt")
-            if (this.value === "txt2img") {
-                inpaintContainer.hide();
-            } else {
-                inpaintContainer.show();
-            }
-            if (this.value === "img2img") {
-
-            }
-            if (this.value === "p2p") {
-                console.log("Prompt2prompt");
-                p2pElements.show();
-            } else {
-                p2pElements.hide();
-            }
-        });
-    }
 
     let moduleSettings = inferModule.systemConfig;
     console.log("Loading inference settings(1) from: ", moduleSettings);
@@ -287,104 +268,7 @@ function inferInit() {
     $("#controlnetSettings").hide();
     $("#infer_pipeline").change(function () {
         console.log("Pipeline changed: ", this.value);
-        let pipelineParams = $("#pipelineParams");
-        pipelineParams.empty();
-        if (this.value !== "auto") {
-            let pipeline = pipelineData[this.value];
-            console.log("Pipeline: ", pipeline);
-            // Enumerate keyvalues in pipeline
-            let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
-                "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
-            if (pipeline.hasOwnProperty("image")) {
-                $("#inpaintContainer").show();
-            } else {
-                $("#inpaintContainer").hide();
-            }
-            if (this.value === "StableDiffusionControlNetPipeline" || this.value === "StableDiffusionControlNetSAGPipeline") {
-                $("#inpaintContainer").hide();
-            }
-            for (let key in pipeline) {
-                if (keysToIgnore.includes(key)) continue;
-
-                let inputContainer = document.createElement("div");
-                inputContainer.className = "form-group mb-3";
-                let inputElement;
-                inputContainer.id = "pipeline_" + key;
-                pipelineParams.append(inputContainer);
-                if (key === "width" || key === "height" || key === "image" || key === "latents") continue;
-                let value = pipeline[key];
-                console.log("Key: ", key, " Value: ", value);
-                // Split the key by underscores and title case it
-                let keySplit = key.split("_");
-                let keyTitle = "";
-                for (let i = 0; i < keySplit.length; i++) {
-                    keyTitle += " " + keySplit[i].charAt(0).toUpperCase() + keySplit[i].slice(1);
-                }
-                // If the value is a float, create a BootstrapSlider
-                if (typeof value === "number") {
-                    inputElement = document.createElement("div");
-
-                    let slider = $("#pipeline_" + key).BootstrapSlider({
-                        min: 0,
-                        max: 1,
-                        value: value,
-                        step: 0.01,
-                        label: keyTitle
-                    });
-
-                }
-                // if the value is a boolean, create a bootstrap switch
-                if (typeof value === "boolean") {
-                    inputElement = document.createElement("div");
-                    inputElement.className = "form-check form-switch";
-                    let input = document.createElement("input");
-                    input.className = "form-check-input";
-                    input.type = "checkbox";
-                    input.id = "pipeline_" + key;
-                    input.checked = value;
-                    let label = document.createElement("label");
-                    label.className = "form-check-label";
-                    label.htmlFor = "pipeline_" + key;
-                    label.innerText = keyTitle;
-                    inputElement.appendChild(input);
-                    inputElement.appendChild(label);
-                }
-                // If the value is a string, set inputElement to be a text input and create a label
-                if (typeof value === "string" || key.indexOf("prompt") !== -1) {
-                    let label = document.createElement("label");
-                    label.innerText = keyTitle;
-                    label.htmlFor = "pipeline_" + key;
-                    inputElement = document.createElement("input");
-                    inputElement.className = "form-control";
-                    inputElement.id = "pipeline_" + key;
-                    inputElement.type = "text";
-                    inputElement.value = value;
-                    inputContainer.appendChild(label);
-                }
-                if (inputElement !== undefined) inputContainer.appendChild(inputElement);
-            }
-            if (pipeline.hasOwnProperty("DOCSTRING")) {
-                let docstring = document.createElement("div");
-                docstring.className = "form-text hintBox";
-                docstring.innerText = pipeline["DOCSTRING"];
-                pipelineParams.prepend(docstring);
-                if (!$("#pipeHelpButton").hasClass("active")) $(".hintBox").hide();
-            }
-        } else {
-            $("#inpaintContainer").hide();
-            $("#infer_prompt2prompt").hide();
-            $("#controlnetSettings").hide();
-        }
-        if (this.value === "StableDiffusionPrompt2PromptPipeline") {
-            $("#infer_prompt2prompt").show();
-        } else {
-            $("#infer_prompt2prompt").hide();
-        }
-        if (this.value.indexOf("ControlNet") !== -1) {
-            $("#controlnetSettings").show();
-        } else {
-            $("#controlnetSettings").hide();
-        }
+        updatePipelineSettings(this.value);
     });
 
     $("#controlnet_type").change(function () {
@@ -404,6 +288,107 @@ function inferInit() {
     });
 
     console.log("Infer settings: ", inferSettings);
+}
+
+function updatePipelineSettings(pipelineName) {
+    let pipelineParams = $("#pipelineParams");
+    pipelineParams.empty();
+    if (pipelineName !== "auto") {
+        let pipeline = pipelineData[pipelineName];
+        console.log("Pipeline: ", pipeline);
+        // Enumerate keyvalues in pipeline
+        let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
+            "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
+        if (pipeline.hasOwnProperty("image")) {
+            $("#inpaintContainer").show();
+        } else {
+            $("#inpaintContainer").hide();
+        }
+        if (pipelineName === "StableDiffusionControlNetPipeline" || pipelineName === "StableDiffusionControlNetSAGPipeline") {
+            $("#inpaintContainer").hide();
+        }
+        for (let key in pipeline) {
+            if (keysToIgnore.includes(key)) continue;
+
+            let inputContainer = document.createElement("div");
+            inputContainer.className = "form-group mb-3";
+            let inputElement;
+            inputContainer.id = "pipeline_" + key;
+            pipelineParams.append(inputContainer);
+            if (key === "width" || key === "height" || key === "image" || key === "latents") continue;
+            let value = pipeline[key];
+            console.log("Key: ", key, " Value: ", value);
+            // Split the key by underscores and title case it
+            let keySplit = key.split("_");
+            let keyTitle = "";
+            for (let i = 0; i < keySplit.length; i++) {
+                keyTitle += " " + keySplit[i].charAt(0).toUpperCase() + keySplit[i].slice(1);
+            }
+            // If the value is a float, create a BootstrapSlider
+            if (typeof value === "number") {
+                inputElement = document.createElement("div");
+
+                let slider = $("#pipeline_" + key).BootstrapSlider({
+                    min: 0,
+                    max: 1,
+                    value: value,
+                    step: 0.01,
+                    label: keyTitle
+                });
+
+            }
+            // if the value is a boolean, create a bootstrap switch
+            if (typeof value === "boolean") {
+                inputElement = document.createElement("div");
+                inputElement.className = "form-check form-switch";
+                let input = document.createElement("input");
+                input.className = "form-check-input";
+                input.type = "checkbox";
+                input.id = "pipeline_" + key;
+                input.checked = value;
+                let label = document.createElement("label");
+                label.className = "form-check-label";
+                label.htmlFor = "pipeline_" + key;
+                label.innerText = keyTitle;
+                inputElement.appendChild(input);
+                inputElement.appendChild(label);
+            }
+            // If the value is a string, set inputElement to be a text input and create a label
+            if (typeof value === "string" || key.indexOf("prompt") !== -1) {
+                let label = document.createElement("label");
+                label.innerText = keyTitle;
+                label.htmlFor = "pipeline_" + key;
+                inputElement = document.createElement("input");
+                inputElement.className = "form-control";
+                inputElement.id = "pipeline_" + key;
+                inputElement.type = "text";
+                inputElement.value = value;
+                inputContainer.appendChild(label);
+            }
+            if (inputElement !== undefined) inputContainer.appendChild(inputElement);
+        }
+        if (pipeline.hasOwnProperty("DOCSTRING")) {
+            let docstring = document.createElement("div");
+            docstring.className = "form-text hintBox";
+            docstring.innerText = pipeline["DOCSTRING"];
+            pipelineParams.prepend(docstring);
+            if (!$("#pipeHelpButton").hasClass("active")) $(".hintBox").hide();
+        }
+    } else {
+        $("#inpaintContainer").hide();
+        $("#infer_prompt2prompt").hide();
+        $("#controlnetSettings").hide();
+    }
+    if (pipelineName === "StableDiffusionPrompt2PromptPipeline") {
+        $("#infer_prompt2prompt").show();
+    } else {
+        $("#infer_prompt2prompt").hide();
+    }
+    if (pipelineName.indexOf("ControlNet") !== -1) {
+        $("#controlnetSettings").show();
+    } else {
+        $("#controlnetSettings").hide();
+    }
 }
 
 function inferRefresh() {
@@ -579,81 +564,149 @@ async function startInference() {
     }
 }
 
-function applyInferSettings(decodedSettings) {
-    let promptEl = document.getElementById("infer_prompt");
-    let negEl = document.getElementById("infer_negative_prompt");
-    let seedEl = document.getElementById("infer_seed");
-    let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
-
-    promptEl.value = decodedSettings.prompt;
-    negEl.value = decodedSettings.negative_prompt;
-    seedEl.value = decodedSettings.seed.toString();
-    autoLoadResolution.checked = false;  // Set to true if image is set below
-
-    const radioButtons = document.getElementsByName('inferMode');
-    let inferMode = decodedSettings.mode;
-
-    for (let i = 0; i < radioButtons.length; i++) {
-        if (radioButtons[i].value === inferMode) {
-            radioButtons[i].checked = true;
-            break;
+function applyInferSettingsNew(decodedSettings) {
+    console.log("Applying infer settings: ", decodedSettings);
+    if ("pipeline" in decodedSettings && "pipeline_settings" in decodedSettings) {
+        let pipeLine = decodedSettings["pipeline"];
+        let pipeSettings = decodedSettings["pipeline_settings"];
+        delete decodedSettings["pipeline"];
+        delete decodedSettings["pipeline_settings"];
+        $("#infer_pipeline").val(pipeLine); // Removed jQuery code
+        updatePipelineSettings(pipeLine);
+        for (let key in pipeSettings) {
+            let value = pipeSettings[key];
+            if (value === "true") {
+                value = true;
+            } else if (value === "false") {
+                value = false;
+            }
+            key = "pipeline_" + key;
+            setElementValue(key, value);
         }
     }
+    // Manually get the images
+    if (decodedSettings.hasOwnProperty("infer_image") && decodedSettings.hasOwnProperty("infer_mask")) {
+        let image = decodedSettings["infer_image"];
+        let mask = decodedSettings["infer_mask"];
+        inpaintImageEditor.setMask(mask);
+        inpaintImageEditor.setDropped(image);
+        delete decodedSettings["infer_image"];
+        delete decodedSettings["infer_mask"];
+    }
+    if (decodedSettings.hasOwnProperty("controlnet_image") && decodedSettings.hasOwnProperty("controlnet_mask")) {
+        let image = decodedSettings["controlnet_image"];
+        let mask = decodedSettings["controlnet_mask"];
+        controlnetImageEditor.setMask(mask);
+        controlnetImageEditor.setDropped(image);
+        delete decodedSettings["controlnet_image"];
+        delete decodedSettings["controlnet_mask"];
+    }
+    let modelKeys = ["loras", "vae", "model"];
 
-    if (decodedSettings.image !== undefined) {
-        autoLoadResolution.checked = true;
-        controlnetImageEditor.setResolution(decodedSettings.width, decodedSettings.height);
-        controlnetImageEditor.setImage(decodedSettings.image);
-    } else {
-        widthSlider.setValue(decodedSettings.width);
-        heightSlider.setValue(decodedSettings.height);
+    for (let key in decodedSettings) {
+        let value = decodedSettings[key];
+        console.log("Checking key: ", key, " Value: ", value);
 
-        const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
-        const targetAspectRatio = decodedSettings.width / decodedSettings.height;
-
-        // Find the closest aspect ratio
-        let closestRatio = aspectRatios[0];
-        let closestDifference = Math.abs(targetAspectRatio - aspectRatioValue(aspectRatios[0]));
-
-        for (let i = 1; i < aspectRatios.length; i++) {
-            const currentDifference = Math.abs(targetAspectRatio - aspectRatioValue(aspectRatios[i]));
-            if (currentDifference < closestDifference) {
-                closestDifference = currentDifference;
-                closestRatio = aspectRatios[i];
-            }
+        if (key === "prompts" && value.length > 0) {
+            key = "prompt";
+            // Concatenate all prompts by newline
+            value = decodedSettings[key].join("\n");
         }
 
-        function aspectRatioValue(ratio) {
-            const [width, height] = ratio.split(":");
-            return parseInt(width) / parseInt(height);
+        if (value === "true") {
+            value = true;
+        } else if (value === "false") {
+            value = false;
         }
-
-        // Get the index of the closest aspect ratio in the array
-        const closestIndex = aspectRatios.indexOf(closestRatio);
-        console.log("Closest index: ", closestIndex);
-        // Iterate through the buttons and set the closest aspect ratio as selected
-        const buttons = document.querySelectorAll('.aspectButton');
-        buttons.forEach((button, index) => {
-            if (index === closestIndex) {
-                button.classList.add('btn-selected');
-                setResolution(button.dataset.ratio);
+        if (modelKeys.includes(key)) {
+            console.log("Key: ", key, " Value: ", value);
+            if (key === "model") {
+                inferModelSelect.setValue(value);
+            } else if (key === "loras") {
+                loraModelSelect.setValue(value);
             } else {
-                button.classList.remove('btn-selected');
+                vaeModelSelect.setValue(value);
             }
-        });
+        } else {
+            if (key.indexOf("controlnet_") === -1) {
+                key = "infer_" + key;
+            }
+            setElementValue(key, value);
+        }
+    }
+    updateRatioButtons();
+}
+
+function setElementValue(id, value) {
+    let inputElement = document.getElementById(id);
+    if (inputElement === null) {
+        console.log("Could not find element with id: ", id);
+        return;
+    }
+
+    console.log("Setting element value: ", id, " to ", value);
+    if (inputElement.classList.contains("bootstrapSlider")) {
+        let bs = $(inputElement).BootstrapSlider();
+        bs.setValue(value);
+    } else if (inputElement.classList.contains("fileBrowser")) {
+        let fileBrowser = $(inputElement).fileBrowser();
+        fileBrowser.setValue(value);
+    } else if (inputElement.type === "checkbox") {
+        inputElement.checked = value;
+    } else if (inputElement.classList.contains("model-select")) {
+        let modelSelect = $(inputElement).modelSelect();
+        modelSelect.setValue(value);
+    } else if (inputElement.classList.contains("image-editor")) {
+        let imageEditor = $(inputElement).imageEditor();
+        imageEditor.setDropped(value["image"]);
+        imageEditor.setMask(value["mask"]);
+    } else {
+        inputElement.value = value;
+    }
+    // If the element is a bootstrap slider, set the value using the slider's setValue method
+
+}
+
+function aspectRatioValue(ratio) {
+    const [width, height] = ratio.split(":");
+    return parseInt(width) / parseInt(height);
+}
+
+
+function updateRatioButtons() {
+    let currentWidth = widthSlider.getValue();
+    let currentHeight = heightSlider.getValue();
+
+    const aspectRatios = ["16:9", "5:4", "4:3", "1:1", "3:4", "4:5", "9:16"];
+    const targetAspectRatio = currentWidth / currentHeight;
+
+    // Find the closest aspect ratio
+    let closestRatio = aspectRatios[0];
+    let closestDifference = Math.abs(targetAspectRatio - aspectRatioValue(aspectRatios[0]));
+
+    for (let i = 1; i < aspectRatios.length; i++) {
+        const currentDifference = Math.abs(targetAspectRatio - aspectRatioValue(aspectRatios[i]));
+        if (currentDifference < closestDifference) {
+            closestDifference = currentDifference;
+            closestRatio = aspectRatios[i];
+        }
     }
 
 
-    scaleTest.setValue(decodedSettings.scale);
-    stepTest.setValue(decodedSettings.steps);
-    numImages.setValue(decodedSettings.num_images);
-    batchSize.setValue(decodedSettings.batch_size);
-    document.getElementById("controlnet_preprocess").checked = decodedSettings.controlnet_preprocess;
-    document.getElementById("controlnet_batch").checked = decodedSettings.controlnet_batch;
-    controlnetFileBrowser.value = decodedSettings.controlnet_batch_dir;
-    document.getElementById("controlnet_batch_find").value = decodedSettings.controlnet_batch_find;
-    document.getElementById("controlnet_batch_replace").value = decodedSettings.controlnet_batch_replace;
-    document.getElementById("controlnet_batch_use_prompt").checked = decodedSettings.controlnet_batch_use_prompt;
+    // Get the index of the closest aspect ratio in the array
+    const closestIndex = aspectRatios.indexOf(closestRatio);
+    console.log("Closest index: ", closestIndex);
+    // Iterate through the buttons and set the closest aspect ratio as selected
+    const buttons = document.querySelectorAll('.aspectButton');
+    buttons.forEach((button, index) => {
+        if (index === closestIndex) {
+            button.classList.add('btn-selected');
+            setResolution(button.dataset.ratio);
+        } else {
+            button.classList.remove('btn-selected');
+        }
+    });
+
 }
 
 function getInferSettings() {
@@ -661,7 +714,6 @@ function getInferSettings() {
     let negEl = document.getElementById("infer_negative_prompt");
     let seedEl = document.getElementById("infer_seed");
     let controlnetType = document.getElementById("controlnet_type");
-    let autoLoadResolution = document.getElementById("autoLoadResolutionOn");
     const loras = loraModelSelect.getModel();
     inferSettings.loras = loras ? loras : [];
     inferSettings.model = inferModelSelect.getModel();
@@ -686,8 +738,8 @@ function getInferSettings() {
     inferSettings.controlnet_batch_find = document.getElementById("controlnet_batch_find").value;
     inferSettings.controlnet_batch_replace = document.getElementById("controlnet_batch_replace").value;
     inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnet_batch_use_prompt").checked;
-    inferSettings.use_control_resolution = $("#use_control_resolution").is(":checked");
-    inferSettings.use_input_resolution = $("#use_input_resolution").is(":checked");
+    inferSettings.use_control_resolution = $("#infer_use_control_resolution").is(":checked");
+    inferSettings.use_input_resolution = $("#infer_use_input_resolution").is(":checked");
 
     const pipelineElements = document.querySelectorAll('[id^="pipeline_"]');
     inferSettings.pipeline_settings = {};

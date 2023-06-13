@@ -214,6 +214,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             initial_seed = -1
         if initial_seed == -1:
             initial_seed = int(random.randrange(21474836147))
+        logger.debug("Initial seed: %s", initial_seed)
 
         pbar = mytqdm(
             desc="Making images.",
@@ -300,7 +301,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 infer_seed = infer_seed + int(len(out_images) / prompt_count)
             if infer_seed > 21474836147:
                 infer_seed = 21474836147 - infer_seed
-
+            logger.debug("Using seed: %s", infer_seed)
             inference_settings.seed = infer_seed
             generator = torch.Generator(device='cuda')
             generator.manual_seed(infer_seed)
@@ -330,24 +331,35 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     kwargs["callback"] = update_progress
                     kwargs["callback_steps"] = preview_steps
 
-                for key, value in inference_settings.pipeline_settings.items():
+                for key, value in pipe_settings.items():
+                    if key == "controlnet_conditioning_scale":
+                        logger.debug("Converting conditioning scale to float")
+                        value = [float(value)]
+                        kwargs[key] = value
+
                     kwargs[key] = value
 
                 if len(batch_control) and "ControlNet" in inference_settings.pipeline:
-                    img_key = "controlnet_conditioning_image" if "controlnet_conditioning_image" in pipe_params else "image"
+                    control_keys = ["controlnet_conditioning_image", "control_image"]
+                    img_key = "image"
+                    for key in control_keys:
+                        if key in pipe_params:
+                            img_key = key
                     kwargs[img_key] = batch_control
                     if inference_settings.use_control_resolution and not inference_settings.use_input_resolution:
                         ui_width, ui_height = batch_control[0].size
 
                 logger.debug(f"Mode: {inference_settings.pipeline}")
 
-                if "image" in pipe_params and inference_settings.infer_image != "":
+                if "image" in pipe_params and inference_settings.infer_image != "" and "image" not in kwargs:
+
+                    logger.debug("Using infer_image from input params for image, dimensions.")
                     image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])
                     image = Image.open(BytesIO(image_data)).convert("RGB")
                     image = scale_image(image, max_res)
-                    kwargs["image"] = image
                     if inference_settings.use_input_resolution:
                         ui_width, ui_height = image.size
+                    kwargs["image"] = image
 
                 if "mask_image" in pipe_params and inference_settings.infer_mask != "":
                     mask_data = base64.b64decode(inference_settings.infer_mask.split(",")[1])
@@ -361,6 +373,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         kwargs["height"] = ui_height
                     if ui_width > 0:
                         kwargs["width"] = ui_width
+
                 for key, value in pipe_params.items():
                     if key not in kwargs and key not in ["negative_prompt", "prompt_embeds",
                                                          "negative_prompt_embeds"]:

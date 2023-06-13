@@ -9,12 +9,12 @@
                         <div class="col-12">
                             <div class="form-group">
                                 <!-- Auto-populated "model-select" element. See JS -->
-                                <div class="inferModelSelect" id="inferModel" data-label="Model Selection"
+                                <div class="inferModelSelect inferDrop" id="inferModel" data-label="Model Selection"
                                      data-model_type="diffusers_dreambooth"></div>
                             </div>
                             <div class="form-group">
                                 <!-- Auto-populated "model-select" element. See JS -->
-                                <div class="inferVaeSelect advancedInfer" id="inferVae" data-label="VAE Selection"
+                                <div class="inferVaeSelect advancedInfer inferDrop" id="inferVae" data-label="VAE Selection"
                                      data-model_type="vae"></div>
                             </div>
                         </div>
@@ -87,9 +87,9 @@
                             <div class="form-group controlnetSingle">
                                 <div class="form-check form-switch">
                                     <input type="checkbox" class="form-check-input"
-                                           id="use_input_resolution" name="use_input_resolution"
+                                           id="infer_use_input_resolution" name="infer_use_input_resolution"
                                            checked>
-                                    <label for="use_input_resolution">Use Input resolution</label>
+                                    <label for="infer_use_input_resolution">Use Input resolution</label>
                                 </div>
                             </div>
                             <label for="inpaintEditor">Input Image:</label>
@@ -130,9 +130,9 @@
                                         <div class="form-group controlnetSingle">
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" class="form-check-input"
-                                                       id="use_control_resolution" name="use_control_resolution"
+                                                       id="infer_use_control_resolution" name="infer_use_control_resolution"
                                                        checked>
-                                                <label for="use_control_resolution">Use Control resolution</label>
+                                                <label for="infer_use_control_resolution">Use Control resolution</label>
                                             </div>
                                         </div>
                                         <div class="form-group controlnetSingle">
@@ -149,7 +149,7 @@
                                             </div>
                                         </div>
                                         <div class="form-group controlnetBatch" style="display: none">
-                                            <div class="col-12" id="controlnetBatchFileSelect"></div>
+                                            <div class="col-12" id="controlnet_batch_dir"></div>
                                         </div>
                                         <div class="form-group controlnetBatch" style="display: none">
                                             <label for="controlnet_batch_find">Find:</label>

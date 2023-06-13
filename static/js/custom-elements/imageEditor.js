@@ -1,6 +1,14 @@
 class ImageEditor {
-    constructor(containerId, width, height) {
-        this.container = document.getElementById(containerId);
+    constructor(container, width, height) {
+        // If container is a string, assume it is an id
+        let containerId = container;
+        if (typeof container === "string") {
+            this.container = document.getElementById(container);
+        } else {
+            this.container = container;
+            containerId = container.id;
+        }
+        this.container.classList.add("image_editor");
         this.scaleFactor = 0;
         this.containerId = containerId;
         this.wrapper = document.createElement("div");
@@ -117,13 +125,18 @@ class ImageEditor {
     }
 
     updateCanvases(image, isMask) {
-        console.log("Dropped image: ", image, this.containerId);
+        if (isMask) {
+            console.log("Updating mask");
+        } else {
+            console.log("Updating image");
+        }
         const dropCtx = this.dropCanvas.getContext('2d');
         dropCtx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
         const drawCtx = this.drawCanvas.getContext('2d');
         drawCtx.clearRect(0, 0, this.drawCanvas.width, this.drawCanvas.height);
         const img = new Image();
         img.onload = () => {
+            console.log("Loaded image");
             this.drawCanvas.width = img.width;
             this.drawCanvas.height = img.height;
             this.dropCanvas.width = img.width;
@@ -138,6 +151,7 @@ class ImageEditor {
             }
             this.undoStack.push({type: isMask ? 'drop' : 'draw', imageData: state});
         };
+        console.log("Setting source.");
         img.src = image;
         if (!isMask) this.imageSource = image.src;
         this.updateCursorStyle()
@@ -149,6 +163,14 @@ class ImageEditor {
 
     getMask() {
         return this.drawCanvas.toDataURL('image/png');
+    }
+
+    setDropped(dropped) {
+        this.updateCanvases(dropped, false);
+    }
+
+    setMask(mask) {
+        this.updateCanvases(mask, true);
     }
 
     // Set the brush size
@@ -389,3 +411,19 @@ class ImageEditor {
         reader.readAsDataURL(file);
     }
 }
+
+$.fn.imageEditor = function () {
+    this.each(function () {
+        const $this = $(this);
+        let edit = $this.data("ImageEditor");
+
+        if (!edit) {
+            const targetElement = this;
+            const targetDataset = targetElement.dataset;
+            edit = new ImageEditor(targetElement);
+            $this.data("ImageEditor", edit);
+        }
+    });
+
+    return this.data("ImageEditor");
+};

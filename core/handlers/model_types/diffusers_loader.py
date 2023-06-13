@@ -60,12 +60,22 @@ def initialize_controlnets(model_data):
     controlnet_type = model_data.data["controlnet_type"]
     if isinstance(controlnet_type, str):
         controlnet_type = [controlnet_type]
+    from core.handlers.models import ModelHandler
+    mh = ModelHandler()
+    sp = mh.shared_path
+    controlnet_dir = os.path.join(sp, "controlnet")
     for controlnet_name in controlnet_type:
         for md in controlnet_data:
             if md["name"] == controlnet_name:
                 controlnet_url = md["model_url"]
-                controlnet = ControlNetModel.from_pretrained(controlnet_url, torch_dtype=torch.float16)
+                local_file = os.path.join(controlnet_dir, os.path.splitext(os.path.basename(md["model_file"]))[0])
+                if os.path.exists(local_file):
+                    logger.debug(f"Using local controlnet model: {local_file}")
+                    controlnet_url = local_file
+
+                controlnet = ControlNetModel.from_pretrained(controlnet_url, cache_dir=controlnet_dir, torch_dtype=torch.float16)
                 nets.append(controlnet)
+
     return nets
 
 
@@ -91,6 +101,7 @@ def load_diffusers(model_data: ModelData):
                     torch_dtype=torch.float16
                 )
             if len(nets):
+                logger.debug(f"Loading {len(nets)} controlnets.")
                 pipe_args["controlnet"] = nets
             logger.debug(f"Loading pipeline: {pipeline_cls} from {model_path}")
             # Instantiate pipeline using pipeline_cls string

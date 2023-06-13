@@ -8,9 +8,15 @@ import traceback
 from typing import List, Dict, Union
 from urllib.parse import urlparse
 
+import diffusers
 import torch
 from basicsr.utils.download_util import load_file_from_url
-from huggingface_hub import snapshot_download
+from diffusers.utils import _add_variant, DEPRECATED_REVISION_ARGS, WEIGHTS_NAME, SAFETENSORS_WEIGHTS_NAME, \
+    HUGGINGFACE_CO_RESOLVE_ENDPOINT
+from huggingface_hub import snapshot_download, hf_hub_download
+from huggingface_hub.utils import RepositoryNotFoundError, RevisionNotFoundError, EntryNotFoundError
+from packaging import version
+from requests import HTTPError
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.directories import DirectoryHandler
@@ -266,6 +272,130 @@ class ModelHandler:
                 pass
 
         return output
+
+    def load_hub_model(
+            self,
+            pretrained_model_name_or_path,
+            *,
+            weights_name,
+            subfolder=None,
+            model_type="diffusers",
+            force_download=False,
+            proxies=None,
+            resume_download=True,
+            local_files_only=False,
+            revision=None,
+            commit_hash=None,
+    ):
+        use_auth_token = False
+        user_agent = {
+            "diffusers": diffusers.__version__,
+            "file_type": "model",
+            "framework": "pytorch",
+        }
+        cache_dir = os.path.join(self.shared_path, model_type)
+        pretrained_model_name_or_path = str(pretrained_model_name_or_path)
+        if os.path.isfile(pretrained_model_name_or_path):
+            return pretrained_model_name_or_path
+        elif os.path.isdir(pretrained_model_name_or_path):
+            if os.path.isfile(os.path.join(pretrained_model_name_or_path, weights_name)):
+                # Load from a PyTorch checkpoint
+                model_file = os.path.join(pretrained_model_name_or_path, weights_name)
+                return model_file
+            elif subfolder is not None and os.path.isfile(
+                    os.path.join(pretrained_model_name_or_path, subfolder, weights_name)
+            ):
+                model_file = os.path.join(pretrained_model_name_or_path, subfolder, weights_name)
+                return model_file
+            else:
+                raise EnvironmentError(
+                    f"Error no file named {weights_name} found in directory {pretrained_model_name_or_path}."
+                )
+        else:
+            # 1. First check if deprecated way of loading from branches is used
+            if (
+                    revision in DEPRECATED_REVISION_ARGS
+                    and (weights_name == WEIGHTS_NAME or weights_name == SAFETENSORS_WEIGHTS_NAME)
+                    and version.parse(version.parse(diffusers.__version__).base_version) >= version.parse("0.18.0")
+            ):
+                try:
+                    model_file = hf_hub_download(
+                        pretrained_model_name_or_path,
+                        filename=_add_variant(weights_name, revision),
+                        cache_dir=cache_dir,
+                        force_download=force_download,
+                        proxies=proxies,
+                        resume_download=resume_download,
+                        local_files_only=local_files_only,
+                        use_auth_token=use_auth_token,
+                        user_agent=user_agent,
+                        subfolder=subfolder,
+                        revision=revision or commit_hash,
+                    )
+                    logger.warning(
+                        f"Loading the variant {revision} from {pretrained_model_name_or_path} via `revision='{revision}'` is deprecated. Loading instead from `revision='main'` with `variant={revision}`. Loading model variants via `revision='{revision}'` will be removed in diffusers v1. Please use `variant='{revision}'` instead.",
+                        FutureWarning,
+                    )
+                    return model_file
+                except:  # noqa: E722
+                    logger.warning(
+                        f"You are loading the variant {revision} from {pretrained_model_name_or_path} via `revision='{revision}'`. This behavior is deprecated and will be removed in diffusers v1. One should use `variant='{revision}'` instead. However, it appears that {pretrained_model_name_or_path} currently does not have a {_add_variant(weights_name, revision)} file in the 'main' branch of {pretrained_model_name_or_path}. \n The Diffusers team and community would be very grateful if you could open an issue: https://github.com/huggingface/diffusers/issues/new with the title '{pretrained_model_name_or_path} is missing {_add_variant(weights_name, revision)}' so that the correct variant file can be added.",
+                        FutureWarning,
+                    )
+            try:
+                # 2. Load model file as usual
+                model_file = hf_hub_download(
+                    pretrained_model_name_or_path,
+                    filename=weights_name,
+                    cache_dir=cache_dir,
+                    force_download=force_download,
+                    proxies=proxies,
+                    resume_download=resume_download,
+                    local_files_only=local_files_only,
+                    use_auth_token=use_auth_token,
+                    user_agent=user_agent,
+                    subfolder=subfolder,
+                    revision=revision or commit_hash,
+                )
+                return model_file
+
+            except RepositoryNotFoundError:
+                raise EnvironmentError(
+                    f"{pretrained_model_name_or_path} is not a local folder and is not a valid model identifier "
+                    "listed on 'https://huggingface.co/models'\nIf this is a private repository, make sure to pass a "
+                    "token having permission to this repo with `use_auth_token` or log in with `huggingface-cli "
+                    "login`."
+                )
+            except RevisionNotFoundError:
+                logger.warning(
+                    f"{revision} is not a valid git identifier (branch name, tag name or commit id) that exists for "
+                    "this model name. Check the model page at "
+                    f"'https://huggingface.co/{pretrained_model_name_or_path}' for available revisions."
+                )
+            except EntryNotFoundError:
+                logger.warning(
+                    f"{pretrained_model_name_or_path} does not appear to have a file named {weights_name}."
+                )
+            except HTTPError as err:
+                logger.warning(
+                    f"There was a specific connection error when trying to load {pretrained_model_name_or_path}:\n{err}"
+                )
+            except ValueError:
+                logger.warning(
+                    f"We couldn't connect to '{HUGGINGFACE_CO_RESOLVE_ENDPOINT}' to load this model, couldn't find it"
+                    f" in the cached files and it looks like {pretrained_model_name_or_path} is not the path to a"
+                    f" directory containing a file named {weights_name} or"
+                    " \nCheckout your internet connection or see how to run the library in"
+                    " offline mode at 'https://huggingface.co/docs/diffusers/installation#offline-mode'."
+                )
+            except EnvironmentError:
+                logger.warning(
+                    f"Can't load the model for '{pretrained_model_name_or_path}'. If you were trying to load it from "
+                    "'https://huggingface.co/models', make sure you don't have a local directory with the same name. "
+                    f"Otherwise, make sure '{pretrained_model_name_or_path}' is the correct path to a directory "
+                    f"containing a file named {weights_name}"
+                )
+        return None
 
     def refresh(self, model_type: str, to_load=None, model_name=None):
         model_data = None

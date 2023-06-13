@@ -87,6 +87,13 @@ input {
     border-color: var(--bs-border-dark);
 }
 
+.btn-selected {
+    color: var(--primary-text-color);
+    background-color: var(--primary-color);
+    border-color: var(--bs-gray-400);
+}
+
+
 .form-control {
     color: var(--secondary-accent-text-color);
     background-color: var(--secondary-accent-color);

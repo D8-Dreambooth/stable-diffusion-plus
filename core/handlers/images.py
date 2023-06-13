@@ -34,7 +34,14 @@ async def _read_image_info(request):
 def decode_dict(input_dict):
     decoded_dict = {}
     for key, value in input_dict.items():
-        decoded_value = value
+        decoded_value = None
+        try:
+            decoded_value = json.loads(value)
+        except:
+            pass
+
+        if decoded_value is not None:
+            value = decoded_value
         # Remove the escape characters only if the value is a string
         if isinstance(value, str):
             decoded_value = value.encode('utf-8').decode('unicode_escape')
@@ -69,6 +76,20 @@ def decode_dict(input_dict):
                 decoded_value = decoded_value.replace("\\\"", "\"")
 
         # Add the decoded key-value pair to the new dictionary
+        model_keys = ["loras", "model", "vae"]
+        if key in model_keys:
+            if isinstance(decoded_value, str):
+                try:
+                    decoded_value = json.loads(decoded_value)
+                except:
+                    logger.debug(f"Could not decode {key} value: {decoded_value}")
+
+            logger.debug(f"Decoded {key} value: {decoded_value}")
+            if isinstance(decoded_value, dict):
+                decoded_value = decoded_value["hash"]
+            elif isinstance(decoded_value, list):
+                decoded_value = [d["hash"] for d in decoded_value]
+
         decoded_dict[key] = decoded_value
 
     return decoded_dict

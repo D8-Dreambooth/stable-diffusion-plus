@@ -9,3 +9,4 @@ from .pipeline_stable_diffusion_prompt2prompt import StableDiffusionPrompt2Promp
 from .pipeline_stable_diffusion_reference import StableDiffusionReferencePipeline
 from .pipeline_cycle_diffusion import CycleDiffusionPipeline
 from .pipeline_stable_diffusion_diffedit import StableDiffusionDiffEditPipeline
+from .pipeline_controlnet_img2img import StableDiffusionControlNetImg2ImgPipeline

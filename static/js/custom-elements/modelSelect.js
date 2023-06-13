@@ -2,6 +2,7 @@ class ModelSelect {
     constructor(container, options) {
         registerSocketMethod(container, "reload_models", this.modelSocketUpdate.bind(this));
         this.container = container;
+        this.container.classList.add("model-select");
         this.model_type = options.model_type;
         this.ext_include = options.ext_include;
         this.ext_exclude = options.ext_exclude;
@@ -193,17 +194,27 @@ class ModelSelect {
     }
 
     setValue(value) {
+    if (Array.isArray(value)) {
+        for (let i = 0; i < this.selectElement.options.length; i++) {
+            const option = this.selectElement.options[i];
+            option.selected = value.includes(option.value);
+        }
+        this.value = value;
+    } else {
         let isValid = false;
         for (let i = 0; i < this.selectElement.options.length; i++) {
             const option = this.selectElement.options[i];
             option.selected = option.value === value;
             isValid = true;
-            break;
+
         }
         if (isValid) {
+            console.log("Really setting value: ", value, this.container.id);
             this.value = value;
         }
     }
+}
+
 
     setOnClickHandler(callback) {
         this.selectElement.onclick = () => {
