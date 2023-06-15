@@ -9,6 +9,7 @@ from io import BytesIO
 from typing import Tuple, List, Dict
 
 import PIL
+import numpy as np
 from PIL import Image, PngImagePlugin
 from PIL.Image import Resampling
 
@@ -130,35 +131,92 @@ def create_image_grid(images):
     return grid_image
 
 
-def scale_image(img: PIL.Image.Image, max_res: int):
-    width, height = img.size
-    new_height = height
-    new_width = width
-    if width > max_res or height > max_res:
-        if width > max_res or height > max_res:
-            max_dimension = max_res
-            aspect_ratio = float(width) / float(height)
+def scale_image(img: Image.Image, width: int, height: int, resize_mode: str = "scale", is_mask: bool = False, origin: str = "center") -> Image.Image:
+    """
+    :param img: The image to scale
+    :param width: Target width, based on the resize_mode
+    :param height: Target height, based on the resize_mode
+    :param resize_mode: Can be one of the following: "scale", "crop", "pad", "fit"
+    :param is_mask: If true, image is treated as a mask and padded with black pixels
+    :param origin: Determines the crop's starting point. Can be one of the following: "top-left", "top-center", "top-right", "center-left", "center", "center-right", "bottom-left", "bottom-center", "bottom-right"
+    :return: PIL.Image.Image
+    """
+    img_width, img_height = img.size
 
-            if width > height:
-                new_width = max_dimension
-                new_height = int(new_width / aspect_ratio)
-            else:
-                new_height = max_dimension
-                new_width = int(new_height * aspect_ratio)
-            img = img.resize((new_width, new_height), Resampling.LANCZOS)
-            width = new_width
-            height = new_height
+    logger.debug("Initial image size: %s x %s", img_width, img_height)
 
-    new_width = int(new_width / 8) * 8
-    new_height = int(new_height / 8) * 8
+    if is_mask:
+        resize_mode = "pad"
 
-    # Crop the image from center
-    if new_width != width or new_height != height:
-        left = (width - new_width) // 2
-        top = (height - new_height) // 2
-        right = (width + new_width) // 2
-        bottom = (height + new_height) // 2
+    if resize_mode == "scale":
+        logger.debug("Resize mode: scale")
+        # Resize the image while maintaining aspect ratio
+        aspect_ratio = img_width / img_height
+        if width / aspect_ratio > height:
+            width = int(height * aspect_ratio)
+        else:
+            height = int(width / aspect_ratio)
+        img = img.resize((width, height), Image.ANTIALIAS)
+    elif resize_mode == "crop":
+        logger.debug("Resize mode: crop")
+        # Crop the image to fit the target dimensions
+        img.thumbnail((width, height))
+        width_start = (img.width - width) // 2
+        height_start = (img.height - height) // 2
+        img = img.crop((width_start, height_start, width_start + width, height_start + height))
+    elif resize_mode == "pad":
+        logger.debug("Resize mode: pad")
+        # Add padding to the image to fit the target dimensions
+        img.thumbnail((width, height), Image.ANTIALIAS)
+        if is_mask:
+            # Create new image with black pixels and append the mask
+            new_img = Image.new("L", (width, height), 0)
+        else:
+            # Create new image with random noise
+            noise_array = np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
+            new_img = Image.fromarray(noise_array, 'RGB')
+
+        if origin == "top-left":
+            ulc = (0, 0)
+        elif origin == "top-center":
+            ulc = ((width - img.width) // 2, 0)
+        elif origin == "top-right":
+            ulc = (width - img.width, 0)
+        elif origin == "center-left":
+            ulc = (0, (height - img.height) // 2)
+        elif origin == "center":
+            ulc = ((width - img.width) // 2, (height - img.height) // 2)
+        elif origin == "center-right":
+            ulc = (width - img.width, (height - img.height) // 2)
+        elif origin == "bottom-left":
+            ulc = (0, height - img.height)
+        elif origin == "bottom-center":
+            ulc = ((width - img.width) // 2, height - img.height)
+        elif origin == "bottom-right":
+            ulc = (width - img.width, height - img.height)
+        else:
+            raise ValueError(f"Invalid origin: {origin}")
+
+        new_img.paste(img, ulc)
+        img = new_img
+    elif resize_mode == "fit":
+        logger.debug("Resize mode: fit")
+        # Resize the image to exactly fit the target dimensions without cropping
+        img = img.resize((width, height), Image.ANTIALIAS)
+
+    # Ensure that final output image dimensions are multiples of 8 and crop from the center if not
+    if img.size[0] % 8 != 0 or img.size[1] % 8 != 0:
+        logger.debug("Adjusting image size to be multiples of 8")
+        new_width = (img.size[0] // 8) * 8
+        new_height = (img.size[1] // 8) * 8
+        left = (img.size[0] - new_width) / 2
+        top = (img.size[1] - new_height) / 2
+        right = (img.size[0] + new_width) / 2
+        bottom = (img.size[1] + new_height) / 2
         img = img.crop((left, top, right, bottom))
+
+    logger.debug("Final image size: %s x %s", img.size[0], img.size[1])
+
     return img
 
 

@@ -125,8 +125,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         control_images, input_prompts = preprocess_image(control_images,
                                                          prompt=input_prompts,
                                                          model_name=inference_settings.controlnet_type,
-                                                         max_res=max_res,
+                                                         width=inference_settings.width,
+                                                         height=inference_settings.height,
                                                          process=inference_settings.controlnet_preprocess,
+                                                         resize_mode=inference_settings.controlnet_scale_mode,
                                                          handler=status_handler)
         prompt_count = len(input_prompts)
         logger.debug("Control images post-preprocess: %s", len(control_images))
@@ -283,7 +285,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
                 for np in batch_negative:
                     parsed = parse_prompt(np)
-                    if parsed != np:
+                    if parsed != np or len(embed_prompts) != 0:
                         embed_negative_prompts.append(parsed)
 
             if not len(embed_prompts) and not len(embed_negative_prompts):
@@ -356,8 +358,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     logger.debug("Using infer_image from input params for image, dimensions.")
                     image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])
                     image = Image.open(BytesIO(image_data)).convert("RGB")
-                    image = scale_image(image, max_res)
-                    if inference_settings.use_input_resolution:
+                    image = scale_image(image, ui_width, ui_height, resize_mode=inference_settings.infer_scale_mode)
+                    if inference_settings.use_input_resolution and image is not None:
                         ui_width, ui_height = image.size
                     kwargs["image"] = image
 
@@ -365,7 +367,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     mask_data = base64.b64decode(inference_settings.infer_mask.split(",")[1])
                     mask_data = Image.open(BytesIO(mask_data))
                     mask = process_mask(mask_data, inference_settings.invert_mask)
-                    mask = scale_image(mask, max_res)
+                    mask = scale_image(mask, inference_settings.width, inference_settings.height, resize_mode=inference_settings.infer_scale_mode)
                     kwargs["mask_image"] = mask
 
                 if "height" in pipe_params and "width" in pipe_params or inference_settings.pipeline == "auto":
@@ -390,6 +392,20 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
                 for key in keys_to_remove:
                     del kwargs[key]
+
+                if "negative_prompt_embeds" in kwargs and "negative_prompt" in kwargs:
+                    del kwargs["negative_prompt"]
+
+                if "prompt_embeds" in kwargs and "prompt" in kwargs:
+                    del kwargs["prompt"]
+
+                if "Inpaint" in inference_settings.pipeline:
+                    logger.debug("Inpainting mode, Fixng lists.")
+                    if not isinstance(kwargs["image"], list):
+                        kwargs["image"] = [kwargs["image"]]
+                    if not isinstance(kwargs["mask_image"], list):
+                        kwargs["mask_image"] = [kwargs["mask_image"]]
+
 
                 logger.debug(f"KWARGS: {kwargs}")
 
@@ -512,7 +528,6 @@ def parse_prompt(input_string):
         words = token.split("_")
         new_words = []
         for word in words:
-            matched = False
             stripped = word.strip()
             if stripped == "":
                 continue
@@ -526,7 +541,6 @@ def parse_prompt(input_string):
                     except:
                         raw_word = stripped
                 else:
-                    matched = True
                     # Set the weight to 1.1 to the power of the number of open parens
                     weight = 1.1 ** stripped.count("(")
                     raw_word = stripped.replace("(", "").replace(")", "")

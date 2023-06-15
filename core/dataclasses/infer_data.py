@@ -22,11 +22,13 @@ class InferSettings:
     controlnet_image = None
     controlnet_mask = None
     controlnet_preprocess = True
+    controlnet_scale_mode = "scale"
     controlnet_type = None
     height: int = 512
     infer_image = None
     infer_mask = None
     invert_mask = True
+    infer_scale_mode = "scale"
     lora_weight = 0.9
     loras: List[ModelData] = None
     model: ModelData = "None"

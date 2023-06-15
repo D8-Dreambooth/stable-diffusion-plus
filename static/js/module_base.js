@@ -341,13 +341,10 @@ class Module {
             }
 
             let value;
-            let elem_selector = "#" + id;
-            let tryParse = false;
-            if ($(element).hasClass("db-file-browser")) {
+            if ($(element).hasClass("fileBrowser")) {
                 value = element.dataset.value;
-            } else if ($(element).hasClass("db-slider")) {
-                tryParse = true;
-                value = $(elem_selector).BootstrapSlider().getValue();
+            } else if ($(element).hasClass("bootstrapSlider")) {
+                value = $(element).BootstrapSlider().getValue();
             } else if ($(element).is(":checkbox")) {
                 value = $(element).is(":checked");
             } else if ($(element).is(":radio")) {
@@ -357,22 +354,14 @@ class Module {
             } else if ($(element).is("select")) {
                 value = $(element).val();
             } else if ($(element).is("input[type='number']")) {
-                tryParse = true;
-                value = $(element).val();
+                // Parse the value as a float
+                value = parseFloat($(element).val());
             } else {
                 value = $(element).val();
             }
 
             if (typeof value === "undefined") {
                 value = "";
-            }
-
-            if (tryParse) {
-                if (!isNaN(parseFloat(value))) {
-                    value = parseFloat(value);
-                } else if (!isNaN(parseInt(value))) {
-                    value = parseInt(value);
-                }
             }
 
             settings[id] = value;

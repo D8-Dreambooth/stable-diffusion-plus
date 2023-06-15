@@ -145,7 +145,27 @@ def get_model_data(model_name):
     return None
 
 
-def preprocess_image(images: List[PIL.Image.Image], prompt: List[str], model_name: str, max_res: int = 1024, process:bool = True, handler: StatusHandler = None):
+def preprocess_image(
+        images: List[PIL.Image.Image],
+        prompt: List[str],
+        model_name: str,
+        width: int = 1024,
+        height: int = 1024,
+        process: bool = True,
+        resize_mode: str = "resize",
+        handler: StatusHandler = None) -> object:
+    """
+
+    :param images: A list of PIL images to process
+    :param prompt: A list of prompts to use if necessary
+    :param model_name: The controlnet being used for preprocessor selection
+    :param width: The target width of the image, if resizing
+    :param height: The target height of the image, if resizing
+    :param process: Whether to preprocess the image, or just resize
+    :param resize_mode: The mode to use for resizing, can be "scale", "stretch", "crop", or "pad"
+    :param handler: The status handler to update
+    :return:
+    """
     model = get_model_data(model_name)
     if not len(images):
         logger.warning("NO IMAGE, STUPID")
@@ -171,7 +191,7 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: List[str], model_nam
         logger.debug("No preprocessing model selected.")
 
     processor = None
-    processor_args = {"detect_resolution": max_res, "image_resolution": max_res}
+    processor_args = {"detect_resolution": width, "image_resolution": width}
     if processor_name is not None:
         if processor_name == "Depth_Midas":
             processor_args = {}
@@ -215,7 +235,7 @@ def preprocess_image(images: List[PIL.Image.Image], prompt: List[str], model_nam
             if len(prompt) == len(images):
                 out_prompts.append(prompt[img_idx])
             img_idx += 1
-            img = scale_image(img, max_res)
+            img = scale_image(img, width, height, resize_mode)
             if processor:
                 processed = processor(img, **processor_args) if processor_args else processor(img)
                 output.append(processed.convert("RGB"))

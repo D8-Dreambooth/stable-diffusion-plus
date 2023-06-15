@@ -27,10 +27,12 @@ let inferSettings = {
     controlnet_image: null,
     controlnet_mask: null,
     controlnet_preprocess: true,
+    controlnet_scale_mode: "scale",
     controlnet_type: null,
     height: 512,
     infer_image: null,
     infer_mask: null,
+    infer_scale_mode: "scale",
     invert_mask: true,
     lora_weight: 0.9,
     loras: null,  // Assuming ModelData will be an array
@@ -731,6 +733,8 @@ function getInferSettings() {
     inferSettings.controlnet_image = controlnetImageEditor.getDropped();
     inferSettings.infer_mask = inpaintImageEditor.getMask();
     inferSettings.infer_image = inpaintImageEditor.getDropped();
+    inferSettings.infer_scale_mode = $("#infer_scale_mode").val();
+    inferSettings.controlnet_scale_mode = $("#controlnet_scale_mode").val();
     inferSettings.controlnet_type = controlnetType.value;
     inferSettings.controlnet_preprocess = document.getElementById("controlnet_preprocess").checked;
     inferSettings.controlnet_batch = document.getElementById("controlnet_batch").checked;

@@ -101,6 +101,212 @@ function showError(message) {
     $('#errorModal').modal('show');
 }
 
+function createElement(elementData, id_prefix = "", additional_classes = []) {
+    if (id_prefix.indexOf("_") === -1) {
+        id_prefix += "_";
+    }
+    
+    console.log("Creating element: ", elementData);
+    let type = elementData.hasOwnProperty("type") ? elementData["type"] : "";
+    let key = (elementData.hasOwnProperty("key") ? elementData["key"] : "");
+    if (key === "" || type === "") return null;
+    let description = elementData.hasOwnProperty("description") ? elementData["description"] : "";
+    // If the string contains brackets, extract the list of options from the brackets and set description to the rest
+    let types = [];
+    if (description.indexOf("]") !== -1) {
+        types = description.substring(description.indexOf("[") + 1, description.indexOf("]")).split(",");
+        description = description.substring(description.indexOf("]") + 1);
+    }
+    let options = false;
+    if (elementData.hasOwnProperty("options")) {
+        options = elementData["options"];
+        type = "select";
+    }
+    let modelType;
+    if (type.indexOf("modelSelect") !== -1) {
+        console.log("Model select: ", type);
+        modelType = type.split("_")[0];
+        type = "modelSelect";
+    }
+    let newElement;
+    let createLabel = true;
+    let addClasses = true;
+
+    switch(type) {
+        case "text":
+        case "str":
+            newElement = createTextInput(key, description, elementData["value"], id_prefix);
+            break;
+        case "int":
+        case "float":
+            newElement = createNumberInput(key, description, elementData["value"], id_prefix);
+            break;
+        case "ConstrainedFloatValue":
+        case "ConstrainedIntValue":
+            createLabel = false;
+            newElement = createSliderInput(key, elementData["title"], elementData["value"], elementData["min"], elementData["max"], elementData["step"], id_prefix);
+            break;
+        case "select":
+            addClasses = false;
+            newElement = createSelectInput(key, description, options, elementData["value"], id_prefix, additional_classes);
+            break;
+        case "bool":
+            createLabel = false;
+            addClasses = false;
+            newElement = createCheckboxInput(key, elementData["title"], description, elementData["value"], id_prefix, additional_classes);
+            break;
+        case "modelSelect":
+            createLabel = false;
+            newElement = createModelSelectInput(key, elementData["title"], elementData["value"], modelType, id_prefix);
+            break;
+        default:
+            console.log("Unknown element type: ", type, key);
+            break;
+    }
+
+    // Enumerate options and add classes to newElement
+    if (newElement){
+        let skip = false;
+        if (additional_classes.length > 0 && addClasses) {
+            for (let i = 0; i < additional_classes.length; i++) {
+                newElement.classList.add(additional_classes[i]);
+            }
+        }
+        let formGroup = document.createElement("div");
+        if (types.length > 0) {
+            types.forEach(function(option) {
+                option = option.trim();
+                if (option === "model") {
+                    skip = true;
+                }
+                formGroup.classList.add(option + "Only");
+            });
+        }
+        if (skip) return null;
+
+        formGroup.classList.add("form-group");
+        if (createLabel) {
+            let label = document.createElement("label");
+            label.for = id_prefix + key;
+            label.innerHTML = elementData["title"];
+            label.title = description;
+            formGroup.appendChild(label);
+        }
+        newElement.title = description;
+        newElement.classList.add("form-control");
+        formGroup.appendChild(newElement);
+        return formGroup;
+    }
+    return null;
+}
+
+
+function createModelSelectInput(key, description, value, modelType, id_prefix = "") {
+    let container = document.createElement("div");
+    container.id = id_prefix + key;
+    container.classList.add("form-group");
+    $(container).modelSelect({
+        model_type: modelType,
+        value: value,
+        label: description,
+    });
+    return container;
+}
+function createTextInput(key, description, value, id_prefix = "") {
+    let input = document.createElement("input");
+    input.type = "text";
+    input.id = id_prefix + key;
+    input.name = key;
+    input.value = value;
+    input.placeholder = description;
+    input.classList.add("form-control");
+    return input;
+}
+
+function createNumberInput(key, description, value, id_prefix = "") {
+    let input = document.createElement("input");
+    input.type = "number";
+    input.id = id_prefix + key;
+    input.name = key;
+    input.value = value;
+    input.placeholder = description;
+    input.classList.add("form-control");
+    return input;
+}
+
+function createSliderInput(key, description, value, min, max, step, id_prefix = "") {
+    let container = document.createElement("div");
+    container.id = id_prefix + key;
+    $(container).BootstrapSlider({
+        elem_id: id_prefix + key,
+        min: min,
+        max: max,
+        step: step,
+        value: value,
+        label: description
+    });
+    return container;
+}
+
+function createSelectInput(key, description, choices, value, id_prefix = "", additional_classes) {
+    let select = document.createElement("select");
+    select.id = id_prefix + key;
+    select.name = key;
+    select.classList.add("form-control");
+    if (additional_classes.length > 0) {
+        for (let i = 0; i < additional_classes.length; i++) {
+            select.classList.add(additional_classes[i]);
+        }
+    }
+    for (let i = 0; i < choices.length; i++) {
+        let option = document.createElement("option");
+        option.value = choices[i];
+        option.text = choices[i];
+        if (choices[i] === value) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    }
+    return select;
+}
+
+function createCheckboxInput(key, title, description, value, id_prefix = "", additionalClasses = []) {
+    // Create div
+    let div = document.createElement("div");
+    div.classList.add("form-check", "form-switch");
+
+    // Create checkbox
+    let checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = id_prefix + key;
+    checkbox.name = key;
+    checkbox.value = value;
+    checkbox.dataset.key = key;
+    checkbox.title = description;
+    checkbox.classList.add("newModelParam", "form-check-input");
+    if (additionalClasses.length > 0) {
+        additionalClasses.forEach(function(option) {
+            checkbox.classList.add(option);
+        });
+    }
+    if (value) { // Checks the checkbox if value is truthy
+        checkbox.setAttribute('checked', true);
+    }
+
+    // Create label
+    let label = document.createElement("label");
+    label.setAttribute("for", id_prefix + key);
+    label.classList.add("form-check-label");
+    label.textContent = title;
+    label.title = description;
+
+    // Append checkbox and label to div
+    div.appendChild(checkbox);
+    div.appendChild(label);
+
+    return div;
+}
+
 
 // Hide the error modal on socket reconnect or error clear.
 function clearError() {
