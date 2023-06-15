@@ -32,7 +32,7 @@
   padding: 5px 0;
 }
 
-.editorCanvas {
+.displayCanvas {
     width: auto;
     max-height: 70vh;
     max-width: 100%;
@@ -48,6 +48,14 @@
 .dropCanvas {
     z-index: -1;
     cursor: crosshair !important;
+}
+
+.maskCanvas {
+    z-index: 2;
+    pointer-events: none;
+    background-color: #FFFFFF;
+    opacity: 25%;
+    border: 1px solid #FFFFFF;
 }
 
 .image-editor-brush-size-dialog {

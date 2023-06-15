@@ -14,7 +14,8 @@
                             </div>
                             <div class="form-group">
                                 <!-- Auto-populated "model-select" element. See JS -->
-                                <div class="inferVaeSelect advancedInfer inferDrop" id="inferVae" data-label="VAE Selection"
+                                <div class="inferVaeSelect advancedInfer inferDrop" id="inferVae"
+                                     data-label="VAE Selection"
                                      data-model_type="vae"></div>
                             </div>
                         </div>
@@ -48,6 +49,51 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="form-group advancedInfer">
+                            <label for="infer_pipeline">Pipeline</label>
+                            <!-- Add the round button here -->
+                            <button type="button" class="round-btn helpBtn" id="pipeHelpButton" data-toggle="tooltip"
+                                    data-placement="right" title="This is a docstring.">?
+                            </button>
+                            <select id="infer_pipeline" name="infer_pipeline" class="form-select">
+                                <option value="auto" selected>Auto</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group advancedInfer" id="inpaintContainer">
+                            <div class="form-group">
+                                <label for="inpaintEditor">Input Image:</label>
+                                <div class="imageEditor" id="inpaintEditor"></div>
+                            </div>
+                            <div class="form-group">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" class="form-check-input"
+                                           id="infer_use_input_resolution" name="infer_use_input_resolution"
+                                           checked>
+                                    <label for="infer_use_input_resolution">Use Input resolution</label>
+                                </div>
+                            </div>
+                            <div class="form-group" id="scale_mode_container">
+                                <label for="infer_scale_mode">Scale Mode</label>
+                                <select id="infer_scale_mode" name="infer_scale_mode" class="form-select">
+                                    <option value="scale" selected>Scale</option>
+                                    <option value="stretch">Stretch</option>
+                                    <option value="contain">Contain</option>
+                                </select>
+                                <label for="inpaint_origin">Origin</label>
+                                <select id="inpaint_origin" name="inpaint_origin" class="form-select">
+                                    <option value="center" selected>Center</option>
+                                    <option value="top-left">Top Left</option>
+                                    <option value="top">Top</option>
+                                    <option value="top-right">Top Right</option>
+                                    <option value="left">Left</option>
+                                    <option value="right">Right</option>
+                                    <option value="bottom-left">Bottom Left</option>
+                                    <option value="bottom">Bottom</option>
+                                    <option value="bottom-right">Bottom Right</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="form-group inferDrop" id="infer_ratios"></div>
                         <div class="form-group inferDrop" id="infer_width"></div>
                         <div class="form-group inferDrop" id="infer_height"></div>
@@ -59,16 +105,6 @@
                         <div class="form-group inferDrop">
                             <label for="infer_negative_prompt">Negative Prompt</label>
                             <textarea class="form-control prompt-text" id="infer_negative_prompt" rows="4"></textarea>
-                        </div>
-                        <div class="form-group advancedInfer">
-                            <label for="infer_pipeline">Pipeline</label>
-                            <!-- Add the round button here -->
-                            <button type="button" class="round-btn helpBtn" id="pipeHelpButton" data-toggle="tooltip"
-                                    data-placement="right" title="This is a docstring.">?
-                            </button>
-                            <select id="infer_pipeline" name="infer_pipeline" class="form-select">
-                                <option value="auto" selected>Auto</option>
-                            </select>
                         </div>
                         <div class="form-group advancedInfer" id="pipelineParams">
 
@@ -82,28 +118,6 @@
                                 <option value="refine">Refine</option>
                                 <option value="reweight">Reweight</option>
                             </select>
-                        </div>
-                        <div class="form-group advancedInfer" id="inpaintContainer">
-                            <div class="form-group">
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" class="form-check-input"
-                                           id="infer_use_input_resolution" name="infer_use_input_resolution"
-                                           checked>
-                                    <label for="infer_use_input_resolution">Use Input resolution</label>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="infer_scale_mode">Scale Mode</label>
-                                // Options are "scale", "stretch", "pad" and "crop"
-                                <select id="infer_scale_mode" name="infer_scale_mode" class="form-select">
-                                    <option value="scale" selected>Scale</option>
-                                    <option value="stretch">Stretch</option>
-                                    <option value="pad">Pad</option>
-                                    <option value="crop">Crop</option>
-                                </select>
-                            </div>
-                            <label for="inpaintEditor">Input Image:</label>
-                            <div class="imageEditor" id="inpaintEditor"></div>
                         </div>
                         <div class="accordion mt-3 shadow advancedInfer" id="controlnetSettings">
                             <div class="accordion-item">
@@ -140,20 +154,20 @@
                                         <div class="form-group controlnetSingle">
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" class="form-check-input"
-                                                       id="infer_use_control_resolution" name="infer_use_control_resolution"
+                                                       id="infer_use_control_resolution"
+                                                       name="infer_use_control_resolution"
                                                        checked>
                                                 <label for="infer_use_control_resolution">Use Control resolution</label>
                                             </div>
                                             <div class="form-group">
-                                <label for="controlnet_scale_mode">Scale Mode</label>
-                                // Options are "scale", "stretch", "pad" and "crop"
-                                <select id="controlnet_scale_mode" name="controlnet_scale_mode" class="form-select">
-                                    <option value="scale" selected>Scale</option>
-                                    <option value="stretch">Stretch</option>
-                                    <option value="pad">Pad</option>
-                                    <option value="crop">Crop</option>
-                                </select>
-                            </div>
+                                                <label for="controlnet_scale_mode">Scale Mode</label>
+                                                <select id="controlnet_scale_mode" name="controlnet_scale_mode"
+                                                        class="form-select">
+                                                    <option value="scale" selected>Scale</option>
+                                                    <option value="stretch">Stretch</option>
+                                                    <option value="contain">Contain</option>
+                                                </select>
+                                            </div>
 
                                         </div>
                                         <div class="form-group controlnetSingle">

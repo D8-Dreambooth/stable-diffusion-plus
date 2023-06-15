@@ -131,6 +131,16 @@ function inferInit() {
         label: "Height"
     });
 
+    widthSlider.setOnChange(function (value) {
+        inpaintImageEditor.updateCanvasWidth(value);
+        controlnetImageEditor.updateCanvasWidth(value);
+    });
+
+    heightSlider.setOnChange(function (value) {
+        inpaintImageEditor.updateCanvasHeight(value);
+        controlnetImageEditor.updateCanvasHeight(value);
+    });
+
     stepTest = $("#infer_steps").BootstrapSlider({
         elem_id: "stepSlid",
         min: 5,
@@ -177,8 +187,8 @@ function inferInit() {
         "label": "Controlnet Batch Directory"
     });
 
-    controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "", false);
-    inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "", false);
+    controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "", 512, 512);
+    inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "", 512, 512);
 
     let submit = document.getElementById("startInfer");
 
@@ -266,12 +276,57 @@ function inferInit() {
         }
     });
 
+    $("#inpaint_origin").change(function () {
+        inpaintImageEditor.updateImageOrigin(this.value);
+    });
+
     $("#infer_prompt2prompt").hide();
     $("#controlnetSettings").hide();
     $("#infer_pipeline").change(function () {
         console.log("Pipeline changed: ", this.value);
         updatePipelineSettings(this.value);
     });
+
+    const inferUseControlResolution = $("#infer_use_control_resolution");
+    const inferUseInputResolution = $("#infer_use_input_resolution");
+    const inferScaleMode = $("#infer_scale_mode");
+    const scaleModeContainer = $("#scale_mode_container");
+    const controlnetScaleMode = $("#controlnet_scale_mode");
+
+    inferUseControlResolution.change(function () {
+        const isChecked = inferUseControlResolution.is(":checked");
+        controlnetImageEditor.updateUseImageScale(isChecked);
+        if (!isChecked) {
+            inpaintImageEditor.updateScaleMode(controlnetScaleMode.val());
+            controlnetScaleMode.show();
+        } else {
+            controlnetScaleMode.hide();
+        }
+    });
+
+    inferUseInputResolution.change(function () {
+        const isChecked = inferUseInputResolution.is(":checked");
+        inpaintImageEditor.updateUseImageScale(isChecked);
+        if (!isChecked) {
+            scaleModeContainer.show();
+            inpaintImageEditor.updateScaleMode(inferScaleMode.val());
+        } else {
+            scaleModeContainer.hide();
+        }
+    });
+    scaleModeContainer.hide();
+    inferScaleMode.change(function () {
+        if (!inferUseInputResolution.is(":checked")) {
+            inpaintImageEditor.updateScaleMode(inferScaleMode.val());
+        }
+    });
+
+    controlnetScaleMode.change(function () {
+        if (!inferUseControlResolution.is(":checked")) {
+            controlnetImageEditor.updateScaleMode(controlnetScaleMode.val());
+        }
+    });
+    inferSettings.use_input_resolution = inferUseInputResolution.is(":checked");
 
     $("#controlnet_type").change(function () {
         console.log("Controlnet type changed: ", this.value);
