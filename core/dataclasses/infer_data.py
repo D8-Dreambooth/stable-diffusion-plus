@@ -27,7 +27,7 @@ class InferSettings:
     height: int = 512
     infer_image = None
     infer_mask = None
-    invert_mask = True
+    invert_mask = False
     infer_scale_mode = "scale"
     lora_weight = 0.9
     loras: List[ModelData] = None

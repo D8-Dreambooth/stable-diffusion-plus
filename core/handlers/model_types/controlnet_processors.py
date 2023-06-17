@@ -1,150 +1,165 @@
+import importlib
+import inspect
 import logging
+import pkgutil
 import traceback
 from typing import List
 
 import PIL.Image
-from PIL.Image import Resampling
-from controlnet_aux import OpenposeDetector, MLSDdetector, HEDdetector, CannyDetector, MidasDetector
-from controlnet_aux import PidiNetDetector, NormalBaeDetector, LineartDetector, LineartAnimeDetector, ContentShuffleDetector
+from controlnet_aux.processor import Processor
 
 from core.handlers.images import scale_image
 from core.handlers.status import StatusHandler
-from core.modules.infer.src.preprocessors.coco_detector import CocoDetector
 
 logger = logging.getLogger(__name__)
 
-model_data = [
-    {
-        "name": "ControlNet 1.1 Depth",
-        "model_file": "control_v11p_sd15_depth.pth",
-        "config_file": "control_v11p_sd15_depth.yaml",
+controlnet_preprocessors = ["canny", "depth_leres", "depth_leres++", "depth_midas", "depth_zoe", "lineart_anime",
+                            "lineart_coarse", "lineart_realistic", "mediapipe_face", "mlsd", "normal_bae",
+                            "normal_midas",
+                            "openpose", "openpose_face", "openpose_faceonly", "openpose_full", "openpose_hand",
+                            "scribble_hed", "scribble_pidinet", "shuffle", "softedge_hed", "softedge_hedsafe",
+                            "softedge_pidinet", "softedge_pidsafe"]
+
+controlnet_models = {
+    "depth": {
+        "name": "Depth",
         "model_url": "lllyasviel/control_v11f1p_sd15_depth",
-        "image_type": "image",
-        "preprocessor": "Depth_Midas"
+        "image_type": ["image"],
+        "preprocessors": ["depth_leres++", "depth_leres", "depth_zoe", "depth_midas"]
     },
-    {
-        "name": "ControlNet 1.1 Normal",
-        "model_file": "control_v11p_sd15_normalbae.pth",
-        "config_file": "control_v11p_sd15_normalbae.yaml",
+    "normal": {
+        "name": "Normal",
         "model_url": "lllyasviel/control_v11p_sd15_normalbae",
-        "image_type": "image",
-        "preprocessor": "Normal"
+        "image_type": ["image"],
+        "preprocessors": ["normal_bae", "normal_midas"]
     },
-    {
-        "name": "ControlNet 1.1 Canny",
-        "model_file": "control_v11p_sd15_canny.pth",
-        "config_file": "control_v11p_sd15_canny.yaml",
+    "canny": {
+        "name": "Canny",
         "model_url": "lllyasviel/control_v11p_sd15_canny",
-        "image_type": "image",
-        "preprocessor": "Canny"
+        "image_type": ["image"],
+        "preprocessors": ["canny"]
     },
-    {
-        "name": "ControlNet 1.1 MLSD",
-        "model_file": "control_v11p_sd15_mlsd.pth",
-        "config_file": "control_v11p_sd15_mlsd.yaml",
+    "mlsd": {
+        "name": "MLSD",
         "model_url": "lllyasviel/control_v11p_sd15_mlsd",
-        "image_type": "image",
-        "preprocessor": "MLSD"
+        "image_type": ["image"],
+        "preprocessors": ["mlsd"]
     },
-    {
-        "name": "ControlNet 1.1 Scribble",
-        "model_file": "control_v11p_sd15_scribble.pth",
-        "config_file": "control_v11p_sd15_scribble.yaml",
+    "scribble": {
+        "name": "Scribble",
         "model_url": "lllyasviel/control_v11p_sd15_scribble",
-        "image_type": "mask",
-        "preprocessor": "Scribble"
+        "image_type": ["mask", "image"],
+        "preprocessors": ["scribble_hed", "scribble_pidinet"]
     },
-    {
-        "name": "ControlNet 1.1 Soft Edge",
-        "model_file": "control_v11p_sd15_softedge.pth",
-        "config_file": "control_v11p_sd15_softedge.yaml",
+    "soft_edge": {
+        "name": "Soft Edge",
         "model_url": "lllyasviel/control_v11p_sd15_softedge",
-        "image_type": "image",
-        "preprocessor": "SoftEdge_HED"
+        "image_type": ["image"],
+        "preprocessors": ["softedge_hed", "softedge_hedsafe", "softedge_pidinet", "softedge_pidsafe"]
     },
-    {
-        "name": "ControlNet 1.1 Segmentation",
-        "model_file": "control_v11p_sd15_seg.pth",
-        "config_file": "control_v11p_sd15_seg.yaml",
+    "segmentation": {
+        "name": "Segmentation",
         "model_url": "lllyasviel/control_v11p_sd15_seg",
-        "image_type": "image",
-        "preprocessor": "COCO"
+        "image_type": ["image"],
+        "preprocessors": "COCO"
     },
-    {
-        "name": "ControlNet 1.1 Openpose",
-        "model_file": "control_v11p_sd15_openpose.pth",
-        "config_file": "control_v11p_sd15_openpose.yaml",
+    "openpose": {
+        "name": "Openpose",
         "model_url": "lllyasviel/control_v11p_sd15_openpose",
-        "image_type": "image",
-        "preprocessor": "Openpose"
+        "image_type": ["image"],
+        "preprocessors": ["openpose", "openpose_face", "openpose_faceonly", "openpose_full", "openpose_hand"]
     },
-    {
-        "name": "ControlNet 1.1 Lineart",
-        "model_file": "control_v11p_sd15_lineart.pth",
-        "config_file": "control_v11p_sd15_lineart.yaml",
+    "lineart": {
+        "name": "Lineart",
         "model_url": "lllyasviel/control_v11p_sd15_lineart",
-        "image_type": "image",
-        "preprocessor": "Lineart"
+        "image_type": ["image"],
+        "preprocessors": ["lineart_coarse", "lineart_realistic", "lineart_anime"]
     },
-    {
-        "name": "ControlNet 1.1 Anime Lineart",
-        "model_file": "control_v11p_sd15s2_lineart_anime.pth",
-        "config_file": "control_v11p_sd15s2_lineart_anime.yaml",
+    "anime_lineart": {
+        "name": "Anime Lineart",
         "model_url": "lllyasviel/control_v11p_sd15s2_lineart_anime",
-        "image_type": "image",
-        "preprocessor": "Lineart_Anime"
+        "image_type": ["image"],
+        "preprocessors": ["lineart_coarse", "lineart_realistic", "lineart_anime"]
     },
-    {
-        "name": "ControlNet 1.1 Instruct Pix2Pix",
-        "model_file": "control_v11e_sd15_ip2p.pth",
-        "config_file": "control_v11e_sd15_ip2p.yaml",
+    "instruct_pix2pix": {
+        "name": "Instruct Pix2Pix",
         "model_url": "lllyasviel/control_v11e_sd15_ip2p",
-        "image_type": "image",
-        "preprocessor": None
+        "image_type": ["image"],
+        "preprocessors": [None]
     },
-    {
-        "name": "ControlNet 1.1 Inpaint",
-        "model_file": "control_v11p_sd15_inpaint.pth",
-        "config_file": "control_v11p_sd15_inpaint.yaml",
+    "inpaint": {
+        "name": "Inpaint",
         "model_url": "lllyasviel/control_v11p_sd15_inpaint",
-        "image_type": "image",
-        "preprocessor": None
+        "image_type": ["image"],
+        "preprocessors": [None]
     },
-    {
-        "name": "ControlNet 1.1 Tile",
-        "model_file": "control_v11u_sd15_tile.pth",
-        "config_file": "control_v11u_sd15_tile.yaml",
+    "tile": {
+        "name": "Tile",
         "model_url": "lllyasviel/control_v11f1e_sd15_tile",
-        "image_type": "image",
-        "preprocessor": None
+        "image_type": ["image"],
+        "preprocessors": [None]
     },
-    {
-        "name": "ControlNet 1.1 Shuffle",
-        "model_file": "control_v11e_sd15_shuffle.pth",
-        "config_file": "control_v11e_sd15_shuffle.yaml",
+    "shuffle": {
+        "name": "Shuffle",
         "model_url": "lllyasviel/control_v11e_sd15_shuffle",
-        "image_type": "image",
-        "preprocessor": "Shuffle"
+        "image_type": ["image"],
+        "preprocessors": ["shuffle"]
     },
-    {
-        "name": "ControlNet Brightness",
-        "model_file": "diffusion_pytorch_model.safetensors",
-        "config_file": "config.json",
-        "subfolder": "models",
+    "brightness": {
+        "name": "Brightness",
         "model_url": "ioclab/control_v1p_sd15_brightness",
-        "image_type": "image",
-        "preprocessor": "None"
+        "image_type": ["image"],
+        "preprocessors": [None]
+    },
+    "qrcode": {
+        "name": "QRCode",
+        "model_url": "DionTimmer/controlnet_qrcode-control_v1p_sd15",
+        "image_type": ["image"],
+        "preprocessor": [None]
     }
-]
+}
+
+# Sort the model data
+controlnet_models = {k: v for k, v in sorted(controlnet_models.items(), key=lambda item: item[1]["name"])}
 
 
-def get_model_data(model_name):
-    for model in model_data:
-        if model["name"] == model_name:
-            return model
-    return None
+def find_detector_classes(module):
+    for name, cls in inspect.getmembers(module, inspect.isclass):
+        if 'Detector' in name:
+            yield cls
 
 
+def get_call_params(cls):
+    for name, member in inspect.getmembers(cls):
+        if name == '__call__':
+            sig = inspect.signature(member)
+            return {name: {'default': str(param.default), 'type': str(param.annotation)} for name, param in
+                    sig.parameters.items()}
+
+
+def get_detectors_and_params(package):
+    result = {}
+    for importer, modname, ispkg in pkgutil.iter_modules(package.__path__):
+        try:
+            module = importlib.import_module(package.__name__ + "." + modname)
+            for detector in find_detector_classes(module):
+                params = []
+                call_params = get_call_params(detector)
+                for name, param in call_params.items():
+                    if name == "self" or name == "return_pil":
+                        continue
+                    params.append({
+                        "name": name,
+                        "default": param["default"],
+                        "type": param["type"]
+                    })
+                result[detector.__name__] = params
+        except ImportError:
+            continue
+    return result
+
+
+# Usage:
 def preprocess_image(
         images: List[PIL.Image.Image],
         prompt: List[str],
@@ -153,9 +168,11 @@ def preprocess_image(
         height: int = 1024,
         process: bool = True,
         resize_mode: str = "resize",
+        preprocess_mode: str = "default",
         handler: StatusHandler = None) -> object:
     """
 
+    :param preprocess_mode:
     :param images: A list of PIL images to process
     :param prompt: A list of prompts to use if necessary
     :param model_name: The controlnet being used for preprocessor selection
@@ -166,7 +183,6 @@ def preprocess_image(
     :param handler: The status handler to update
     :return:
     """
-    model = get_model_data(model_name)
     if not len(images):
         logger.warning("NO IMAGE, STUPID")
         return images, prompt
@@ -176,60 +192,45 @@ def preprocess_image(
         "progress_2_total": len(images),
         "progress_2_current": 0
     }
+
+    processor = None
+    image_types = []
+    model = controlnet_models.get(model_name, None)
+    if model is not None:
+        image_types = model["image_type"]
+
     if process:
-        status["status_2"] = "Loading preprocessor: " + model["preprocessor"]
+        if preprocess_mode == "default" or preprocess_mode not in controlnet_preprocessors:
+            preprocess_mode = None
+            if model is not None:
+                preprocess_mode = model["preprocessors"][0]
+            if preprocess_mode is None:
+                logger.debug("No preprocessing model selected.")
+            elif preprocess_mode not in controlnet_preprocessors:
+                logger.debug("Invalid preprocessing model selected.")
+            else:
+                preprocessor_id = controlnet_preprocessors[preprocess_mode]
+                try:
+                    processor = Processor(preprocessor_id)
+                except Exception as e:
+                    logger.error(f"Failed to load preprocessor {preprocessor_id}: {e}")
+
+    status["status_2"] = "Loading preprocessor: " + model["preprocessor"]
 
     handler.update(items=status)
     for img in images:
         converted.append(img.convert("RGB"))
 
     images = converted
-    processor_name = None
-    if model:
-        processor_name = model["preprocessor"] if process else None
-    else:
-        logger.debug("No preprocessing model selected.")
 
-    processor = None
     processor_args = {"detect_resolution": width, "image_resolution": width}
-    if processor_name is not None:
-        if processor_name == "Depth_Midas":
-            processor_args = {}
-            processor = MidasDetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "Canny":
-            processor_args = {}
-            processor = CannyDetector()
-        if processor_name == "COCO":
-            processor_args = {}
-            processor = CocoDetector()
-        if processor_name == "Normal":
-            processor = NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "MLSD":
-            processor = MLSDdetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "SoftEdge_HED":
-            processor = HEDdetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "SoftEdge_HED_safe":
-            processor = HEDdetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "PidiNet":
-            processor = PidiNetDetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "Openpose":
-            processor_args["hand_and_face"] = True
-            processor = OpenposeDetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "Shuffle":
-            processor = ContentShuffleDetector()
-        if processor_name == "Lineart":
-            processor = LineartDetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "Lineart_Anime":
-            processor = LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
-        if processor_name == "Scribble":
-            processor_args["scribble"] = True
-            processor = HEDdetector.from_pretrained("lllyasviel/Annotators")
 
     output = []
     out_prompts = []
     img_idx = 0
     for img in images:
-        handler.update(items={"progress_2_current": img_idx, "status_2": f"Processing control image {img_idx}/{len(images)}"})
+        handler.update(
+            items={"progress_2_current": img_idx, "status_2": f"Processing control image {img_idx}/{len(images)}"})
         handler.send()
         try:
             if len(prompt) == len(images):
@@ -237,7 +238,13 @@ def preprocess_image(
             img_idx += 1
             img = scale_image(img, width, height, resize_mode)
             if processor:
+                restore_res = False
+                if processor.resize:
+                    restore_res = img.size
                 processed = processor(img, **processor_args) if processor_args else processor(img)
+                if restore_res:
+                    logger.debug(f"Restoring resolution to {restore_res}")
+                    processed = processed.resize(restore_res, resample=PIL.Image.BICUBIC)
                 output.append(processed.convert("RGB"))
             else:
                 output.append(img.convert("RGB"))

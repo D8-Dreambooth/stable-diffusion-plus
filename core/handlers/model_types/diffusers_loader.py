@@ -13,7 +13,7 @@ from diffusers.models.attention_processor import AttnProcessor2_0
 from safetensors.torch import load_file
 
 from core.dataclasses.model_data import ModelData
-from core.handlers.model_types.controlnet_processors import model_data as controlnet_data
+from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +100,10 @@ def load_diffusers(model_data: ModelData):
                     model_data.data["vae"],
                     torch_dtype=torch.float16
                 )
+            if "Legacy" in pipeline_cls:
+                pipe_args["safety_checker"] = None
+                pipe_args["feature_extractor"] = None
+                pipe_args["requires_safety_checker"] = False
             if len(nets):
                 logger.debug(f"Loading {len(nets)} controlnets.")
                 pipe_args["controlnet"] = nets

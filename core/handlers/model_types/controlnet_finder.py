@@ -3,7 +3,7 @@ import logging
 import os
 
 from core.dataclasses.model_data import ModelData
-from core.handlers.model_types.controlnet_processors import model_data
+from core.handlers.model_types.controlnet_processors import controlnet_models
 from core.handlers.models import ModelHandler
 from dreambooth.dataclasses.db_config import from_file, DreamboothConfig
 from dreambooth.dataclasses.finetune_config import FinetuneConfig
@@ -27,10 +27,8 @@ async def get_controlnet_models(data, handler: ModelHandler):
                     mi = ModelData(full_item)
                     output.append(mi)
                     model_names.append(item)
-    preset_models = model_data
-    for model in preset_models:
-        if model["name"] not in model_names:
-            mi = ModelData(model["name"])
+    preset_models = controlnet_models
+
     return output
 
 

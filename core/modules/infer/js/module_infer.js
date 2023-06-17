@@ -8,6 +8,7 @@ let inferModelSelect;
 let vaeModelSelect;
 let loraModelSelect;
 let pipelineData = {};
+let controlnetData, preprocessorData;
 
 
 const ratioContainer = $("#infer_ratios");
@@ -134,11 +135,13 @@ function inferInit() {
     widthSlider.setOnChange(function (value) {
         inpaintImageEditor.updateCanvasWidth(value);
         controlnetImageEditor.updateCanvasWidth(value);
+        inferSettings.width = value;
     });
 
     heightSlider.setOnChange(function (value) {
         inpaintImageEditor.updateCanvasHeight(value);
         controlnetImageEditor.updateCanvasHeight(value);
+        inferSettings.height = value;
     });
 
     stepTest = $("#infer_steps").BootstrapSlider({
@@ -236,21 +239,7 @@ function inferInit() {
     let moduleSettings = inferModule.systemConfig;
     console.log("Loading inference settings(1) from: ", moduleSettings);
     loadInferSettings(moduleSettings);
-    sendMessage("get_controlnets", {}, true).then((data) => {
-        console.log("Controlnets: ", data);
-        let controlnetSelect = document.getElementById("controlnet_type");
-        let option = document.createElement("option");
-        option.value = "None";
-        option.text = "";
-        controlnetSelect.add(option);
-        data = data["nets"];
-        for (let i = 0; i < data.length; i++) {
-            let option = document.createElement("option");
-            option.value = data[i]["name"];
-            option.text = data[i]["name"];
-            controlnetSelect.add(option);
-        }
-    });
+    refreshControlNets();
     sendMessage("get_pipelines", {}, true).then((data) => {
         console.log("Pipelines: ", data);
         let pipelineSelect = document.getElementById("infer_pipeline");
@@ -330,6 +319,11 @@ function inferInit() {
 
     $("#controlnet_type").change(function () {
         console.log("Controlnet type changed: ", this.value);
+        // Get controlnet data from controlnetData if the value is in controlnetData
+        if (controlnetData.hasOwnProperty(this.value)) {
+            let controlnet = controlnetData[this.value];
+            console.log("Controlnet: ", controlnet);
+        }
         if (this.value === "ControlNet Reference") {
             console.log("SHOW.");
             $(".refParam").show();
@@ -346,6 +340,31 @@ function inferInit() {
 
     console.log("Infer settings: ", inferSettings);
 }
+
+
+function refreshControlNets() {
+    sendMessage("get_controlnets", {}, true).then((data) => {
+        console.log("Controlnets: ", data);
+        let controlnetSelect = document.getElementById("controlnet_type");
+        controlnetSelect.innerHTML = "";
+        let option = document.createElement("option");
+        option.value = "None";
+        option.text = "";
+        controlnetSelect.add(option);
+        preprocessorData = data["detectors"];
+        controlnetData = data["nets"];
+        // Enumerate data, which is now a dict
+        for (let key in controlnetData) {
+            console.log("Key: ", key, " Value: ", controlnetData[key]);
+            let element = controlnetData[key];
+            let option = document.createElement("option");
+            option.value = key;
+            option.text = element["name"];
+            controlnetSelect.add(option);
+        }
+    });
+}
+
 
 function updatePipelineSettings(pipelineName) {
     let pipelineParams = $("#pipelineParams");
@@ -382,12 +401,13 @@ function updatePipelineSettings(pipelineName) {
                 keyTitle += " " + keySplit[i].charAt(0).toUpperCase() + keySplit[i].slice(1);
             }
             // If the value is a float, create a BootstrapSlider
+            let max = (key === "controlnet_conditioning_scale") ? 2 : 1;
             if (typeof value === "number") {
                 inputElement = document.createElement("div");
 
                 let slider = $("#pipeline_" + key).BootstrapSlider({
                     min: 0,
-                    max: 1,
+                    max: max,
                     value: value,
                     step: 0.01,
                     label: keyTitle
@@ -450,21 +470,7 @@ function updatePipelineSettings(pipelineName) {
 
 function inferRefresh() {
     loadInferSettings(inferModule.systemConfig);
-    sendMessage("get_controlnets", {}, true).then((data) => {
-        console.log("Controlnets: ", data);
-        let controlnetSelect = document.getElementById("controlnet_type");
-        let option = document.createElement("option");
-        option.value = "None";
-        option.text = "";
-        controlnetSelect.add(option);
-        data = data["nets"];
-        for (let i = 0; i < data.length; i++) {
-            let option = document.createElement("option");
-            option.value = data[i]["name"];
-            option.text = data[i]["name"];
-            controlnetSelect.add(option);
-        }
-    });
+    refreshControlNets();
     getInferSettings();
     console.log("Infer settings(refresh): ", inferSettings);
 }
@@ -830,11 +836,12 @@ function getInferSettings() {
         inferSettings.image = controlnetImageEditor.imageSource;
     }
     if (userConfig["show_aspect_ratios"]) {
+        console.log("Using resolution from aspect ratio.");
         const selectedRatio = document.querySelector(".aspectButton.btn-selected");
         setResolution(selectedRatio.dataset.ratio);
     } else {
-        inferSettings.width = parseInt(widthSlider.value);
-        inferSettings.height = parseInt(heightSlider.value);
+        inferSettings.width = parseInt(widthSlider.getValue());
+        inferSettings.height = parseInt(heightSlider.getValue());
     }
     console.log("Infer settings: ", inferSettings);
 }

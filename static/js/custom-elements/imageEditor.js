@@ -62,6 +62,7 @@ class ImageEditor {
         this.undoStack = [];
         const ctx = this.drawCanvas.getContext('2d');
         const state = ctx.getImageData(0, 0, this.drawCanvas.width, this.drawCanvas.height);
+        console.log("Pushing initial state to undo stack");
         this.undoStack.push({type: 'draw', imageData: state});
         this.brushSize = 10;
         this.brushColor = 'black';
@@ -96,6 +97,8 @@ class ImageEditor {
         let showBounds = false;
         if (this.lastHeight !== targetCanvasHeight || this.lastWidth !== targetCanvasWidth) {
             showBounds = true;
+            this.lastHeight = targetCanvasHeight;
+            this.lastWidth = targetCanvasWidth;
         }
         let ctx = this.displayCanvas.getContext('2d');
         ctx.clearRect(0, 0, this.displayCanvas.width, this.displayCanvas.height);
@@ -160,6 +163,8 @@ class ImageEditor {
         ctx.drawImage(this.dropCanvas, 0, 0, this.dropCanvas.width, this.dropCanvas.height);
         ctx.drawImage(this.boundsCanvas, 0, 0, this.boundsCanvas.width, this.boundsCanvas.height);
         ctx.drawImage(this.drawCanvas, 0, 0, this.drawCanvas.width, this.drawCanvas.height);
+        this.updateCursorStyle();
+
     }
 
 
@@ -204,6 +209,7 @@ class ImageEditor {
         this.isDrawing = false;
         const ctx = this.drawCanvas.getContext('2d');
         const state = ctx.getImageData(0, 0, this.drawCanvas.width, this.drawCanvas.height);
+        console.log("Drawing ended, pushing state.");
         this.undoStack.push({type: 'draw', imageData: state});
         ctx.beginPath(); // Start a new path
     }
@@ -247,16 +253,27 @@ class ImageEditor {
             console.log("No image provided?");
             return;
         }
+        let updateHistory = false;
         if (isMask) {
             // Assume image is a mask created by the user drawing in the UI
             targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height); // Clear the drawCanvas
             if (targetCanvas.width !== this.displayCanvas.width || targetCanvas.height !== this.displayCanvas.height) {
                 targetCanvas.width = this.displayCanvas.width;
                 targetCanvas.height = this.displayCanvas.height;
+                updateHistory = true;
             }
             let mask = new Image();
             mask.src = image;
             targetCtx.drawImage(mask, 0, 0, this.displayCanvas.width, this.displayCanvas.height);
+            // Find the last "draw" element in the undo stack and replace it with the current contents of the drawCanvas
+            if (updateHistory) {
+                for (let i = this.undoStack.length - 1; i >= 0; i--) {
+                    if (this.undoStack[i].type === 'draw') {
+                        this.undoStack[i].imageData = targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
+                        break;
+                    }
+                }
+            }
             this.redrawCanvases(targetCanvasWidth, targetCanvasHeight);
         } else {
             // Assume image is an image dropped by the user
@@ -304,6 +321,21 @@ class ImageEditor {
                     console.log("Calculating offset canvas (origin): ", this.imageOrigin);
                     let offset = calculateOriginOffset(this.imageOrigin, targetCanvas.width, targetCanvas.height, scaledWidth, scaledHeight);
                     targetCtx.drawImage(img, offset.offsetX, offset.offsetY, scaledWidth, scaledHeight); // Draw image at offset
+                }
+                // Find the last drop element in the undo stack and replace it with the current contents of the dropCanvas
+                let updated = false;
+                for (let i = this.undoStack.length - 1; i >= 0; i--) {
+                    if (this.undoStack[i].type === 'drop') {
+                        this.undoStack[i].imageData = targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
+                        updated = true;
+                        break;
+                    }
+                }
+                if (!updated) {
+                    this.undoStack.push({
+                        type: 'drop',
+                        imageData: targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height)
+                    });
                 }
                 this.redrawCanvases(targetCanvasWidth, targetCanvasHeight);
             }
@@ -445,9 +477,16 @@ class ImageEditor {
     }
 
 
-    getDropped() {
-        return this.dropCanvas.toDataURL('image/png');
+    getDropped(pop = false) {
+        let dataUrl = this.dropCanvas.toDataURL('image/png');
+        if (pop) {
+            let win = window.open("", "_blank");
+            win.document.write("<img src='" + dataUrl + "'/>");
+        } else {
+            return dataUrl;
+        }
     }
+
 
     getMask() {
         return this.drawCanvas.toDataURL('image/png');
@@ -482,12 +521,13 @@ class ImageEditor {
         drawCtx.clearRect(0, 0, this.drawCanvas.width, this.drawCanvas.height);
         dropCtx.clearRect(0, 0, this.dropCanvas.width, this.dropCanvas.height);
         let state = drawCtx.getImageData(0, 0, this.drawCanvas.width, this.drawCanvas.height);
+        console.log("Pushing due to clear?");
         this.undoStack.push({type: 'draw', imageData: state});
         const colorPickerDialog = document.querySelector('.color-picker-dialog');
         if (colorPickerDialog) document.body.removeChild(colorPickerDialog);
         this.brushColor = "black";
         this.brushSize = 10;
-        this.updateCursorStyle()
+        this.redrawCanvases(this.lastWidth, this.lastHeight);
     }
 
     // Show a dialog to set the brush size
@@ -618,12 +658,15 @@ class ImageEditor {
 
 
     undo() {
+        this.undoStack.pop();
         if (this.undoStack.length === 0) return;
-        const lastAction = this.undoStack.pop();
+        const lastAction = this.undoStack[this.undoStack.length - 1];
         if (lastAction.type === 'draw') {
+            console.log("Undoing draw action");
             const ctx = this.drawCanvas.getContext('2d');
             ctx.putImageData(lastAction.imageData, 0, 0);
         } else if (lastAction.type === 'drop') {
+            console.log("Undoing drop action");
             const dropCtx = this.dropCanvas.getContext('2d');
             dropCtx.putImageData(lastAction.imageData, 0, 0);
         }

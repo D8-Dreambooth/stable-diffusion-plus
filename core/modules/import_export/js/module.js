@@ -43,6 +43,9 @@ function initImportExport() {
         // Code to be executed when the "startCompile" button is clicked
         console.log("startCompile button was clicked");
         let modelInfo = selectorEx.getModel();
+        sendMessage("compile_checkpoint", modelInfo, true, "io").then((res) => {
+            console.log("All done!", res);
+        });
         console.log("Current export model: ", modelInfo);
     })
 

@@ -14,6 +14,7 @@ from core.handlers.models import ModelHandler
 from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
+from core.modules.import_export.src.convert_diffusers_to_original_stable_diffusion import compile_checkpoint
 from core.modules.import_export.src.convert_original_stable_diffusion_to_diffusers import extract_checkpoint
 from core.modules.import_export.src.extract_lora_from_model import extract_lora
 from core.modules.import_export.src.model_merge import ModelMerge
@@ -141,6 +142,23 @@ class ImportExportModule(BaseModule):
         handler.register("download_model", _download_model)
         handler.register("extract_lora", _extract_lora)
         handler.register("merge_checkpoints", _merge_checkpoints)
+        handler.register("compile_checkpoint", _compile_checkpoint)
+
+
+async def _compile_checkpoint(data):
+    msg_id = data["id"]
+    logger.debug(f"Model compile: {data}")
+    model_data = data.get("data")
+    user = None
+    if not model_data:
+        return {"name": "extraction_failed", "message": "No model data provided."}
+    if "user" in data:
+        user = data["user"]
+    model_path = model_data["path"]
+    mh = ModelHandler(user_name=user)
+    out_dir = os.path.join(mh.user_path, "stable-diffusion")
+    compile_checkpoint(model_path, out_dir, user)
+    return {"name": "extraction_started", "message": "No model data provided."}
 
 
 async def _import_model(data):
@@ -170,7 +188,8 @@ async def _import_model(data):
             config_file = os.path.join(model_dir, file)
             break
     model_dest = mh.shared_path if save_shared else mh.user_path
-    model_name = model_name.replace(".safetensors", "") if ".safetensors" in model_name else model_name.replace(".ckpt", "")
+    model_name = model_name.replace(".safetensors", "") if ".safetensors" in model_name else model_name.replace(".ckpt",
+                                                                                                                "")
     dest_dir = os.path.join(model_dest, "diffusers", model_name)
     extract_args = {
         "checkpoint_path": model_path,

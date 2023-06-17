@@ -2,12 +2,15 @@ import asyncio
 import base64
 import concurrent.futures
 import logging
+import math
 import random
 import traceback
 from io import BytesIO
+from typing import Optional, Tuple
 
+import numpy as np
 import torch
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageDraw
 from compel import Compel
 from diffusers import StableDiffusionInpaintPipeline, StableDiffusionImg2ImgPipeline, \
     DDIMScheduler
@@ -15,7 +18,7 @@ from diffusers import StableDiffusionInpaintPipeline, StableDiffusionImg2ImgPipe
 from core.dataclasses.infer_data import InferSettings
 from core.handlers.config import ConfigHandler
 from core.handlers.images import ImageHandler, scale_image
-from core.handlers.model_types.controlnet_processors import model_data as controlnet_data, preprocess_image
+from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data, preprocess_image
 from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
 from core.handlers.models import ModelHandler
 from core.handlers.status import StatusHandler
@@ -342,33 +345,54 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     kwargs[key] = value
 
                 if len(batch_control) and "ControlNet" in inference_settings.pipeline:
-                    control_keys = ["controlnet_conditioning_image", "control_image"]
+                    control_keys = ["controlnet_conditioning_image", "control_image", "image"]
                     img_key = "image"
                     for key in control_keys:
                         if key in pipe_params:
-                            img_key = key
-                    kwargs[img_key] = batch_control
-                    if inference_settings.use_control_resolution and not inference_settings.use_input_resolution:
-                        ui_width, ui_height = batch_control[0].size
+                            logger.debug(f"Using {key} for control image")
+                            kwargs[img_key] = batch_control
+                            if inference_settings.use_control_resolution and not inference_settings.use_input_resolution:
+                                ui_width, ui_height = batch_control[0].size
+                            break
 
                 logger.debug(f"Mode: {inference_settings.pipeline}")
-
-                if "image" in pipe_params and inference_settings.infer_image != "" and "image" not in kwargs:
-
-                    logger.debug("Using infer_image from input params for image, dimensions.")
-                    image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])
-                    image = Image.open(BytesIO(image_data)).convert("RGB")
-                    image = scale_image(image, ui_width, ui_height, resize_mode=inference_settings.infer_scale_mode)
-                    if inference_settings.use_input_resolution and image is not None:
-                        ui_width, ui_height = image.size
-                    kwargs["image"] = image
 
                 if "mask_image" in pipe_params and inference_settings.infer_mask != "":
                     mask_data = base64.b64decode(inference_settings.infer_mask.split(",")[1])
                     mask_data = Image.open(BytesIO(mask_data))
                     mask = process_mask(mask_data, inference_settings.invert_mask)
-                    mask = scale_image(mask, inference_settings.width, inference_settings.height, resize_mode=inference_settings.infer_scale_mode)
+                    mask = scale_image(mask, inference_settings.width, inference_settings.height,
+                                       resize_mode=inference_settings.infer_scale_mode)
+                    for check in ["control_image", "controlnet_conditioning_image", "image"]:
+                        if check in kwargs:
+                            if isinstance(kwargs[check], list):
+                                mask = [mask]
+                                break
                     kwargs["mask_image"] = mask
+
+                if "image" in pipe_params and inference_settings.infer_image != "" and "image" not in kwargs:
+                    logger.debug("Using infer_image from input params for image, dimensions.")
+                    image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])
+                    image = Image.open(BytesIO(image_data))
+                    mask = None
+                    # if "mask_image" in kwargs:
+                    #     mask = kwargs["mask_image"]
+                    #     if isinstance(mask, list):
+                    #         mask = mask[0]
+                    # image, new_mask = fill_image(image, mask=mask, fill_mode="noise")
+                    # if mask is not None:
+                    #     kwargs["mask_image"] = new_mask if not isinstance(new_mask, list) else [new_mask]
+                    if inference_settings.use_input_resolution and image is not None:
+                        ui_width, ui_height = image.size
+
+                    if "control_image" in kwargs:
+                        if isinstance(kwargs["control_image"], list):
+                            image = [image]
+                    if "controlnet_conditioning_image" in kwargs:
+                        if isinstance(kwargs["controlnet_conditioning_image"], list):
+                            image = [image]
+
+                    kwargs["image"] = image
 
                 if "height" in pipe_params and "width" in pipe_params or inference_settings.pipeline == "auto":
                     if ui_height > 0:
@@ -382,10 +406,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         kwargs[key] = value
 
                 keys_to_remove = []
-                common_keys = ["generator", "num_inference_steps", "guidance_scale", "callback", "callback_steps", "prompt"]
+                common_keys = ["generator", "num_inference_steps", "guidance_scale", "callback", "callback_steps",
+                               "prompt"]
                 for key, value in kwargs.items():
                     if (key not in pipe_params and key not in common_keys) or key == "DOCSTRING":
-                        if (key == "height" or key == "width" or key == "negative_prompt") and inference_settings.pipeline == "auto":
+                        if (
+                                key == "height" or key == "width" or key == "negative_prompt") and inference_settings.pipeline == "auto":
                             continue
                         logger.debug("Deleting extra key: " + key)
                         keys_to_remove.append(key)
@@ -399,13 +425,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 if "prompt_embeds" in kwargs and "prompt" in kwargs:
                     del kwargs["prompt"]
 
-                if "Inpaint" in inference_settings.pipeline:
+                if "Inpaint" in inference_settings.pipeline and "Legacy" not in inference_settings.pipeline:
                     logger.debug("Inpainting mode, Fixng lists.")
                     if not isinstance(kwargs["image"], list):
                         kwargs["image"] = [kwargs["image"]]
                     if not isinstance(kwargs["mask_image"], list):
                         kwargs["mask_image"] = [kwargs["mask_image"]]
-
 
                 logger.debug(f"KWARGS: {kwargs}")
 
@@ -427,6 +452,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
             out_images.extend(images)
             out_prompts.extend(prompts)
+            if "mask_image" in kwargs:
+                out_images.extend(kwargs["mask_image"])
             current_total = len(out_images) + (1 * inference_settings.batch_size)
             if current_total > total_images:
                 current_total = total_images
@@ -467,7 +494,144 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     return out_images, out_prompts
 
 
-def process_mask(mask_data, invert_mask):
+def fill_image(image: Image, mask: Image = None, fill_mode: str = "noise"):
+    # Convert the image into an array
+    image_array = np.array(image)
+
+    # Check if the image has an alpha channel
+    if image_array.shape[-1] == 4:
+        mask_array = image_array[..., 3] == 0
+    else:
+        if mask is not None:
+            # Convert the mask into an array
+            mask_array = np.array(mask)
+        else:
+            logger.warning("Image does not have an alpha channel, fill mode will be ignored.")
+            return image.convert("RGB"), None
+
+    # Generate a new random mask
+    new_mask = random_mask(image_array.shape[0])  # Assuming image is square
+
+    # Combine the new mask with the existing mask if provided
+    if mask is not None:
+        # If the existing mask is not binary, adjust this part accordingly
+        combined_mask = np.logical_or(mask_array, new_mask)
+    else:
+        combined_mask = new_mask
+
+    if fill_mode == "black":
+        # Set RGB values to 0 for masked pixels
+        image_array[combined_mask] = 0
+        image_array[..., 3][combined_mask] = 255
+    elif fill_mode == "random":
+        # Generate random RGB values for masked pixels
+        for i in range(3):
+            image_array[..., i][combined_mask] = np.random.randint(0, 256, np.sum(combined_mask))
+        image_array[..., 3][combined_mask] = 255
+    elif fill_mode == "noise":
+        # Generate Gaussian noise for masked pixels
+        for i in range(3):
+            image_array[..., i][combined_mask] = np.clip(np.random.normal(128, 50, np.sum(combined_mask)), 0,
+                                                         255).astype(np.uint8)
+        image_array[..., 3][combined_mask] = 255
+    else:
+        raise ValueError(f"Invalid fill_mode: {fill_mode}")
+
+    # Convert the arrays back to images and return them
+    return Image.fromarray(image_array).convert("RGB"), Image.fromarray(combined_mask * 255).convert(
+        "RGB") if mask is not None else None
+
+
+def random_brush(
+        max_tries: int,
+        s: int,
+        min_num_vertex: int = 4,
+        max_num_vertex: int = 18,
+        mean_angle: float = 2 * math.pi / 5,
+        angle_range: float = 2 * math.pi / 15,
+        min_width: int = 12,
+        max_width: int = 48) -> np.ndarray:
+    H, W = s, s
+    average_radius = math.sqrt(H * H + W * W) / 8
+    mask = Image.new('L', (W, H), 0)
+
+    for _ in range(np.random.randint(max_tries)):
+        num_vertex = np.random.randint(min_num_vertex, max_num_vertex)
+        angle_min = mean_angle - np.random.uniform(0, angle_range)
+        angle_max = mean_angle + np.random.uniform(0, angle_range)
+        angles = []
+        vertex = []
+
+        for i in range(num_vertex):
+            if i % 2 == 0:
+                angles.append(2 * math.pi - np.random.uniform(angle_min, angle_max))
+            else:
+                angles.append(np.random.uniform(angle_min, angle_max))
+
+        h, w = mask.size
+        vertex.append((int(np.random.randint(0, w)), int(np.random.randint(0, h))))
+
+        for i in range(num_vertex):
+            r = np.clip(np.random.normal(loc=average_radius, scale=average_radius // 2), 0, 2 * average_radius)
+            new_x = np.clip(vertex[-1][0] + r * math.cos(angles[i]), 0, w)
+            new_y = np.clip(vertex[-1][1] + r * math.sin(angles[i]), 0, h)
+            vertex.append((int(new_x), int(new_y)))
+
+        draw = ImageDraw.Draw(mask)
+        width = int(np.random.uniform(min_width, max_width))
+        draw.line(vertex, fill=1, width=width)
+
+        for v in vertex:
+            draw.ellipse((v[0] - width // 2, v[1] - width // 2, v[0] + width // 2, v[1] + width // 2), fill=1)
+
+        if np.random.random() > 0.5:
+            mask.transpose(Image.FLIP_LEFT_RIGHT)
+
+        if np.random.random() > 0.5:
+            mask.transpose(Image.FLIP_TOP_BOTTOM)
+
+        mask = np.asarray(mask, np.uint8)
+
+        if np.random.random() > 0.5:
+            mask = np.flip(mask, 0)
+
+        if np.random.random() > 0.5:
+            mask = np.flip(mask, 1)
+
+    return mask
+
+
+def random_mask(s: int, hole_range=None) -> np.ndarray:
+    if hole_range is None:
+        hole_range = [0, 1]
+    coef = min(hole_range[0] + hole_range[1], 1.0)
+
+    while True:
+        mask = np.ones((s, s), np.uint8)
+
+        def fill(max_size):
+            w, h = np.random.randint(max_size), np.random.randint(max_size)
+            ww, hh = w // 2, h // 2
+            x, y = np.random.randint(-ww, s - w + ww), np.random.randint(-hh, s - h + hh)
+            mask[max(y, 0): min(y + h, s), max(x, 0): min(x + w, s)] = 0
+
+        def multi_fill(max_tries, max_size):
+            for _ in range(np.random.randint(max_tries)):
+                fill(max_size)
+
+        multi_fill(int(4 * coef), s // 2)
+        multi_fill(int(2 * coef), s)
+
+        mask = np.logical_and(mask, 1 - random_brush(int(8 * coef), s))  # hole denoted as 0, reserved as 1
+        hole_ratio = 1 - np.mean(mask)
+
+        if hole_range is not None and (hole_ratio <= hole_range[0] or hole_ratio >= hole_range[1]):
+            continue
+
+        return mask[np.newaxis, ...].astype(np.float32)
+
+
+def process_mask(mask_data, invert_mask=False):
     """
     Processes the mask data by converting the image to RGBA format to ensure an alpha channel exists.
     Changes all white pixels to yellow if invert_mask is True, otherwise changes all transparent pixels to white.

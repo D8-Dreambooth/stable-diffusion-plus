@@ -2,11 +2,12 @@ import asyncio
 import logging
 import os.path
 
+import controlnet_aux
 from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
 from core.dataclasses.infer_data import InferSettings
-from core.handlers.model_types.controlnet_processors import model_data
+from core.handlers.model_types.controlnet_processors import controlnet_models, get_detectors_and_params
 from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
 from core.handlers.websocket import SocketHandler
 from core.modules.base.module_base import BaseModule
@@ -102,9 +103,10 @@ async def _get_controlnets(msg):
     Returns:
         dict: A dictionary containing the controlnets.
     """
-    net_data = model_data
     logger.debug("Listing controlnets!")
-    return {"nets": net_data}
+    detectors = get_detectors_and_params(controlnet_aux)
+
+    return {"nets": controlnet_models, "detectors": detectors}
 
 
 async def _get_pipelines(msg):

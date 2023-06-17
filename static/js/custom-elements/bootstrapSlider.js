@@ -1,5 +1,6 @@
 class BootstrapSlider {
     constructor(parentElement, options) {
+        this.onChangeCallbacks = [];
         this.parentElement = parentElement;
         this.parentElement.classList.add("bootstrapSlider");
 
@@ -73,6 +74,28 @@ class BootstrapSlider {
             this.container.style.display = "none";
 
         }
+        this.rangeInput.addEventListener("input", (event) => {
+            let value = parseInt(event.target.value, 10);
+            if (this.step < 1) {
+                value = parseFloat(event.target.value);
+            }
+            this.numberInput.value = value;
+            for (let i = 0; i < this.onChangeCallbacks.length; i++) {
+                this.onChangeCallbacks[i](value);
+            }
+
+        });
+
+        this.numberInput.addEventListener("input", (event) => {
+            let value = parseInt(event.target.value, 10);
+            if (this.step < 1) {
+                value = parseFloat(event.target.value);
+            }
+            this.rangeInput.value = String(value);
+            for (let i = 0; i < this.onChangeCallbacks.length; i++) {
+                this.onChangeCallbacks[i](value);
+            }
+        });
         this.updateValue = this.updateValue.bind(this);
         this.getValue = this.getValue.bind(this);
         this.setValue = this.setValue.bind(this);
@@ -118,28 +141,8 @@ class BootstrapSlider {
     }
 
     setOnChange(callback) {
-        this.onChangeCallback = callback;
-        this.rangeInput.addEventListener("input", (event) => {
-            let value = parseInt(event.target.value, 10);
-            if (this.step < 1) {
-                value = parseFloat(event.target.value);
-            }
-            this.numberInput.value = value;
-            if (this.onChangeCallback) {
-                this.onChangeCallback(value);
-            }
-        });
+        this.onChangeCallbacks.push(callback);
 
-        this.numberInput.addEventListener("input", (event) => {
-            let value = parseInt(event.target.value, 10);
-            if (this.step < 1) {
-                value = parseFloat(event.target.value);
-            }
-            this.rangeInput.value = String(value);
-            if (this.onChangeCallback) {
-                this.onChangeCallback(value);
-            }
-        });
     }
 
     show() {

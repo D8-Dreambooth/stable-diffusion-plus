@@ -16,7 +16,7 @@ logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(name)s] - %(message)s
 logger = logging.getLogger("launch")
 # Set up logging
 to_skip = ["urllib3", "PIL", "accelerate", "matplotlib", "h5py", "xformers", "tensorflow", "passlib", "asyncio",
-           "tensorboard"]
+           "tensorboard", "diffusers"]
 for skip in to_skip:
     logging.getLogger(skip).setLevel(logging.WARNING)
 

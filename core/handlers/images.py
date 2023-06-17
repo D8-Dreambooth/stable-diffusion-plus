@@ -302,6 +302,8 @@ class ImageHandler:
         if prompt_data is not None:
             for k, v in prompt_data.__dict__.items():
                 try:
+                    if "image" in k:
+                        continue
                     if k == "model":
                         v = v.__dict__
                     val = json.dumps(v)
