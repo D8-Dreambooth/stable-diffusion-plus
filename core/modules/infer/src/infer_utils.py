@@ -67,9 +67,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     logger.debug(f"Pipe params: {pipe_params}")
     # If we're using controlnet, set up images and preprocessing
     if "ControlNet" in pipeline_type and inference_settings.controlnet_type:
-        for cd in controlnet_data:
+        for key, cd in controlnet_data.items():
             if cd["name"] == inference_settings.controlnet_type:
-                preprocess_src = cd["image_type"]
+                preprocess_src = cd["image_type"][0]
                 logger.debug(f"Using controlnet: {cd} and {preprocess_src}")
                 break
         if inference_settings.controlnet_batch:

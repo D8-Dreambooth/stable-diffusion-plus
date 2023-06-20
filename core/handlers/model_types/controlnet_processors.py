@@ -209,13 +209,13 @@ def preprocess_image(
             elif preprocess_mode not in controlnet_preprocessors:
                 logger.debug("Invalid preprocessing model selected.")
             else:
-                preprocessor_id = controlnet_preprocessors[preprocess_mode]
+                preprocessor_id = preprocess_mode
                 try:
                     processor = Processor(preprocessor_id)
                 except Exception as e:
                     logger.error(f"Failed to load preprocessor {preprocessor_id}: {e}")
 
-    status["status_2"] = "Loading preprocessor: " + model["preprocessor"]
+    status["status_2"] = "Loading preprocessor: " + preprocess_mode
 
     handler.update(items=status)
     for img in images:

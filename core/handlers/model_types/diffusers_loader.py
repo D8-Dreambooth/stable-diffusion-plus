@@ -65,8 +65,8 @@ def initialize_controlnets(model_data):
     sp = mh.shared_path
     controlnet_dir = os.path.join(sp, "controlnet")
     for controlnet_name in controlnet_type:
-        for md in controlnet_data:
-            if md["name"] == controlnet_name:
+        for mkey, md in controlnet_data.items():
+            if mkey == controlnet_name:
                 controlnet_url = md["model_url"]
                 local_file = os.path.join(controlnet_dir, os.path.splitext(os.path.basename(md["model_file"]))[0])
                 if os.path.exists(local_file):
