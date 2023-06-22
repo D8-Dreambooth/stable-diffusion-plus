@@ -12,16 +12,13 @@ mh = ModelHandler()
 
 
 async def get_db_models(data, handler: ModelHandler):
-    logger.debug(f"Data {data}")
     output = []
     for mdir in handler.models_path:
-        logger.debug(f"Checking dir: {mdir}")
         out_dir = os.path.join(mdir, "dreambooth")
         if os.path.exists(out_dir):
             for item in os.listdir(out_dir):
                 full_item = os.path.join(out_dir, item)
                 if os.path.isdir(full_item):
-                    logger.debug(f"Found model: {full_item}")
                     mi = ModelData(full_item)
                     config_path = os.path.join(full_item, "db_config.json")
                     ft_config_path = os.path.join(full_item, "ft_config.json")

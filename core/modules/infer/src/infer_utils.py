@@ -1,21 +1,23 @@
 import asyncio
 import base64
 import concurrent.futures
+import gc
+import importlib
+import inspect
 import logging
 import math
+import pkgutil
 import random
 import traceback
 from io import BytesIO
-from typing import Optional, Tuple
 
 import numpy as np
 import torch
 from PIL import Image, ImageFilter, ImageDraw
 from compel import Compel
-from diffusers import StableDiffusionInpaintPipeline, StableDiffusionImg2ImgPipeline, \
-    DDIMScheduler
 
-from core.dataclasses.infer_data import InferSettings
+import core.helpers.upscalers
+from core.dataclasses.infer_settings import InferSettings
 from core.handlers.config import ConfigHandler
 from core.handlers.images import ImageHandler, scale_image
 from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data, preprocess_image
@@ -23,6 +25,8 @@ from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
 from core.handlers.models import ModelHandler
 from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
+from core.helpers.upscalers.base_upscaler import BaseUpscaler
+from core.helpers.upscalers.img2img_upscaler import Img2ImgUpscaler
 from core.modules.dreambooth.helpers.mytqdm import mytqdm
 
 socket_handler = SocketHandler()
@@ -58,6 +62,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     model_data = inference_settings.model
     pipeline_type = inference_settings.pipeline
     pipe_settings = inference_settings.pipeline_settings
+
+    processor = None
+    return_latents = False
+    if inference_settings.postprocess:
+        processor = Img2ImgUpscaler(inference_settings.postprocess_scale, model_data, pipeline)
+
     logger.debug(f"Pipeline settings: {pipe_settings}")
     pipe_params = {}
     if pipeline_type != "auto":
@@ -192,6 +202,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         status_handler.update("status", "Unable to load inference pipeline.")
         return [], []
 
+    if ui_height > 768 or ui_width > 768:
+        try:
+            pipeline.vae.enable_tiling()
+        except Exception as e:
+            logger.warning(f"Unable to enable VAE tiling: {e}")
+            pass
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
     input_prompts = [val for val in input_prompts for _ in range(inference_settings.num_images)]
     negative_prompts = [val for val in negative_prompts for _ in range(inference_settings.num_images)]
@@ -207,9 +223,16 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     out_prompts = []
     used_controls = []
     try:
+        if inference_settings.postprocess and processor is not None:
+            total_steps = inference_settings.steps + inference_settings.postprocess_steps
+        else:
+            total_steps = inference_settings.steps
+
         status_handler.update(
             items={
-                "status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{total_images} images."})
+                "status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{total_images} images.",
+                "progress_2_total": total_steps
+            })
         initial_seed = inference_settings.seed
         # If the seed is a string, parse it
         if isinstance(inference_settings.seed, str):
@@ -251,10 +274,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 logger.debug(f"Unable to convert latents to image: {e}")
                 traceback.print_exc()
             # Update the progress status handler with the new items
+            status_handler.step(preview_steps, True)
             status_handler.update(items={
-                "latents": converted,
-                "progress_2_total": inference_settings.steps,
-                "progress_2_current": step,
+                "latents": converted
             }, send=True)
 
         total_images = len(input_prompts)
@@ -323,7 +345,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                           "guidance_scale": inference_settings.scale,
                           "negative_prompt": batch_negative,
                           "generator": generator}
-
                 if use_embeds:
                     conditioning = compel_proc(embed_prompts)
                     negative_conditioning = compel_proc(embed_negative_prompts)
@@ -357,12 +378,12 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
                 logger.debug(f"Mode: {inference_settings.pipeline}")
 
-                if "mask_image" in pipe_params and inference_settings.infer_mask != "":
-                    mask_data = base64.b64decode(inference_settings.infer_mask.split(",")[1])
+                if "mask_image" in pipe_params and inference_settings.mask != "":
+                    mask_data = base64.b64decode(inference_settings.mask.split(",")[1])
                     mask_data = Image.open(BytesIO(mask_data))
                     mask = process_mask(mask_data, inference_settings.invert_mask)
                     mask = scale_image(mask, inference_settings.width, inference_settings.height,
-                                       resize_mode=inference_settings.infer_scale_mode)
+                                       resize_mode=inference_settings.scale_mode)
                     for check in ["control_image", "controlnet_conditioning_image", "image"]:
                         if check in kwargs:
                             if isinstance(kwargs[check], list):
@@ -370,9 +391,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                 break
                     kwargs["mask_image"] = mask
 
-                if "image" in pipe_params and inference_settings.infer_image != "" and "image" not in kwargs:
+                if "image" in pipe_params and inference_settings.image != "" and "image" not in kwargs:
                     logger.debug("Using infer_image from input params for image, dimensions.")
-                    image_data = base64.b64decode(inference_settings.infer_image.split(",")[1])
+                    image_data = base64.b64decode(inference_settings.image.split(",")[1])
                     image = Image.open(BytesIO(image_data))
                     mask = None
                     # if "mask_image" in kwargs:
@@ -403,9 +424,14 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 for key, value in pipe_params.items():
                     if key not in kwargs and key not in ["negative_prompt", "prompt_embeds",
                                                          "negative_prompt_embeds"]:
-                        kwargs[key] = value
+                        if isinstance(value, dict):
+                            real_value = value.get("value", None)
+                        else:
+                            real_value = value
+                        logger.debug(f"Adding missing param: {key} with value: {real_value}")
+                        kwargs[key] = real_value
 
-                keys_to_remove = []
+                keys_to_remove = ["cls"]
                 common_keys = ["generator", "num_inference_steps", "guidance_scale", "callback", "callback_steps",
                                "prompt"]
                 for key, value in kwargs.items():
@@ -417,7 +443,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         keys_to_remove.append(key)
 
                 for key in keys_to_remove:
-                    del kwargs[key]
+                    if key in kwargs:
+                        del kwargs[key]
 
                 if "negative_prompt_embeds" in kwargs and "negative_prompt" in kwargs:
                     del kwargs["negative_prompt"]
@@ -432,6 +459,9 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     if not isinstance(kwargs["mask_image"], list):
                         kwargs["mask_image"] = [kwargs["mask_image"]]
 
+                if inference_settings.postprocess and processor is not None and return_latents:
+                    kwargs["output_type"] = "latent"
+
                 logger.debug(f"KWARGS: {kwargs}")
 
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
@@ -440,16 +470,32 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             paths = []
             prompts = []
             images = []
+            processed = []
             for i in range(len(s_image)):
                 img = s_image[i]
-                images.append(img)
                 prompt = batch_prompts[i]
                 infer_settings = inference_settings
                 infer_settings.prompt = prompt
+                if inference_settings.postprocess and processor is not None:
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        status_items = {
+                            "status": f"Postprocessing image {i + 1} of {len(s_image)}",
+                            "progress_2_current": inference_settings.steps
+                        }
+                        if not return_latents:
+                            status_items["latents"] = img
+
+                        status_handler.update(items=status_items, send=False)
+                        logger.debug("Upscaling")
+                        img = await loop.run_in_executor(pool,
+                                                         lambda: processor.upscale(img, infer_settings, update_progress,
+                                                                                   preview_steps))
+                        logger.debug(f"Image {i} type is: " + str(type(img)))
+                logger.debug(f"Appending image {i}.")
+                images.append(img)
                 img_path = image_handler.save_image(img, "inference", inference_settings, False)
                 paths.extend(img_path)
                 prompts.append(prompt)
-
             out_images.extend(images)
             out_prompts.extend(prompts)
             if "mask_image" in kwargs:
@@ -464,13 +510,13 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             status_handler.update(items=
             {
                 "status": f"Generating {current_total}/{total_images} images.",
-                "images": s_image,
+                "images": images,
                 "prompts": prompts,
                 "progress_1_total": total_images,
                 "progress_1_current": current_total,
                 "latents": s_image,
-                "progress_2_total": inference_settings.steps,
-                "progress_2_current": inference_settings.steps,
+                "progress_2_total": total_steps,
+                "progress_2_current": total_steps,
             },
                 send=True)
 
@@ -492,6 +538,20 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         }, send=False)
     status_handler.end("Generation complete.")
     return out_images, out_prompts
+
+
+def list_postprocessors():
+    postprocessors = {}
+
+    package = core.helpers.upscalers
+    for importer, modname, ispkg in pkgutil.iter_modules(package.__path__):
+        module = importlib.import_module(f'{package.__name__}.{modname}')
+        for name, obj in inspect.getmembers(module):
+            logger.debug(f"Checking {name}")
+            if inspect.isclass(obj) and issubclass(obj, BaseUpscaler) and obj != BaseUpscaler:
+                postprocessors[name] = obj
+
+    return postprocessors
 
 
 def fill_image(image: Image, mask: Image = None, fill_mode: str = "noise"):

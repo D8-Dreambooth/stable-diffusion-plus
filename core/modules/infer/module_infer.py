@@ -6,7 +6,7 @@ import controlnet_aux
 from fastapi import FastAPI, Query
 from starlette.responses import JSONResponse
 
-from core.dataclasses.infer_data import InferSettings
+from core.dataclasses.infer_settings import InferSettings
 from core.handlers.model_types.controlnet_processors import controlnet_models, get_detectors_and_params
 from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
 from core.handlers.websocket import SocketHandler
@@ -65,6 +65,19 @@ class InferenceModule(BaseModule):
         handler.register("get_controlnets", _get_controlnets)
         handler.register("mask_image", _mask_image)
         handler.register("get_pipelines", _get_pipelines)
+        handler.register("get_params", self._get_params)
+
+    async def _get_params(self, msg):
+        defaults = self.get_defaults()
+        settings = InferSettings({})
+        params = settings.get_params()
+        for key, value in defaults.items():
+            if key in params:
+                data = params[key]
+                data["value"] = value
+                data["default"] = value
+                params[key] = data
+        return {"params": params}
 
 
 async def _start_inference(msg):

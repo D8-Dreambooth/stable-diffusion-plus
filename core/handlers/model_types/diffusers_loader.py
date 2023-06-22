@@ -2,6 +2,7 @@ import importlib
 import inspect
 import logging
 import os.path
+import re
 import sys
 import traceback
 
@@ -73,13 +74,14 @@ def initialize_controlnets(model_data):
                     logger.debug(f"Using local controlnet model: {local_file}")
                     controlnet_url = local_file
 
-                controlnet = ControlNetModel.from_pretrained(controlnet_url, cache_dir=controlnet_dir, torch_dtype=torch.float16)
+                controlnet = ControlNetModel.from_pretrained(controlnet_url, cache_dir=controlnet_dir,
+                                                             torch_dtype=torch.float16)
                 nets.append(controlnet)
 
     return nets
 
 
-def load_diffusers(model_data: ModelData):
+def load_diffusers(model_data: ModelData, existing_pipeline: DiffusionPipeline = None):
     model_path = model_data.path
     if f"models{os.path.sep}dreambooth" in model_path and "working" not in model_path:
         model_path = os.path.join(model_path, "working")
@@ -107,6 +109,12 @@ def load_diffusers(model_data: ModelData):
             if len(nets):
                 logger.debug(f"Loading {len(nets)} controlnets.")
                 pipe_args["controlnet"] = nets
+            if existing_pipeline is not None:
+                # Add existing pipeline to args
+                existing_components = existing_pipeline.components
+                for key, value in existing_components.items():
+                    pipe_args[key] = value
+
             logger.debug(f"Loading pipeline: {pipeline_cls} from {model_path}")
             # Instantiate pipeline using pipeline_cls string
             if pipeline_cls == "DiffusionPipeline" or pipeline_cls is None or pipeline_cls == "auto":
@@ -125,26 +133,29 @@ def load_diffusers(model_data: ModelData):
 
 def get_pipeline_cls(class_name):
     subclasses_params = get_pipeline_parameters()
+    if class_name == "Default":
+        return DiffusionPipeline
+    for cls, params in subclasses_params.items():
+        if cls == class_name:
+            cls_name = params["cls"]
+            modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
+            for module in modules:
+                try:
+                    mod = importlib.import_module(module)
 
-    if class_name in subclasses_params:
-        modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
-        for module in modules:
-            try:
-                mod = importlib.import_module(module)
+                    for name, obj in inspect.getmembers(mod):
+                        if inspect.isclass(obj) and name == cls_name:
+                            pipe_class = getattr(sys.modules[module], cls_name)
+                            return pipe_class
 
-                for name, obj in inspect.getmembers(mod):
-                    if inspect.isclass(obj) and name == class_name:
-                        pipe_class = getattr(sys.modules[module], class_name)
-                        return pipe_class
-
-            except Exception as e:
-                logger.debug(f"Exception loading module {module}: {e} {traceback.format_exc()}")
+                except Exception as e:
+                    logger.debug(f"Exception loading module {module}: {e} {traceback.format_exc()}")
 
     else:
         return None
 
 
-def get_pipeline_parameters(ignore_keys=None):
+def get_pipeline_parameters(ignore_keys=None, return_keys=False):
     filter_keys = [
         "Onnx",
         "Flax",
@@ -158,9 +169,10 @@ def get_pipeline_parameters(ignore_keys=None):
         "Upscale",
         "UnCLIP"
     ]
-    filter_pipes = ["StableDiffusionInpaintPipeline"]
+    filter_pipes = ["StableDiffusionInpaintPipeline", "StableDiffusionLongPromptWeightingPipeline"]
     if ignore_keys is None:
-        ignore_keys = ["num_images_per_prompt", "num_inference_steps", "output_type", "return_dict", "eta", "self", "kwargs",
+        ignore_keys = ["num_images_per_prompt", "num_inference_steps", "output_type", "return_dict", "eta", "self",
+                       "kwargs",
                        "callback", "callback_steps"]
     modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
     subclasses_params = {}
@@ -182,33 +194,48 @@ def get_pipeline_parameters(ignore_keys=None):
                         continue
                     sig = inspect.signature(obj.__call__)
                     params = sig.parameters
-                    subclasses_params[name] = {param_name: param.default if param.default is not param.empty else None
-                                               for param_name, param in params.items()}
-                    # Get the parent module of the actual class
-                    module = sys.modules[obj.__module__]
-                    if hasattr(module, 'EXAMPLE_DOC_STRING'):
-                        # Split the docstring by newlines, iterate each one
-                        docstring = getattr(module, 'EXAMPLE_DOC_STRING')
-                        start_index = 0
-                        line_index = -1
-                        cleaned_lines = []
-                        current_line = ""
-                        for line in docstring.split('\n'):
-                            if ">>>" not in line:
-                                current_line = f"{current_line} {line}"
-                            else:
-                                if current_line:
-                                    cleaned_lines.append(current_line)
-                                current_line = line
-                        for line in cleaned_lines:
-                            if ">>> pipe = " in line or ">>> pipeline = " in line:
-                                line_index = start_index + 1
-                            start_index += 1
-                        doc_out = []
-                        for line in cleaned_lines[line_index:]:
-                            doc_out.append(line.replace(">>>", "").strip())
-                        docstring = '\n'.join(doc_out)
-                        subclasses_params[name]['DOCSTRING'] = docstring
+                    subclasses_params[name] = {}
+                    doc = obj.__call__.__doc__  # get the docstring
+                    for param_name, param in params.items():
+                        param_value = param.default if param.default is not param.empty else None
+                        param_doc = re.search(f'{param_name} \((.*?)\):([^\(]*)(\([^\)]*\))?', doc)
+                        description = param_doc.group(2).strip() if param_doc else None
+                        min_max = re.search('Must be between (\d+(?:\.\d+)?), (\d+(?:\.\d+)?)',
+                                            description) if description else None
+                        min_value = float(min_max.group(1)) if min_max else 0
+                        max_value = float(min_max.group(2)) if min_max else 1
+                        # Set type param to type of default value
+                        param_type = "unknown"
+                        if param_value is not None:
+                            param_type = type(param_value).__name__
+                        if param_name in ignore_keys:
+                            continue
+                        if "image" in param_name:
+                            param_type = "image"
+                        if "prompt" in param_name and "embeds" not in param_name:
+                            param_type = "str"
+                            if param_value is None:
+                                param_value = ""
+
+                        if param_name == "height" or param_name == "width":
+                            param_type = "int"
+                            param_value = 512
+
+                        param_data = {
+                            "value": param_value,
+                            "type": param_type,
+                            "description": description,
+                            "title": param_name.replace('_', ' ').title(),
+                            "group": "pipeline",
+                            "key": param_name
+                        }
+                        if param_type == "float" or param_type == "int":
+                            if param_type == "int":
+                                min_value = int(min_value)
+                                max_value = int(max_value)
+                            param_data["min"] = min_value
+                            param_data["max"] = max_value
+                        subclasses_params[name][param_name] = param_data
 
                     if not shared_keys:
                         # First time through, just set the shared keys to the parameters
@@ -223,10 +250,23 @@ def get_pipeline_parameters(ignore_keys=None):
     # Remove the shared/ignored keys from each class's parameters
     for params in subclasses_params.values():
         for key in shared_keys:
-            if key != "DOCSTRING":
-                params.pop(key, None)
+            params.pop(key, None)
 
-    return subclasses_params
+    keys = ["Default"]
+    d_params = subclasses_params["StableDiffusionPipeline"]
+    d_params["cls"] = "StableDiffusionPipeline"
+    params = {"Default": d_params}
+    for key in subclasses_params.keys():
+        subkey = key.replace("Pipeline", "")
+        subkey = subkey.replace("StableDiffusion", "")
+        if subkey != "":
+            keys.append(subkey)
+            params[subkey] = subclasses_params[key]
+            params[subkey]["cls"] = key
+    if return_keys:
+        return keys
+
+    return params
 
 
 def apply_lora(pipeline, checkpoint_path, alpha=0.75):

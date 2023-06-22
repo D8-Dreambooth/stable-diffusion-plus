@@ -45,7 +45,6 @@ class ModelSelect {
             // Get the selected options from the select element
             const selectedOptions = Array.from(this.selectElement.options)
                 .filter(option => option.selected && option.value !== "none");
-            console.log("Selected: ", selectedOptions);
             if (selectedOptions.length > 0) {
                 // Get the values of all the selected options
                 const selectedValues = selectedOptions.map(option => option.value);
@@ -55,7 +54,6 @@ class ModelSelect {
                     this.value = selectedValues[0];
                 }
                 for (let i = 0; i < this.onchangeCallbacks.length; i++) {
-                    console.log("Callback:", this.value);
                     this.onchangeCallbacks[i](this.value);
                 }
             } else {
@@ -130,7 +128,6 @@ class ModelSelect {
             ext_include: this.ext_include,
             ext_exclude: this.ext_exclude
         });
-        console.log("Model list: ", modelList);
         this.modelList = modelList;
         this.selectElement.innerHTML = "";
         const loaded = modelList["loaded"];
@@ -175,6 +172,7 @@ class ModelSelect {
                 }
                 return models;
             }
+            return [];
         } else {
             if (this.value === "none" || this.value === undefined) {
                 return null;
@@ -209,7 +207,6 @@ class ModelSelect {
 
         }
         if (isValid) {
-            console.log("Really setting value: ", value, this.container.id);
             this.value = value;
         }
     }

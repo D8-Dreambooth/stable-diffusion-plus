@@ -97,9 +97,16 @@ class ProgressGroup {
     }
 
     update(options) {
+        console.log("Updating: ", options);
+        let target = options.target;
         if (this.onUpdate !== null) {
-            options = this.onUpdate(options);
+            let upOptions = this.onUpdate(options);
+            if (upOptions !== undefined && upOptions !== null) {
+                options = upOptions;
+            }
+            console.log("Onupdate: ", options);
         }
+
         if (options.hasOwnProperty("target")) {
             if (this.id !== options.target) {
                 return;

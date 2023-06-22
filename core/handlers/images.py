@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import re
+import traceback
 from io import BytesIO
 from typing import Tuple, List, Dict
 
@@ -13,7 +14,6 @@ import numpy as np
 from PIL import Image, PngImagePlugin
 from PIL.Image import Resampling
 
-from core.dataclasses.infer_data import InferSettings
 from core.handlers.directories import DirectoryHandler
 from core.handlers.file import FileHandler, is_image
 from core.handlers.websocket import SocketHandler
@@ -107,7 +107,8 @@ def create_image_grid(images):
         elif isinstance(img, Image.Image):
             image_objects.append(img)
         else:
-            raise ValueError("Invalid input: list must contain strings with paths to images or PIL images.")
+            # Print img type
+            raise ValueError(f"Invalid input: list must contain strings with paths to images or PIL images: {type(img)}")
 
     n_images = len(image_objects)
 
@@ -230,6 +231,12 @@ class ImageHandler:
     infer_keys = []
 
     def __new__(cls, user_name=None):
+        try:
+            from core.dataclasses.infer_settings import InferSettings
+        except Exception as e:
+            logger.debug("Exception importing: %s", e)
+            traceback.print_exc()
+
         if cls._instance is None:
             dir_handler = DirectoryHandler()
             user_dir = dir_handler.get_directory("users")[0]
@@ -275,7 +282,7 @@ class ImageHandler:
 
         return image_filenames
 
-    def _save_single_image(self, image: Image, directory: str, prompt_data: InferSettings = None, save_txt: bool = True,
+    def _save_single_image(self, image: Image, directory: str, prompt_data = None, save_txt: bool = True,
                            custom_name: str = None):
 
         image_base = hashlib.sha1(image.tobytes()).hexdigest()

@@ -9,6 +9,7 @@
     --header-height: 2rem;
     --footer-height: 1rem;
     --nav-width: 66px;
+    --bs-gutter-x: 1rem;
     --body-font: 'Nunito', sans-serif;
     --normal-font-size: 1rem;
     --z-fixed: 100;
@@ -74,6 +75,15 @@ input {
     background-color: var(--bs-body-bg-rgb) !important;
 }
 
+.row {
+    --bs-gutter-x: 1rem;
+}
+
+.row>* {
+    padding-right: calc(var(--bs-gutter-x) * .5);
+    padding-left: calc(var(--bs-gutter-x) * .5);
+}
+
 /* overrides for other elements with static colors */
 .btn-primary {
     color: var(--primary-text-color);
@@ -137,14 +147,13 @@ input {
     background-color: var(--bs-gray-200);
 }
 
-.card-header, .accordion-button {
+.card-header {
+    font-size: 18px;
+    margin-bottom: 5px;
     background-color: rgba(var(--bs-body-bg-rgb), 0.2);
     color: var(--primary-text-color);
     border-bottom: 1px solid var(--bs-gray-400);
-}
-
-.card-header, .accordion-header, .accordion-button, .modal-header {
-    height: 44px;
+    height: 38px;
 }
 
 .modal-header {
@@ -316,6 +325,14 @@ input[type="number"]:active::-webkit-inner-spin-button {
     color: var(--secondary-accent-text-color);
 }
 
+.borderSection-sm {
+    padding: 5px;
+    border-radius: 10px;
+    background-color: var(--secondary-accent-color);
+    border: 1px solid var(--secondary-accent-text-color);
+    color: var(--secondary-accent-text-color);
+}
+
 .helpBtn {
     float: right;
     position: relative;
@@ -328,8 +345,8 @@ input[type="number"]:active::-webkit-inner-spin-button {
     text-align: center;
     text-decoration: none;
     display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
+    font-size: 15px;
+    margin: 3px 2px 2px 2px;
     transition-duration: 0.4s;
     cursor: pointer;
     border-radius: 50%;
@@ -370,12 +387,6 @@ input[type="number"]:active::-webkit-inner-spin-button {
     font-size: 20px;
     margin-bottom: 5px;
 }
-
-.card-header {
-    font-size: 22px;
-    margin-bottom: 5px;
-}
-
 
 .hide {
     display: none;
@@ -702,10 +713,10 @@ input[type="number"]:active::-webkit-inner-spin-button {
     transition: box-shadow .3s, transform .3s;
 }
 
-.card.shadow:hover, .accordion.shadow:hover {
-    box-shadow: 0 .7rem 1.2rem rgba(0, 0, 0, .1) !important;
-    transform: scale(1.01);
-}
+/*.card.shadow:hover, .accordion.shadow:hover {*/
+/*    box-shadow: 0 .7rem 1.2rem rgba(0, 0, 0, .1) !important;*/
+/*    transform: scale(1.01);*/
+/*}*/
 
 .accordion-button::after {
     flex-shrink: 0;

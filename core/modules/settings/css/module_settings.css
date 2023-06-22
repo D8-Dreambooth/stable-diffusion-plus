@@ -50,8 +50,3 @@
 .tab-pane .form-container:not(:first-child) {
   margin-top: 20px;
 }
-
-.form-check.form-switch {
-    padding-left: 55px;
-    padding-right: 55px;
-}

@@ -17,47 +17,25 @@ class BootstrapSlider {
         // create the HTML elements
         this.container = document.createElement("div");
         this.container.id = this.elem_id + "_container";
-        this.container.classList.add("gr-block", "gr-box", "relative", "w-full", "border-solid", "border", "border-gray-200", "gr-padded");
-
-        this.wrap = document.createElement("div");
-        this.wrap.classList.add("wrap", "svelte-5usjvi", "inset-0", "opacity-0");
-        this.container.appendChild(this.wrap);
-
-        this.inputWrapper = document.createElement("div");
-        this.inputWrapper.classList.add("w-full", "flex", "flex-col");
-        this.container.appendChild(this.inputWrapper);
 
         this.labelWrapper = document.createElement("div");
-        this.labelWrapper.classList.add("row");
-        this.inputWrapper.appendChild(this.labelWrapper);
-
-        this.labelElement = document.createElement("div");
-        this.labelElement.classList.add("col-9");
-        this.labelWrapper.appendChild(this.labelElement);
-
-        this.labelText = document.createElement("span");
+        this.labelText = document.createElement("label");
         this.labelText.setAttribute("for", this.elem_id + "_number");
-        this.labelText.classList.add("text-gray-500", "mb-2", "col-11", "fit");
+        this.labelText.classList.add("text-gray-500", "mb-1");
         this.labelText.title = options.title || "How many times to improve the generated image iteratively; higher values take longer; very low values can produce bad results";
         this.labelText.innerText = this.label;
-        let labelWrap = document.createElement("div");
-        labelWrap.appendChild(this.labelText);
-        this.labelElement.appendChild(labelWrap);
 
-        this.numberInput = document.createElement("input");
-        this.numberInput.type = "number";
-        this.numberInput.id = this.elem_id + "_number";
-        this.numberInput.classList.add("gr-box", "gr-input", "gr-text-input", "text-center", "h-6", "col-3");
-        this.numberInput.min = this.min;
-        this.numberInput.max = this.max;
-        this.numberInput.step = this.step;
-        this.numberInput.value = this.value;
-        this.labelWrapper.appendChild(this.numberInput);
+        this.labelWrapper.appendChild(this.labelText);
+        this.container.appendChild(this.labelWrapper);
+
+        this.inputWrap = document.createElement("div");
+        this.inputWrap.classList.add("input-group", "borderSection-sm");
+        this.container.appendChild(this.inputWrap);
 
         this.rangeInput = document.createElement("input");
         this.rangeInput.type = "range";
         this.rangeInput.id = this.elem_id + "_range";
-        this.rangeInput.classList.add("w-full", "disabled:cursor-not-allowed");
+        this.rangeInput.classList.add("col-6", "col-lg-8", "disabled:cursor-not-allowed");
         this.rangeInput.min = this.min;
         this.rangeInput.max = this.max;
         this.rangeInput.step = this.step;
@@ -65,10 +43,16 @@ class BootstrapSlider {
         if (!this.interactive) {
             this.rangeInput.disabled = true;
         }
-
-        this.isProgrammaticUpdate = false;
-
-        this.container.appendChild(this.rangeInput);
+        this.inputWrap.appendChild(this.rangeInput);
+        this.numberInput = document.createElement("input");
+        this.numberInput.type = "number";
+        this.numberInput.id = this.elem_id + "_number";
+        this.numberInput.classList.add("gr-box", "gr-input", "gr-text-input", "text-center", "h-6", "col-6", "col-lg-4");
+        this.numberInput.min = this.min;
+        this.numberInput.max = this.max;
+        this.numberInput.step = this.step;
+        this.numberInput.value = this.value;
+        this.inputWrap.appendChild(this.numberInput);
 
         if (!this.visible) {
             this.container.style.display = "none";

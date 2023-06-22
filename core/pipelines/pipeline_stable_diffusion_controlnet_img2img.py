@@ -18,15 +18,13 @@ import inspect
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
-import numpy as np
 import PIL.Image
+import numpy as np
 import torch
+from diffusers import AutoencoderKL, ControlNetModel, DiffusionPipeline, UNet2DConditionModel, logging
 from diffusers.image_processor import VaeImageProcessor
 from diffusers.loaders import TextualInversionLoaderMixin, LoraLoaderMixin
-from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_controlnet import MultiControlNetModel
-from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPImageProcessor
-
-from diffusers import AutoencoderKL, ControlNetModel, DiffusionPipeline, UNet2DConditionModel, logging
+from diffusers.pipelines.controlnet import MultiControlNetModel
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, StableDiffusionSafetyChecker
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import (
@@ -36,6 +34,7 @@ from diffusers.utils import (
     randn_tensor,
     replace_example_docstring, is_compiled_module,
 )
+from transformers import CLIPTextModel, CLIPTokenizer, CLIPImageProcessor
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 

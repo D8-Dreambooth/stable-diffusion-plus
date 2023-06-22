@@ -9,49 +9,16 @@ let vaeModelSelect;
 let loraModelSelect;
 let pipelineData = {};
 let controlnetData, preprocessorData;
+let inferParams;
 
 
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
-const advancedElements = $(".advancedInfer");
+const advancedElements = $(".infer_advanced");
 const inpaintContainer = $("#inpaintContainer");
 
 let inpaintImageEditor;
-let inferSettings = {
-    batch_size: 1,
-    controlnet_batch: false,
-    controlnet_batch_dir: "",
-    controlnet_batch_find: "",
-    controlnet_batch_replace: "",
-    controlnet_batch_use_prompt: "",
-    controlnet_image: null,
-    controlnet_mask: null,
-    controlnet_preprocess: true,
-    controlnet_scale_mode: "scale",
-    controlnet_type: null,
-    height: 512,
-    infer_image: null,
-    infer_mask: null,
-    infer_scale_mode: "scale",
-    invert_mask: true,
-    lora_weight: 0.9,
-    loras: null,  // Assuming ModelData will be an array
-    model: "None",  // Assuming ModelData will be a string
-    negative_prompt: "",
-    num_images: 1,
-    pipeline: "auto",
-    pipeline_settings: {},
-    prompt: "",
-    prompts: [],
-    scale: 7.5,
-    seed: -1,
-    steps: 30,
-    use_control_resolution: true,
-    use_input_resolution: true,
-    vae: null,  // Assuming this will be an object
-    width: 512
-}
 
 advancedElements.hide();
 ratioContainer.hide();
@@ -79,9 +46,9 @@ function inferInit() {
     keyListener.register("ctrl+ArrowDown", "#infer_prompt", decreaseWeight);
     keyListener.register("ctrl+ArrowUp", "#infer_negative_prompt", increaseWeight);
     keyListener.register("ctrl+ArrowDown", "#infer_negative_prompt", decreaseWeight);
-    inferModelSelect = $("#inferModel").modelSelect();
-    vaeModelSelect = $("#inferVae").modelSelect();
-    loraModelSelect = $("#inferLoraModels").modelSelect();
+    inferModelSelect = $("#infer_model").modelSelect();
+    vaeModelSelect = $("#infer_vae").modelSelect();
+    loraModelSelect = $("#infer_loras").modelSelect();
     let promptEl = document.getElementById("infer_prompt");
     let negEl = document.getElementById("infer_negative_prompt");
     historyTracker.registerHistory(promptEl);
@@ -105,17 +72,7 @@ function inferInit() {
         "id": "inference"
     });
 
-    scaleTest = $("#infer_scale").BootstrapSlider({
-        elem_id: "scaleSlid",
-        min: 1,
-        max: 20,
-        step: 0.1,
-        value: 7.5,
-        label: "Scale"
-    });
-
     widthSlider = inferWidth.BootstrapSlider({
-        elem_id: "widthSlid",
         min: 256,
         max: 4096,
         value: 512,
@@ -124,7 +81,6 @@ function inferInit() {
     });
 
     heightSlider = inferHeight.BootstrapSlider({
-        elem_id: "heightSlid",
         min: 256,
         max: 4096,
         value: 512,
@@ -135,40 +91,11 @@ function inferInit() {
     widthSlider.setOnChange(function (value) {
         inpaintImageEditor.updateCanvasWidth(value);
         controlnetImageEditor.updateCanvasWidth(value);
-        inferSettings.width = value;
     });
 
     heightSlider.setOnChange(function (value) {
         inpaintImageEditor.updateCanvasHeight(value);
         controlnetImageEditor.updateCanvasHeight(value);
-        inferSettings.height = value;
-    });
-
-    stepTest = $("#infer_steps").BootstrapSlider({
-        elem_id: "stepSlid",
-        min: 5,
-        max: 100,
-        value: 20,
-        step: 1,
-        label: "Steps"
-    });
-
-    numImages = $("#infer_num_images").BootstrapSlider({
-        elem_id: "numImages",
-        min: 1,
-        max: 100,
-        value: 1,
-        step: 1,
-        label: "Number of Images"
-    });
-
-    batchSize = $("#infer_batch_size").BootstrapSlider({
-        elem_id: "batchSize",
-        min: 1,
-        max: 100,
-        value: 1,
-        step: 1,
-        label: "Batch Size"
     });
 
     loraWeight = $("#infer_lora_weight").BootstrapSlider({
@@ -179,7 +106,7 @@ function inferInit() {
         step: 0.01,
     });
 
-    controlnetFileBrowser = $("#controlnet_batch_dir").fileBrowser({
+    controlnetFileBrowser = $("#infer_controlnet_batch_dir").fileBrowser({
         "file_type": "image",
         "showSelectButton": true,
         "listFiles": false,
@@ -189,9 +116,19 @@ function inferInit() {
         "dropdown": true,
         "label": "Controlnet Batch Directory"
     });
+    controlnetImageEditor = $("#infer_controlnet_image").imageEditor({
+        "width": 512,
+        "height": 512,
+        "canvas_width": 512,
+        "canvas_height": 512,
+    });
 
-    controlnetImageEditor = new ImageEditor("controlnetEditor", "auto", "", 512, 512);
-    inpaintImageEditor = new ImageEditor("inpaintEditor", "auto", "", 512, 512);
+    inpaintImageEditor = $("#infer_image").imageEditor({
+        "width": 512,
+        "height": 512,
+        "canvas_width": 512,
+        "canvas_height": 512,
+    });
 
     let submit = document.getElementById("startInfer");
 
@@ -238,38 +175,78 @@ function inferInit() {
 
     let moduleSettings = inferModule.systemConfig;
     console.log("Loading inference settings(1) from: ", moduleSettings);
-    loadInferSettings(moduleSettings);
-    refreshControlNets();
-    sendMessage("get_pipelines", {}, true).then((data) => {
-        console.log("Pipelines: ", data);
-        let pipelineSelect = document.getElementById("infer_pipeline");
-        let pipe_data = data["pipelines"];
-        pipelineData = pipe_data;
-        // Enumerate keyvalues in pipe_data
-        let options = [];
-        for (let key in pipe_data) {
-            if (key === "StableDiffusionPipeline") {
+    sendMessage("get_params", {}, true).then((data) => {
+        console.log("Params: ", data["params"]);
+        data = data["params"];
+        // Pop pipelines and keys from data
+        pipelineData = data["pipelines"];
+        let keys = data["keys"];
+        delete data["pipelines"];
+        delete data["keys"];
+        console.log("Keys: ", keys);
+        inferParams = data;
+        let newParams = {};
+        let autoContainer = $("#inferSettingsContainer");
+        let groupElements = {};
+        for (let key in data) {
+            let elemData = data[key];
+            elemData["key"] = key;
+
+            let group = "General";
+            if (elemData.hasOwnProperty("group")) {
+                group = elemData["group"];
+            }
+
+            let target = autoContainer;
+            let groupTarget = $("#infer" + elemData["group"] + "Group");
+            let lastElement = null;
+            if (group in groupElements) {
+                lastElement = groupElements[group];
+            }
+            if (groupTarget.length > 0) {
+                target = groupTarget;
+            }
+
+            if (key === "processors" || key === "pipelines") {
                 continue;
             }
-            let option = document.createElement("option");
-            option.value = key;
-            option.text = key.replace("StableDiffusion", "").replace("Pipeline", "");
-            options.push(option);
+            let uiKey = "infer_" + key;
+            let elem = $("#" + uiKey);
+            if (elem.length > 0) {
+                // Get the form-group surrounding the element
+                let formGroup = elem.closest(".form-group");
+                groupElements[group] = formGroup[0];
+                console.log("Existing element for: ", uiKey, group);
+            } else {
+                let element = createElement(elemData, "infer", ["inferParam", "inferDrop"]);
+                if (element !== null) {
+                    element.classList.add("col-12", "col-lg-6");
+                    // If last element is null, append to auto container, otherwise insert after last element
+                    if (lastElement === null) {
+                        groupTarget.prepend(element);
+                    } else {
+                        console.log("Inserting "+uiKey+ " after: ", lastElement);
+                        lastElement.after(element);
+                    }
+                    groupElements[group] = element;
+                } else {
+                    console.error("Failed to create element for: ", uiKey);
+                }
+            }
         }
-        options.sort(function (a, b) {
-            return a.text.localeCompare(b.text);
-        });
-        console.log("Sorted options:", options);
-        for (let i = 0; i < options.length; i++) {
-            pipelineSelect.add(options[i]);
-        }
+        setListeners();
+        loadInferSettings(moduleSettings);
+        refreshControlNets();
     });
 
+
+}
+
+function setListeners() {
     $("#inpaint_origin").change(function () {
         inpaintImageEditor.updateImageOrigin(this.value);
     });
 
-    $("#infer_prompt2prompt").hide();
     $("#controlnetSettings").hide();
     $("#infer_pipeline").change(function () {
         console.log("Pipeline changed: ", this.value);
@@ -277,9 +254,6 @@ function inferInit() {
     });
 
     const inferUseControlResolution = $("#infer_use_control_resolution");
-    const inferUseInputResolution = $("#infer_use_input_resolution");
-    const inferScaleMode = $("#infer_scale_mode");
-    const scaleModeContainer = $("#scale_mode_container");
     const controlnetScaleMode = $("#controlnet_scale_mode");
 
     inferUseControlResolution.change(function () {
@@ -292,6 +266,10 @@ function inferInit() {
             controlnetScaleMode.hide();
         }
     });
+
+    const inferUseInputResolution = $("#infer_use_input_resolution");
+    const inferScaleMode = $("#infer_scale_mode");
+    const scaleModeContainer = $("#scale_mode_container");
 
     inferUseInputResolution.change(function () {
         const isChecked = inferUseInputResolution.is(":checked");
@@ -315,7 +293,6 @@ function inferInit() {
             controlnetImageEditor.updateScaleMode(controlnetScaleMode.val());
         }
     });
-    inferSettings.use_input_resolution = inferUseInputResolution.is(":checked");
 
     $("#controlnet_type").change(function () {
         console.log("Controlnet type changed: ", this.value);
@@ -324,28 +301,13 @@ function inferInit() {
             let controlnet = controlnetData[this.value];
             console.log("Controlnet: ", controlnet);
         }
-        if (this.value === "ControlNet Reference") {
-            console.log("SHOW.");
-            $(".refParam").show();
-        } else {
-            console.log("HIDE.");
-            $(".refParam").hide();
-        }
     });
-
-    $("#pipeHelpButton").click(function () {
-        $(".hintBox").toggle();
-        $("#pipeHelpButton").toggleClass("active");
-    });
-
-    console.log("Infer settings: ", inferSettings);
 }
 
 
 function refreshControlNets() {
     sendMessage("get_controlnets", {}, true).then((data) => {
-        console.log("Controlnets: ", data);
-        let controlnetSelect = document.getElementById("controlnet_type");
+        let controlnetSelect = document.getElementById("infer_controlnet_type");
         controlnetSelect.innerHTML = "";
         let option = document.createElement("option");
         option.value = "None";
@@ -355,7 +317,6 @@ function refreshControlNets() {
         controlnetData = data["nets"];
         // Enumerate data, which is now a dict
         for (let key in controlnetData) {
-            console.log("Key: ", key, " Value: ", controlnetData[key]);
             let element = controlnetData[key];
             let option = document.createElement("option");
             option.value = key;
@@ -371,88 +332,50 @@ function updatePipelineSettings(pipelineName) {
     pipelineParams.empty();
     if (pipelineName !== "auto") {
         let pipeline = pipelineData[pipelineName];
-        console.log("Pipeline: ", pipeline);
+        console.log("Pipeline: ", pipeline, pipelineData);
         // Enumerate keyvalues in pipeline
         let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
             "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
         if (pipeline.hasOwnProperty("image")) {
-            $("#inpaintContainer").show();
+            inpaintContainer.show();
         } else {
-            $("#inpaintContainer").hide();
+            inpaintContainer.hide();
         }
         if (pipelineName === "StableDiffusionControlNetPipeline" || pipelineName === "StableDiffusionControlNetSAGPipeline") {
-            $("#inpaintContainer").hide();
+            inpaintContainer.hide();
         }
-        for (let key in pipeline) {
-            if (keysToIgnore.includes(key)) continue;
-
-            let inputContainer = document.createElement("div");
-            inputContainer.className = "form-group mb-3";
-            let inputElement;
-            inputContainer.id = "pipeline_" + key;
-            pipelineParams.append(inputContainer);
-            if (key === "width" || key === "height" || key === "image" || key === "latents") continue;
-            let value = pipeline[key];
-            console.log("Key: ", key, " Value: ", value);
-            // Split the key by underscores and title case it
-            let keySplit = key.split("_");
-            let keyTitle = "";
-            for (let i = 0; i < keySplit.length; i++) {
-                keyTitle += " " + keySplit[i].charAt(0).toUpperCase() + keySplit[i].slice(1);
+        // Sort pipeline by type, filtering keys to ignore
+        let keys = Object.keys(pipeline).filter(key => !keysToIgnore.includes(key));
+        keys.sort((a, b) => {
+            if (pipeline[a].type < pipeline[b].type) {
+                return 1;
+            } else if (pipeline[a].type > pipeline[b].type) {
+                return -1;
+            } else {
+                return 0;
             }
-            // If the value is a float, create a BootstrapSlider
-            let max = (key === "controlnet_conditioning_scale") ? 2 : 1;
-            if (typeof value === "number") {
-                inputElement = document.createElement("div");
-
-                let slider = $("#pipeline_" + key).BootstrapSlider({
-                    min: 0,
-                    max: max,
-                    value: value,
-                    step: 0.01,
-                    label: keyTitle
-                });
-
+        });
+        for (let idx in keys) {
+            let key = keys[idx];
+            if (key === "cls") continue;
+            console.log("Key: ", key, " Value: ", pipeline[key]);
+            let val = pipeline[key];
+            // Add empty description to val if it doesn't exist
+            if (!val.hasOwnProperty("description")) {
+                val["description"] = "";
             }
-            // if the value is a boolean, create a bootstrap switch
-            if (typeof value === "boolean") {
-                inputElement = document.createElement("div");
-                inputElement.className = "form-check form-switch";
-                let input = document.createElement("input");
-                input.className = "form-check-input";
-                input.type = "checkbox";
-                input.id = "pipeline_" + key;
-                input.checked = value;
-                let label = document.createElement("label");
-                label.className = "form-check-label";
-                label.htmlFor = "pipeline_" + key;
-                label.innerText = keyTitle;
-                inputElement.appendChild(input);
-                inputElement.appendChild(label);
+            let element = createElement(val, "inferPipe", ["inferParam"]);
+            if (element !== null) {
+                element.classList.add("col-12");
+                if (keys.length > 1) {
+                    element.classList.add("col-lg-6");
+                }
+                pipelineParams.append(element);
             }
-            // If the value is a string, set inputElement to be a text input and create a label
-            if (typeof value === "string" || key.indexOf("prompt") !== -1) {
-                let label = document.createElement("label");
-                label.innerText = keyTitle;
-                label.htmlFor = "pipeline_" + key;
-                inputElement = document.createElement("input");
-                inputElement.className = "form-control";
-                inputElement.id = "pipeline_" + key;
-                inputElement.type = "text";
-                inputElement.value = value;
-                inputContainer.appendChild(label);
-            }
-            if (inputElement !== undefined) inputContainer.appendChild(inputElement);
         }
-        if (pipeline.hasOwnProperty("DOCSTRING")) {
-            let docstring = document.createElement("div");
-            docstring.className = "form-text hintBox";
-            docstring.innerText = pipeline["DOCSTRING"];
-            pipelineParams.prepend(docstring);
-            if (!$("#pipeHelpButton").hasClass("active")) $(".hintBox").hide();
-        }
+
     } else {
-        $("#inpaintContainer").hide();
+        inpaintContainer.hide();
         $("#infer_prompt2prompt").hide();
         $("#controlnetSettings").hide();
     }
@@ -471,8 +394,6 @@ function updatePipelineSettings(pipelineName) {
 function inferRefresh() {
     loadInferSettings(inferModule.systemConfig);
     refreshControlNets();
-    getInferSettings();
-    console.log("Infer settings(refresh): ", inferSettings);
 }
 
 function getSelectedText(input) {
@@ -534,11 +455,15 @@ function loadInferSettings(data) {
     userConfig = data;
     if (data.hasOwnProperty("basic_infer")) {
         if (data.basic_infer) {
-            advancedElements.hide();
+            console.log("Basic infer");
+            $(".infer_advanced").hide();
         } else {
-            advancedElements.show();
-            inpaintContainer.hide();
+            console.log("Advanced infer");
+            $(".infer_advanced").show();
+            updatePipelineSettings($("#infer_pipeline").val());
         }
+    } else {
+        console.log("No basic_infer key in data: ", data);
     }
 
     if (data["show_aspect_ratios"]) {
@@ -552,12 +477,6 @@ function loadInferSettings(data) {
         ratioContainer.hide();
         inferWidth.show();
         inferHeight.show();
-    }
-
-    if (data["show_vae_select"]) {
-        inpaintContainer.show();
-    } else {
-        inpaintContainer.hide();
     }
 }
 
@@ -618,7 +537,7 @@ async function startInference() {
     } else {
         let promptEl = document.getElementById("infer_prompt");
         let negEl = document.getElementById("infer_negative_prompt");
-        getInferSettings();
+        let inferSettings = getInferSettings();
 
         historyTracker.storeHistory(promptEl);
         historyTracker.storeHistory(negEl);
@@ -773,75 +692,38 @@ function updateRatioButtons() {
 }
 
 function getInferSettings() {
-    let promptEl = document.getElementById("infer_prompt");
-    let negEl = document.getElementById("infer_negative_prompt");
-    let seedEl = document.getElementById("infer_seed");
-    let controlnetType = document.getElementById("controlnet_type");
-    const loras = loraModelSelect.getModel();
-    inferSettings.loras = loras ? loras : [];
-    inferSettings.model = inferModelSelect.getModel();
-    inferSettings.vae = vaeModelSelect.getModel();
-    inferSettings.prompt = promptEl.value;
-    inferSettings.pipeline = $("#infer_pipeline").val();
-    inferSettings.negative_prompt = negEl.value;
-    inferSettings.seed = parseInt(seedEl.value);
-    inferSettings.scale = scaleTest.value;
-    inferSettings.steps = parseInt(stepTest.value);
-    inferSettings.num_images = parseInt(numImages.value);
-    inferSettings.batch_size = parseInt(batchSize.value);
-    inferSettings.lora_weight = loraWeight.value;
-    inferSettings.controlnet_mask = controlnetImageEditor.getMask();
-    inferSettings.controlnet_image = controlnetImageEditor.getDropped();
-    inferSettings.infer_mask = inpaintImageEditor.getMask();
-    inferSettings.infer_image = inpaintImageEditor.getDropped();
-    inferSettings.infer_scale_mode = $("#infer_scale_mode").val();
-    inferSettings.controlnet_scale_mode = $("#controlnet_scale_mode").val();
-    inferSettings.controlnet_type = controlnetType.value;
-    inferSettings.controlnet_preprocess = document.getElementById("controlnet_preprocess").checked;
-    inferSettings.controlnet_batch = document.getElementById("controlnet_batch").checked;
-    inferSettings.controlnet_batch_dir = controlnetFileBrowser.value;
-    inferSettings.controlnet_batch_find = document.getElementById("controlnet_batch_find").value;
-    inferSettings.controlnet_batch_replace = document.getElementById("controlnet_batch_replace").value;
-    inferSettings.controlnet_batch_use_prompt = document.getElementById("controlnet_batch_use_prompt").checked;
-    inferSettings.use_control_resolution = $("#infer_use_control_resolution").is(":checked");
-    inferSettings.use_input_resolution = $("#infer_use_input_resolution").is(":checked");
+    let params = {};
+    for (let key in inferParams) {
+        if (key === "pipelines" || key === "controlnets") continue;
+        let element = $("#infer_" + key);
+        if (element.length === 0) {
+            console.log("Could not find element(0) with id: ", key);
+        } else {
+            let lookKey = key;
+            if (key.indexOf("mask") !== -1 && key.indexOf("invert") === -1) {
+                lookKey = key.replace("mask", "image");
+            }
+            let elementValue = getElementValue("infer_" + lookKey);
+            if (elementValue !== null) {
+                params[key] = elementValue;
+            } else {
+                console.log("Could not find element with id: ", key);
+            }
 
-    const pipelineElements = document.querySelectorAll('[id^="pipeline_"]');
-    inferSettings.pipeline_settings = {};
-    pipelineElements.forEach((element) => {
-        let elementId = element.id;
-        // If the element's ID has "_container" or "_range" in it, continue
-        if (element.id.includes("_container") || element.id.includes("_range")) {
-            return;
         }
-        if (elementId === "pipeline_controller" && inferSettings.pipeline !== "StableDiffusionPrompt2PromptPipeline") {
-            return;
-        }
-        let eleValue = element.value;
-
-        // If the element's ID has "_number" in it, remove _number from the "key" and parse the value as a float
-        if (element.id.includes("_number")) {
-            elementId = element.id.replace("_number", "");
-            eleValue = parseFloat(element.value);
-        }
-
-        // Make sure we parse check values
-        if (element.type === "checkbox") {
-            eleValue = element.checked;
-        }
-        elementId = elementId.replace("pipeline_", "");
-        inferSettings.pipeline_settings[elementId] = eleValue;
-    });
-    if (inferSettings.pipeline.indexOf("ControlNet") > -1 && inferSettings.image !== undefined) {
-        inferSettings.image = controlnetImageEditor.imageSource;
     }
-    if (userConfig["show_aspect_ratios"]) {
-        console.log("Using resolution from aspect ratio.");
-        const selectedRatio = document.querySelector(".aspectButton.btn-selected");
-        setResolution(selectedRatio.dataset.ratio);
-    } else {
-        inferSettings.width = parseInt(widthSlider.getValue());
-        inferSettings.height = parseInt(heightSlider.getValue());
+    // Find all elements who's IDs start with inferPipe_
+    let pipeElements = $("[id^=inferPipe_]");
+    let pipeParams = {};
+    for (let i = 0; i < pipeElements.length; i++) {
+        let element = pipeElements[i];
+        let id = element.id;
+        let key = id.replace("inferPipe_", "");
+        pipeParams[key] = getElementValue(id);
     }
-    console.log("Infer settings: ", inferSettings);
+    params["pipeline_settings"] = pipeParams;
+    console.log("Infer settings: ", params);
+    return params;
 }
+
+

@@ -6,6 +6,7 @@ const historyTracker = new HistoryTracker();
 const imageReceivers = {};
 const maskReceivers = {};
 let messages = [];
+
 // region Initialization
 
 function initializeCore(data) {
@@ -92,6 +93,7 @@ function registerImageReceiver(receiverName, callback) {
 function registerMaskReceiver(receiverName, callback) {
     maskReceivers[receiverName] = callback;
 }
+
 // Show error modal on socket disconnect or other errors.
 function showError(message) {
     // Set the error message in the modal body
@@ -101,30 +103,74 @@ function showError(message) {
     $('#errorModal').modal('show');
 }
 
+function getElementValue(id, key = null) {
+    let element = document.getElementById(id);
+    console.log("looking for element: ", id);
+    if (element.classList.contains("bootstrapSlider")) {
+        return $("#" + element.id).BootstrapSlider().value;
+    }
+    if (element.classList.contains("model-select")) {
+        return $("#" + element.id).modelSelect({}).getModel();
+    }
+
+    if (element.classList.contains("fileBrowser")) {
+        return $("#" + element.id).fileBrowser({}).value;
+    }
+
+    if (element.classList.contains("imageEditor")) {
+        if (key === "mask") {
+            return $("#" + element.id).imageEditor({}).getMask();
+        }
+        return $("#" + element.id).imageEditor({}).getDropped();
+    }
+    let value;
+    switch (element.type) {
+        case "checkbox":
+            value = element.checked;
+            break;
+        case "number":
+            value = parseFloat(element.value);
+            break;
+        default:
+            value = element.value;
+            break;
+    }
+    return value;
+}
+
 function createElement(elementData, id_prefix = "", additional_classes = []) {
     if (id_prefix.indexOf("_") === -1) {
         id_prefix += "_";
     }
-    
-    console.log("Creating element: ", elementData);
+
     let type = elementData.hasOwnProperty("type") ? elementData["type"] : "";
     let key = (elementData.hasOwnProperty("key") ? elementData["key"] : "");
-    if (key === "" || type === "") return null;
+    if (key === "" || type === "" || type === "none") return null;
     let description = elementData.hasOwnProperty("description") ? elementData["description"] : "";
+    if (description === null || description === "undefined") description = "";
     // If the string contains brackets, extract the list of options from the brackets and set description to the rest
     let types = [];
-    if (description.indexOf("]") !== -1) {
+    if (description.indexOf("[") === 0) {
         types = description.substring(description.indexOf("[") + 1, description.indexOf("]")).split(",");
         description = description.substring(description.indexOf("]") + 1);
     }
     let options = false;
-    if (elementData.hasOwnProperty("options")) {
-        options = elementData["options"];
+    if (elementData.hasOwnProperty("options") || elementData.hasOwnProperty("choices")) {
+        options = elementData.hasOwnProperty("options") ? elementData["options"] : elementData["choices"];
         type = "select";
     }
+    if (type === "float" || type === "int") {
+        if (elementData.hasOwnProperty("min") && elementData.hasOwnProperty("max")) {
+            if (type === "float" && !elementData.hasOwnProperty("step")) {
+                elementData["step"] = 0.01;
+            }
+            type = "Constrained" + type[0].toUpperCase() + type.substring(1) + "Value";
+        }
+
+    }
+
     let modelType;
     if (type.indexOf("modelSelect") !== -1) {
-        console.log("Model select: ", type);
         modelType = type.split("_")[0];
         type = "modelSelect";
     }
@@ -132,10 +178,14 @@ function createElement(elementData, id_prefix = "", additional_classes = []) {
     let createLabel = true;
     let addClasses = true;
 
-    switch(type) {
+    switch (type) {
         case "text":
         case "str":
-            newElement = createTextInput(key, description, elementData["value"], id_prefix);
+            if (key.indexOf("prompt") !== -1) {
+                newElement = createTexfieldInput(key, description, elementData["value"], id_prefix);
+            } else {
+                newElement = createTextInput(key, description, elementData["value"], id_prefix);
+            }
             break;
         case "int":
         case "float":
@@ -159,13 +209,18 @@ function createElement(elementData, id_prefix = "", additional_classes = []) {
             createLabel = false;
             newElement = createModelSelectInput(key, elementData["title"], elementData["value"], modelType, id_prefix);
             break;
+        case "file":
+        case "fileBrowser":
+            createLabel = false;
+            newElement = createFileBrowserInput(key, elementData["title"], elementData["description"], elementData["value"], id_prefix);
+            break;
         default:
-            console.log("Unknown element type: ", type, key);
+            console.log("Unknown element type: ", type, key, elementData);
             break;
     }
 
     // Enumerate options and add classes to newElement
-    if (newElement){
+    if (newElement) {
         let skip = false;
         if (additional_classes.length > 0 && addClasses) {
             for (let i = 0; i < additional_classes.length; i++) {
@@ -174,7 +229,7 @@ function createElement(elementData, id_prefix = "", additional_classes = []) {
         }
         let formGroup = document.createElement("div");
         if (types.length > 0) {
-            types.forEach(function(option) {
+            types.forEach(function (option) {
                 option = option.trim();
                 if (option === "model") {
                     skip = true;
@@ -183,7 +238,9 @@ function createElement(elementData, id_prefix = "", additional_classes = []) {
             });
         }
         if (skip) return null;
-
+        if ("advanced" in elementData) {
+            formGroup.classList.add(id_prefix + "advanced");
+        }
         formGroup.classList.add("form-group");
         if (createLabel) {
             let label = document.createElement("label");
@@ -193,8 +250,33 @@ function createElement(elementData, id_prefix = "", additional_classes = []) {
             formGroup.appendChild(label);
         }
         newElement.title = description;
-        newElement.classList.add("form-control");
+        //newElement.classList.add("form-control");
         formGroup.appendChild(newElement);
+        if (elementData.hasOwnProperty("toggle_fields")) {
+            newElement.addEventListener("change", function () {
+                let closestCheck = $(this).find("input[type='checkbox']");
+                let checked = closestCheck.is(":checked");
+                console.log("Toggling fields: ", elementData["toggle_fields"], newElement, checked);
+                for (let i = 0; i < elementData["toggle_fields"].length; i++) {
+                    let toggle_field = elementData["toggle_fields"][i];
+                    let toggleElem = $("#" + id_prefix + toggle_field);
+                    if (toggleElem.length > 0) {
+                        console.log("Toggling field: ", toggle_field, closestCheck.is(":checked"));
+                        if (checked) {
+                            toggleElem.closest(".form-group").show();
+                        } else {
+                            toggleElem.closest(".form-group").hide();
+                        }
+                    }
+                }
+            });
+            if (elementData.value === false) {
+                setTimeout(function () {
+                    newElement.dispatchEvent(new Event("change"));
+                }, 100);
+            }
+        }
+
         return formGroup;
     }
     return null;
@@ -212,9 +294,20 @@ function createModelSelectInput(key, description, value, modelType, id_prefix = 
     });
     return container;
 }
+
 function createTextInput(key, description, value, id_prefix = "") {
     let input = document.createElement("input");
     input.type = "text";
+    input.id = id_prefix + key;
+    input.name = key;
+    input.value = value;
+    input.placeholder = description;
+    input.classList.add("form-control");
+    return input;
+}
+
+function createTexfieldInput(key, description, value, id_prefix = "") {
+    let input = document.createElement("textarea");
     input.id = id_prefix + key;
     input.name = key;
     input.value = value;
@@ -285,7 +378,7 @@ function createCheckboxInput(key, title, description, value, id_prefix = "", add
     checkbox.title = description;
     checkbox.classList.add("newModelParam", "form-check-input");
     if (additionalClasses.length > 0) {
-        additionalClasses.forEach(function(option) {
+        additionalClasses.forEach(function (option) {
             checkbox.classList.add(option);
         });
     }
@@ -301,12 +394,27 @@ function createCheckboxInput(key, title, description, value, id_prefix = "", add
     label.title = description;
 
     // Append checkbox and label to div
-    div.appendChild(checkbox);
     div.appendChild(label);
+    div.appendChild(checkbox);
 
     return div;
 }
 
+function createFileBrowserInput(key, title, description, value, id_prefix = "") {
+    let container = document.createElement("div");
+    container.id = id_prefix + key;
+    $(container).fileBrowser({
+        "file_type": "image",
+        "showSelectButton": true,
+        "listFiles": false,
+        "showTitle": false,
+        "showInfo": false,
+        "multiselect": false,
+        "dropdown": true,
+        "label": title
+    });
+    return container;
+}
 
 // Hide the error modal on socket reconnect or error clear.
 function clearError() {
@@ -404,7 +512,6 @@ function sendMessage(name, data, await = true, target = null) {
                 }
                 // This is the response we're waiting for
                 globalSocket.removeEventListener("message", handleResponse);
-                console.log("Received: ", response);
                 resolve(response.data);
             }
         }

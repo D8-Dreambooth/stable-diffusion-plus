@@ -8,9 +8,19 @@
     overflow: hidden;
 }
 
+@media (max-width: 767.98px) {
+    .gallery-container {
+        max-height: 30vh;
+        height: 30vh;
+    }
+}
+@media screen and (min-width: 768px) {
+    .gallery-container {
+        max-height: 59vh;
+        height: 59vh;
+    }
+}
 .gallery-container {
-    max-height: 300px;
-    height: 300px;
     overflow: hidden;
     position: relative;
     border: 1px solid var(--secondary-accent-color);
@@ -68,7 +78,7 @@
 }
 
 .gallery-container *:focus {
-  outline: none;
+    outline: none;
 }
 
 .thumbnail-container {
@@ -152,8 +162,6 @@
     content: '\ed95';
     font-family: 'boxicons';
 }
-
-
 
 
 .thumbnail-container::-webkit-scrollbar {
