@@ -330,12 +330,21 @@ function refreshControlNets() {
 function updatePipelineSettings(pipelineName) {
     let pipelineParams = $("#pipelineParams");
     pipelineParams.empty();
-    if (pipelineName !== "auto") {
-        let pipeline = pipelineData[pipelineName];
+    let pipeline = pipelineData[pipelineName];
+
+    let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
+            "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
+        let keys = Object.keys(pipeline).filter(key => !keysToIgnore.includes(key));
+
+    if (pipelineName !== "Default") {
         console.log("Pipeline: ", pipeline, pipelineData);
         // Enumerate keyvalues in pipeline
-        let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
-            "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
+        if (pipeline.hasOwnProperty("control_image")) {
+            $("#controlnetSettings").show();
+        } else {
+            $("#controlnetSettings").hide();
+        }
+
         if (pipeline.hasOwnProperty("image")) {
             inpaintContainer.show();
         } else {
@@ -345,7 +354,6 @@ function updatePipelineSettings(pipelineName) {
             inpaintContainer.hide();
         }
         // Sort pipeline by type, filtering keys to ignore
-        let keys = Object.keys(pipeline).filter(key => !keysToIgnore.includes(key));
         keys.sort((a, b) => {
             if (pipeline[a].type < pipeline[b].type) {
                 return 1;
@@ -377,16 +385,6 @@ function updatePipelineSettings(pipelineName) {
     } else {
         inpaintContainer.hide();
         $("#infer_prompt2prompt").hide();
-        $("#controlnetSettings").hide();
-    }
-    if (pipelineName === "StableDiffusionPrompt2PromptPipeline") {
-        $("#infer_prompt2prompt").show();
-    } else {
-        $("#infer_prompt2prompt").hide();
-    }
-    if (pipelineName.indexOf("ControlNet") !== -1) {
-        $("#controlnetSettings").show();
-    } else {
         $("#controlnetSettings").hide();
     }
 }

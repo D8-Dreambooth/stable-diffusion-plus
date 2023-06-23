@@ -596,11 +596,6 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.decode_latents
     def decode_latents(self, latents):
-        warnings.warn(
-            "The decode_latents method is deprecated and will be removed in a future version. Please"
-            " use VaeImageProcessor instead",
-            FutureWarning,
-        )
         latents = 1 / self.vae.config.scaling_factor * latents
         image = self.vae.decode(latents, return_dict=False)[0]
         image = (image / 2 + 0.5).clamp(0, 1)
@@ -1027,6 +1022,10 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
             prompt (`str` or `List[str]`, *optional*):
                 The prompt or prompts to guide the image generation. If not defined, one has to pass `prompt_embeds`.
                 instead.
+            negative_prompt (`str` or `List[str]`, *optional*):
+                The prompt or prompts not to guide the image generation. If not defined, one has to pass
+                `negative_prompt_embeds` instead. Ignored when not using guidance (i.e., ignored if `guidance_scale` is
+                less than `1`).
             image (`torch.FloatTensor`, `PIL.Image.Image`, `List[torch.FloatTensor]`, `List[PIL.Image.Image]`,
                     `List[List[torch.FloatTensor]]`, or `List[List[PIL.Image.Image]]`):
                 The ControlNet input condition. ControlNet uses this input condition to generate guidance to Unet. If
@@ -1066,10 +1065,6 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
                 Paper](https://arxiv.org/pdf/2205.11487.pdf). Guidance scale is enabled by setting `guidance_scale >
                 1`. Higher guidance scale encourages to generate images that are closely linked to the text `prompt`,
                 usually at the expense of lower image quality.
-            negative_prompt (`str` or `List[str]`, *optional*):
-                The prompt or prompts not to guide the image generation. If not defined, one has to pass
-                `negative_prompt_embeds` instead. Ignored when not using guidance (i.e., ignored if `guidance_scale` is
-                less than `1`).
             num_images_per_prompt (`int`, *optional*, defaults to 1):
                 The number of images to generate per prompt.
             eta (`float`, *optional*, defaults to 0.0):
@@ -1114,8 +1109,6 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
                 In this mode, the ControlNet encoder will try best to recognize the content of the input image even if
                 you remove all prompts. The `guidance_scale` between 3.0 and 5.0 is recommended.
 
-        Examples:
-
         Returns:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] or `tuple`:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] if `return_dict` is True, otherwise a `tuple.
@@ -1125,6 +1118,19 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
         """
         # 0. Default height and width to unet
         height, width = self._default_height_width(height, width, image)
+
+        if self.controlnet is not None:
+            controlnet = self.controlnet._orig_mod if is_compiled_module(self.controlnet) else self.controlnet
+
+            global_pool_conditions = (
+                controlnet.config.global_pool_conditions
+                if isinstance(controlnet, ControlNetModel)
+                else controlnet.nets[0].config.global_pool_conditions
+            )
+            guess_mode = guess_mode or global_pool_conditions
+
+            if isinstance(controlnet, MultiControlNetModel) and isinstance(controlnet_conditioning_scale, float):
+                controlnet_conditioning_scale = [controlnet_conditioning_scale] * len(controlnet.nets)
 
         # 1. Check inputs. Raise error if not correct
         self.check_inputs(
@@ -1152,18 +1158,6 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
         do_classifier_free_guidance = guidance_scale > 1.0
-
-        controlnet = self.controlnet._orig_mod if is_compiled_module(self.controlnet) else self.controlnet
-
-        if isinstance(controlnet, MultiControlNetModel) and isinstance(controlnet_conditioning_scale, float):
-            controlnet_conditioning_scale = [controlnet_conditioning_scale] * len(controlnet.nets)
-
-        global_pool_conditions = (
-            controlnet.config.global_pool_conditions
-            if isinstance(controlnet, ControlNetModel)
-            else controlnet.nets[0].config.global_pool_conditions
-        )
-        guess_mode = guess_mode or global_pool_conditions
 
         # 3. Encode input prompt
         text_encoder_lora_scale = (
@@ -1275,45 +1269,46 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
         num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
+                # If the timestep is within the range of start and end_percentage, then we use th
+                # controlnet output as the input to the generator.
+                use_controlnet = False
+                if self.controlnet is not None:
+                    if start_percentage <= i / num_inference_steps <= end_percentage and control_image is not None:
+                        use_controlnet = True
+                logger.debug(f"timestep: {t}, use_controlnet: {use_controlnet}")
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
+
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
-                # controlnet(s) inference
-                if guess_mode and do_classifier_free_guidance:
-                    # Infer ControlNet only for the conditional batch.
-                    control_model_input = latents
-                    control_model_input = self.scheduler.scale_model_input(control_model_input, t)
-                    controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
-                else:
-                    control_model_input = latent_model_input
-                    controlnet_prompt_embeds = prompt_embeds
+                if use_controlnet:
+                    if guess_mode and do_classifier_free_guidance:
+                        # Infer ControlNet only for the conditional batch.
+                        control_model_input = latents
+                        control_model_input = self.scheduler.scale_model_input(control_model_input, t)
+                        controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
+                    else:
+                        control_model_input = latent_model_input
+                        controlnet_prompt_embeds = prompt_embeds
 
-                down_block_res_samples, mid_block_res_sample = self.controlnet(
-                    control_model_input,
-                    t,
-                    encoder_hidden_states=controlnet_prompt_embeds,
-                    controlnet_cond=control_image,
-                    conditioning_scale=controlnet_conditioning_scale,
-                    guess_mode=guess_mode,
-                    return_dict=False,
-                )
+                    down_block_res_samples, mid_block_res_sample = self.controlnet(
+                        control_model_input,
+                        t,
+                        encoder_hidden_states=controlnet_prompt_embeds,
+                        controlnet_cond=control_image,
+                        conditioning_scale=controlnet_conditioning_scale,
+                        guess_mode=guess_mode,
+                        return_dict=False,
+                    )
 
-                if guess_mode and do_classifier_free_guidance:
-                    # Infered ControlNet only for the conditional batch.
-                    # To apply the output of ControlNet to both the unconditional and conditional batches,
-                    # add 0 to the unconditional batch to keep it unchanged.
-                    down_block_res_samples = [torch.cat([torch.zeros_like(d), d]) for d in down_block_res_samples]
-                    mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
+                    if guess_mode and do_classifier_free_guidance:
+                        # Infered ControlNet only for the conditional batch.
+                        down_block_res_samples = [torch.cat([torch.zeros_like(d), d]) for d in down_block_res_samples]
+                        mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
 
                 # predict the noise residual
                 if num_channels_unet == 9:
                     latent_model_input = torch.cat([latent_model_input, mask, masked_image_latents], dim=1)
-
-                use_controlnet = False
-                if start_percentage <= i / num_inference_steps <= end_percentage:
-                    use_controlnet = True
-
                 if use_controlnet:
                     noise_pred = self.unet(
                         latent_model_input,

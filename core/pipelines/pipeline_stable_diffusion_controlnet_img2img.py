@@ -77,30 +77,6 @@ EXAMPLE_DOC_STRING = """
 """
 
 
-def prepare_image(image):
-    if isinstance(image, torch.Tensor):
-        # Batch single image
-        if image.ndim == 3:
-            image = image.unsqueeze(0)
-
-        image = image.to(dtype=torch.float32)
-    else:
-        # preprocess image
-        if isinstance(image, (PIL.Image.Image, np.ndarray)):
-            image = [image]
-
-        if isinstance(image, list) and isinstance(image[0], PIL.Image.Image):
-            image = [np.array(i.convert("RGB"))[None, :] for i in image]
-            image = np.concatenate(image, axis=0)
-        elif isinstance(image, list) and isinstance(image[0], np.ndarray):
-            image = np.concatenate([i[None, :] for i in image], axis=0)
-
-        image = image.transpose(0, 3, 1, 2)
-        image = torch.from_numpy(image).to(dtype=torch.float32) / 127.5 - 1.0
-
-    return image
-
-
 def prepare_control_image(
         control_image, width, height, batch_size, num_images_per_prompt, device, dtype
 ):
@@ -645,15 +621,6 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
         if strength < 0 or strength > 1:
             raise ValueError(f"The value of strength should in [0.0, 1.0] but is {strength}")
 
-    def get_timesteps(self, num_inference_steps, strength, device):
-        # get the original timestep using init_timestep
-        init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
-
-        t_start = max(num_inference_steps - init_timestep, 0)
-        timesteps = self.scheduler.timesteps[t_start:]
-
-        return timesteps, num_inference_steps - t_start
-
     def prepare_image(
             self,
             image,
@@ -876,8 +843,6 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
                 In this mode, the ControlNet encoder will try best to recognize the content of the input image even if
                 you remove all prompts. The `guidance_scale` between 3.0 and 5.0 is recommended.
 
-        Examples:
-
         Returns:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] or `tuple`:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] if `return_dict` is True, otherwise a `tuple.
@@ -887,6 +852,19 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
         """
         # 0. Default height and width to unet
         height, width = self._default_height_width(height, width, control_image)
+
+        if self.controlnet is not None:
+            controlnet = self.controlnet._orig_mod if is_compiled_module(self.controlnet) else self.controlnet
+
+            global_pool_conditions = (
+                controlnet.config.global_pool_conditions
+                if isinstance(controlnet, ControlNetModel)
+                else controlnet.nets[0].config.global_pool_conditions
+            )
+            guess_mode = guess_mode or global_pool_conditions
+
+            if isinstance(controlnet, MultiControlNetModel) and isinstance(controlnet_conditioning_scale, float):
+                controlnet_conditioning_scale = [controlnet_conditioning_scale] * len(controlnet.nets)
 
         # 1. Check inputs. Raise error if not correct
         self.check_inputs(
@@ -917,18 +895,6 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
         do_classifier_free_guidance = guidance_scale > 1.0
-
-        controlnet = self.controlnet._orig_mod if is_compiled_module(self.controlnet) else self.controlnet
-
-        if isinstance(controlnet, MultiControlNetModel) and isinstance(controlnet_conditioning_scale, float):
-            controlnet_conditioning_scale = [controlnet_conditioning_scale] * len(controlnet.nets)
-
-        global_pool_conditions = (
-            controlnet.config.global_pool_conditions
-            if isinstance(controlnet, ControlNetModel)
-            else controlnet.nets[0].config.global_pool_conditions
-        )
-        guess_mode = guess_mode or global_pool_conditions
 
         # 3. Encode input prompt
         text_encoder_lora_scale = (
@@ -1007,39 +973,39 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
         num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                # expand the latents if we are doing classifier free guidance
-                latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
-
-                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
-
-                if guess_mode and do_classifier_free_guidance:
-                    controlnet_latent_model_input = latents
-                    controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
-                else:
-                    controlnet_latent_model_input = latent_model_input
-                    controlnet_prompt_embeds = prompt_embeds
-                down_block_res_samples, mid_block_res_sample = self.controlnet(
-                    controlnet_latent_model_input,
-                    t,
-                    encoder_hidden_states=controlnet_prompt_embeds,
-                    controlnet_cond=image,
-                    conditioning_scale=controlnet_conditioning_scale,
-                    guess_mode=guess_mode,
-                    return_dict=False,
-                )
-
-                if guess_mode and do_classifier_free_guidance:
-                    # Infered ControlNet only for the conditional batch.
-                    down_block_res_samples = [torch.cat([torch.zeros_like(d), d]) for d in down_block_res_samples]
-                    mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
-
                 # If the timestep is within the range of start and end_percentage, then we use th
                 # controlnet output as the input to the generator.
                 use_controlnet = False
                 if start_percentage <= i / num_inference_steps <= end_percentage:
                     use_controlnet = True
 
+                # expand the latents if we are doing classifier free guidance
+                latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
+
+                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+
                 if use_controlnet:
+                    if guess_mode and do_classifier_free_guidance:
+                        controlnet_latent_model_input = latents
+                        controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
+                    else:
+                        controlnet_latent_model_input = latent_model_input
+                        controlnet_prompt_embeds = prompt_embeds
+                    down_block_res_samples, mid_block_res_sample = self.controlnet(
+                        controlnet_latent_model_input,
+                        t,
+                        encoder_hidden_states=controlnet_prompt_embeds,
+                        controlnet_cond=image,
+                        conditioning_scale=controlnet_conditioning_scale,
+                        guess_mode=guess_mode,
+                        return_dict=False,
+                    )
+
+                    if guess_mode and do_classifier_free_guidance:
+                        # Infered ControlNet only for the conditional batch.
+                        down_block_res_samples = [torch.cat([torch.zeros_like(d), d]) for d in down_block_res_samples]
+                        mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
+
                     noise_pred = self.unet(
                         latent_model_input,
                         t,
@@ -1083,19 +1049,19 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
             image = latents
             has_nsfw_concept = None
         elif output_type == "pil":
-            # 8. Post-processing
+            # 9. Post-processing
             image = self.decode_latents(latents)
 
-            # 9. Run safety checker
+            # 10. Run safety checker
             image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
 
-            # 10. Convert to PIL
+            # 11. Convert to PIL
             image = self.numpy_to_pil(image)
         else:
-            # 8. Post-processing
+            # 9. Post-processing
             image = self.decode_latents(latents)
 
-            # 9. Run safety checker
+            # 10. Run safety checker, LOL
             has_nsfw_concept = False
 
         # Offload last model to CPU
@@ -1106,3 +1072,5 @@ class StableDiffusionControlNetImg2ImgPipeline(DiffusionPipeline):
             return image, has_nsfw_concept
 
         return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsfw_concept)
+
+

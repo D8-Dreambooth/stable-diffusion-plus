@@ -38,7 +38,6 @@ def list_postprocessors():
     for importer, modname, ispkg in pkgutil.iter_modules(package.__path__):
         module = importlib.import_module(f'{package.__name__}.{modname}')
         for name, obj in inspect.getmembers(module):
-            logger.debug(f"Checking {name}")
             if inspect.isclass(obj) and issubclass(obj, BaseUpscaler) and obj != BaseUpscaler:
                 postprocessors.append(name)
 
