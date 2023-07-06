@@ -300,12 +300,17 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             # Move the latents tensor to CPU if it's on a different device
             converted = None
             try:
-                latent = pipeline.decode_latents(latents)
-                if torch.is_tensor(latent):  # Check if it's a PyTorch tensor
-                    latent = latent.squeeze().permute(1, 2, 0).cpu().numpy()
-                    latent = (latent.max() - latent) * 255  # Adjust the range of values
-                    latent = latent.round().clip(0, 255).astype("uint8")
-                converted = pipeline.numpy_to_pil(latent)
+                if not hasattr(pipeline, "decode_latents)"):
+                    decoded = pipeline.vae.decode(latents / pipeline.vae.config.scaling_factor, return_dict=False)[0]
+                    do_denormalize = [True] * decoded.shape[0]
+                    converted = pipeline.image_processor.postprocess(decoded, output_type="pil", do_denormalize=do_denormalize)
+                else:
+                    latent = pipeline.decode_latents(latents)
+                    if torch.is_tensor(latent):  # Check if it's a PyTorch tensor
+                        latent = latent.squeeze().permute(1, 2, 0).cpu().numpy()
+                        latent = (latent.max() - latent) * 255  # Adjust the range of values
+                        latent = latent.round().clip(0, 255).astype("uint8")
+                    converted = pipeline.numpy_to_pil(latent)
             except Exception as e:
                 logger.debug(f"Unable to convert latents to image: {e}")
                 traceback.print_exc()
