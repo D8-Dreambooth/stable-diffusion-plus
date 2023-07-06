@@ -103,9 +103,8 @@ function showError(message) {
     $('#errorModal').modal('show');
 }
 
-function getElementValue(id, key = null) {
+function getElementValue(id, getMask = false) {
     let element = document.getElementById(id);
-    console.log("looking for element: ", id);
     if (element.classList.contains("bootstrapSlider")) {
         return $("#" + element.id).BootstrapSlider().value;
     }
@@ -118,10 +117,11 @@ function getElementValue(id, key = null) {
     }
 
     if (element.classList.contains("imageEditor")) {
-        if (key === "mask") {
+        if (getMask) {
             return $("#" + element.id).imageEditor({}).getMask();
+        } else {
+            return $("#" + element.id).imageEditor({}).getDropped();
         }
-        return $("#" + element.id).imageEditor({}).getDropped();
     }
     let value;
     switch (element.type) {
@@ -137,6 +137,53 @@ function getElementValue(id, key = null) {
     }
     return value;
 }
+
+function showBreakpoints() {
+    // Check if a resize listener already exists
+    if (!window.resizeListenerAdded) {
+        window.resizeListenerAdded = true;
+
+        window.addEventListener('resize', updateBreakpoint);
+
+        // Create a div for displaying the breakpoint
+        var breakpointDiv = document.createElement('div');
+        breakpointDiv.style.position = 'fixed';
+        breakpointDiv.style.bottom = '30px';
+        breakpointDiv.style.right = '30px';
+        breakpointDiv.style.backgroundColor = '#ff0000';
+        breakpointDiv.style.color = '#ffffff';
+        breakpointDiv.style.padding = '10px';
+        breakpointDiv.id = 'breakpointDiv';
+        document.body.appendChild(breakpointDiv);
+    }
+
+    // Update the breakpoint on resize
+    function updateBreakpoint() {
+        var breakpointDiv = document.getElementById('breakpointDiv');
+        var width = window.innerWidth;
+        var breakpoint = '';
+
+        if (width < 576) {
+            breakpoint = 'X-Small: None';
+        } else if (width >= 576 && width < 768) {
+            breakpoint = 'Small: sm';
+        } else if (width >= 768 && width < 992) {
+            breakpoint = 'Medium: md';
+        } else if (width >= 992 && width < 1200) {
+            breakpoint = 'Large: lg';
+        } else if (width >= 1200 && width < 1400) {
+            breakpoint = 'Extra large: xl';
+        } else if (width >= 1400) {
+            breakpoint = 'Extra extra large: xxl';
+        }
+
+        breakpointDiv.innerText = breakpoint;
+    }
+
+    // Call the function once to set initial breakpoint
+    updateBreakpoint();
+}
+
 
 function createElement(elementData, id_prefix = "", additional_classes = []) {
     if (id_prefix.indexOf("_") === -1) {
@@ -433,7 +480,7 @@ function showPane(module_id) {
     let ht = document.getElementById("header_toggle");
     let activePane = document.getElementById(module_id);
     let activeLink = document.getElementById(module_id + "_link");
-    let sectionTitle = document.getElementById("sectionTitle");
+    let sectionTitle = document.getElementById("navbarDropdown");
     for (let i = 0; i < panes.length; i++) {
         let pane = panes[i];
         let link = links[i];
@@ -449,7 +496,14 @@ function showPane(module_id) {
         console.log("Module ids: ", moduleIds);
         activePane.classList.add("activePane");
         activeLink.classList.add("activeLink");
-        sectionTitle.innerHTML = moduleIds[module_id];
+        let activeSpan = activeLink.querySelector("i");
+        console.log("Active span: ", activeSpan);
+        sectionTitle.innerHTML =  moduleIds[module_id];
+        if (activeSpan) {
+            // make a copy of activespan and prepend it to sectionTitle
+            let newSpan = activeSpan.cloneNode(true);
+            sectionTitle.prepend(newSpan);
+        }
     }
 }
 

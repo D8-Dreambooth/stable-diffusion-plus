@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import json
 import logging
 import os.path
 import re
@@ -9,12 +10,13 @@ import traceback
 import tomesd
 import torch
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
-    AutoencoderKL, StableDiffusionPipeline
+    AutoencoderKL, StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline
 from diffusers.models.attention_processor import AttnProcessor2_0
 from safetensors.torch import load_file
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data
+from core.pipelines import StableDiffusionTxt2VideoPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +34,13 @@ def initialize_pipeline(pipeline, loras, weight: float = 0.9):
     except AttributeError:
         logger.debug("Unable to enable memory efficient attention.")
 
-    if issubclass(pipeline.__class__, StableDiffusionPipeline):
+    if issubclass(pipeline.__class__, StableDiffusionPipeline) and not isinstance(pipeline, StableDiffusionTxt2VideoPipeline):
         try:
+            logger.debug("Applying tomesd")
             tomesd.apply_patch(pipeline, ratio=0.5)
         except:
             logger.debug("Unable to apply tomesd patch.")
         # If our pipeline inherits from StableDiffusionPipeline, we need to set the scheduler to UniPCMultistepScheduler
-        try:
-            logger.debug("Setting scheduler to UniPCMultistepScheduler.")
-            pipeline.scheduler = UniPCMultistepScheduler.from_config(pipeline.scheduler.config)
-            pipeline.scheduler.config["solver_type"] = "bh2"
-        except:
-            logger.debug("Unable to initialize scheduler.")
 
     if len(loras):
         for lora in loras:
@@ -67,13 +64,8 @@ def initialize_controlnets(model_data):
     controlnet_dir = os.path.join(sp, "controlnet")
     for controlnet_name in controlnet_type:
         for mkey, md in controlnet_data.items():
-            if mkey == controlnet_name:
+            if mkey.lower() == controlnet_name:
                 controlnet_url = md["model_url"]
-                local_file = os.path.join(controlnet_dir, os.path.splitext(os.path.basename(md["model_file"]))[0])
-                if os.path.exists(local_file):
-                    logger.debug(f"Using local controlnet model: {local_file}")
-                    controlnet_url = local_file
-
                 controlnet = ControlNetModel.from_pretrained(controlnet_url, cache_dir=controlnet_dir,
                                                              torch_dtype=torch.float16)
                 nets.append(controlnet)
@@ -92,15 +84,16 @@ def load_diffusers(model_data: ModelData, existing_pipeline: DiffusionPipeline =
     else:
         try:
             nets = initialize_controlnets(model_data)
+            dtype = torch.float16
             pipe_args = {
-                "torch_dtype": torch.float16
+                "torch_dtype": dtype
             }
             if "Onnx" in pipeline_cls:
                 pipe_args["export"] = True
             if "vae" in model_data.data:
                 pipe_args["vae"] = AutoencoderKL.from_pretrained(
                     model_data.data["vae"],
-                    torch_dtype=torch.float16
+                    torch_dtype=dtype
                 )
             if "Legacy" in pipeline_cls:
                 pipe_args["safety_checker"] = None
@@ -115,16 +108,32 @@ def load_diffusers(model_data: ModelData, existing_pipeline: DiffusionPipeline =
                 for key, value in existing_components.items():
                     pipe_args[key] = value
 
-            logger.debug(f"Loading pipeline: {pipeline_cls} from {model_path}")
+            index_file = os.path.join(model_path, "model_index.json")
+            index_cls = None
+            if os.path.exists(index_file):
+                with open(index_file, "r") as f:
+                    index_data = json.load(f)
+                index_cls = index_data.get("_class_name", None)
+            if index_cls == "StableDiffusionXLPipeline" and pipeline_cls == "StableDiffusionImg2ImgPipeline":
+                pipeline_cls = "StableDiffusionXLImg2ImgPipeline"
             # Instantiate pipeline using pipeline_cls string
-            if pipeline_cls == "DiffusionPipeline" or pipeline_cls is None or pipeline_cls == "auto":
-                src_pipe = DiffusionPipeline.from_pretrained(model_path, **pipe_args)
+            if pipeline_cls == "DiffusionPipeline" or pipeline_cls is None or pipeline_cls == "auto" or pipeline_cls == "Default":
+                pipeline_cls = index_cls if index_cls is not None else "StableDiffusionPipeline"
+
+            logger.debug(f"Loading pipeline: {pipeline_cls} from {model_path}")
+            if pipeline_cls == "StableDiffusionXLPipeline":
+                pipe_obj = StableDiffusionXLPipeline
+            elif pipeline_cls == "StableDiffusionXLImg2ImgPipeline":
+                pipe_obj = StableDiffusionXLImg2ImgPipeline
             else:
                 pipe_obj = get_pipeline_cls(pipeline_cls)
-                src_pipe = pipe_obj.from_pretrained(model_path, **pipe_args)
+            if pipe_obj is None:
+                logger.warning(f"Unable to load pipeline: {pipeline_cls}")
+                return None
 
-            pipeline = initialize_pipeline(src_pipe, loras=model_data.data.get("loras", []),
-                                           weight=model_data.data.get("lora_weight", 0.9))
+            src_pipe = pipe_obj.from_pretrained(model_path, **pipe_args)
+
+            pipeline = initialize_pipeline(src_pipe, loras=model_data.data.get("loras", []), weight=model_data.data.get("lora_weight", 0.9))
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()
@@ -133,12 +142,19 @@ def load_diffusers(model_data: ModelData, existing_pipeline: DiffusionPipeline =
 
 def get_pipeline_cls(class_name):
     subclasses_params = get_pipeline_parameters()
-    if class_name == "Default":
-        return DiffusionPipeline
+    if class_name == "Default" or class_name == "auto" or class_name is None or class_name == "StableDiffusionPipeline":
+        return StableDiffusionPipeline
     for cls, params in subclasses_params.items():
         if cls == class_name:
             cls_name = params["cls"]
-            modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
+            modules = [
+                'core.pipelines',
+                'diffusers.pipelines.stable_diffusion',
+                "diffusers.pipelines.controlnet",
+                "diffusers.pipelines.text_to_video_synthesis",
+                "diffusers.pipelines",
+                "diffusers.pipelines.stable_diffusion_xl"
+            ]
             for module in modules:
                 try:
                     mod = importlib.import_module(module)
@@ -169,12 +185,12 @@ def get_pipeline_parameters(ignore_keys=None, return_keys=False):
         "Upscale",
         "UnCLIP"
     ]
-    filter_pipes = ["StableDiffusionInpaintPipeline", "StableDiffusionLongPromptWeightingPipeline"]
+    filter_pipes = ["StableDiffusionLongPromptWeightingPipeline"]
     if ignore_keys is None:
         ignore_keys = ["num_images_per_prompt", "num_inference_steps", "output_type", "return_dict", "eta", "self",
                        "kwargs",
-                       "callback", "callback_steps"]
-    modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet"]
+                       "callback", "callback_steps", "num_videos_per_prompt"]
+    modules = ['core.pipelines', 'diffusers.pipelines.stable_diffusion', "diffusers.pipelines.controlnet", "diffusers.pipelines.text_to_video_synthesis"]
     subclasses_params = {}
     shared_keys = set()
     for module in modules:
@@ -200,14 +216,22 @@ def get_pipeline_parameters(ignore_keys=None, return_keys=False):
                         param_value = param.default if param.default is not param.empty else None
                         param_doc = re.search(f'{param_name} \((.*?)\):([^\(]*)(\([^\)]*\))?', doc)
                         description = param_doc.group(2).strip() if param_doc else None
-                        min_max = re.search('Must be between (\d+(?:\.\d+)?), (\d+(?:\.\d+)?)',
-                                            description) if description else None
-                        min_value = float(min_max.group(1)) if min_max else 0
-                        max_value = float(min_max.group(2)) if min_max else 1
                         # Set type param to type of default value
                         param_type = "unknown"
+
                         if param_value is not None:
-                            param_type = type(param_value).__name__
+                            if isinstance(param_value, int):
+                                param_type = 'int'
+                            elif isinstance(param_value, float):
+                                param_type = 'float'
+                            elif isinstance(param_value, str):
+                                param_type = 'str'
+                                param_value = 1
+                                min_value = 1
+                                max_value = 1
+                            else:
+                                param_type = type(param_value).__name__
+
                         if param_name in ignore_keys:
                             continue
                         if "image" in param_name:
@@ -230,11 +254,25 @@ def get_pipeline_parameters(ignore_keys=None, return_keys=False):
                             "key": param_name
                         }
                         if param_type == "float" or param_type == "int":
-                            if param_type == "int":
-                                min_value = int(min_value)
-                                max_value = int(max_value)
+                            min_max = re.search('Must be between (\d+(?:\.\d+)?), (\d+(?:\.\d+)?)',
+                                                description) if description else None
+                            if min_max is not None:
+                                if param_type == "int":
+                                    min_value = int(min_max.group(1))
+                                    max_value = int(min_max.group(2))
+                                else:
+                                    min_value = float(min_max.group(1))
+                                    max_value = float(min_max.group(2))
+                            else:
+                                if param_type == "int":
+                                    min_value = 0
+                                    max_value = 1000
+                                else:
+                                    min_value = 0.0
+                                    max_value = 1.0
                             param_data["min"] = min_value
                             param_data["max"] = max_value
+                            param_data["step"] = 1 if param_type == "int" else 0.01
                         subclasses_params[name][param_name] = param_data
 
                     if not shared_keys:
@@ -269,10 +307,10 @@ def get_pipeline_parameters(ignore_keys=None, return_keys=False):
     return params
 
 
-def apply_lora(pipeline, checkpoint_path, alpha=0.75):
+def apply_lora(pipeline, checkpoint_path, weight=0.75):
     lora_prefix_unet = "lora_unet"
     lora_prefix_text_encoder = "lora_te"
-    # load LoRA weight from .safetensors
+    dtype = torch.float32
     state_dict = load_file(checkpoint_path)
 
     visited = []
@@ -307,33 +345,23 @@ def apply_lora(pipeline, checkpoint_path, alpha=0.75):
                     else:
                         temp_name = layer_infos.pop(0)
 
-            pair_keys = []
-            if "lora_down" in key:
-                pair_keys.append(key.replace("lora_down", "lora_up"))
-                pair_keys.append(key)
+            layer_keys = [key.split(".", 1)[0] + v for v in [".lora_up.weight", ".lora_down.weight", ".alpha"]]
+
+            weight_up = state_dict[layer_keys[0]].to(dtype)
+            weight_down = state_dict[layer_keys[1]].to(dtype)
+            alpha = state_dict[layer_keys[2]]
+            alpha = alpha.item() / weight_up.shape[1] if alpha else 1.0
+
+            # update weights
+            if len(state_dict[layer_keys[0]].shape) == 4:
+                weight_up = weight_up.squeeze(3).squeeze(2)
+                weight_down = weight_down.squeeze(3).squeeze(2)
+                curr_layer.weight.data += weight * alpha * torch.mm(weight_up, weight_down).unsqueeze(2).unsqueeze(3)
             else:
-                pair_keys.append(key)
-                pair_keys.append(key.replace("lora_up", "lora_down"))
-
-            # update weight
-            if len(state_dict[pair_keys[0]].shape) == 4:
-                weight_up = state_dict[pair_keys[0]].to(torch.float32).reshape(state_dict[pair_keys[0]].shape[0], -1)
-                weight_down = state_dict[pair_keys[1]].to(torch.float32).transpose(-1, -2).reshape(
-                    state_dict[pair_keys[1]].shape[0], -1)
-
-                # Calculate the reshaping dimensions for the output tensor
-                out_channels, in_channels, kernel_height, kernel_width = curr_layer.weight.shape
-
-                updated_weight = torch.matmul(weight_up, weight_down).reshape(out_channels, in_channels, kernel_height,
-                                                                              kernel_width)
-                curr_layer.weight.data += alpha * updated_weight
-            else:
-                weight_up = state_dict[pair_keys[0]].to(torch.float32)
-                weight_down = state_dict[pair_keys[1]].to(torch.float32)
-                curr_layer.weight.data += alpha * torch.matmul(weight_up, weight_down)
+                curr_layer.weight.data += weight * alpha * torch.mm(weight_up, weight_down)
 
             # update visited list
-            for item in pair_keys:
+            for item in layer_keys:
                 visited.append(item)
 
         except Exception as e:

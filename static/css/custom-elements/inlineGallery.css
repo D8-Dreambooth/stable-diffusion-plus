@@ -10,8 +10,8 @@
 
 @media (max-width: 767.98px) {
     .gallery-container {
-        max-height: 30vh;
-        height: 30vh;
+        max-height: 58vh;
+        height: 58vh;
     }
 }
 @media screen and (min-width: 768px) {
@@ -55,6 +55,7 @@
     max-width: 25%;
     max-height: 25%;
     opacity: 0.5;
+    z-index: 22;
     position: absolute;
     bottom: var(--inline-button-distance);
     right: var(--inline-button-distance);
@@ -86,7 +87,8 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: 10px;
-    padding: 10px;
+    padding: 0 10px;
+    justify-content: center;
 }
 
 .thumbnail {
@@ -99,8 +101,24 @@
 }
 
 .caption-container {
+    position: absolute;
     padding: 10px;
+    bottom: 0;
+    z-index: 10;
+    background: #00000099;
+    display: none;
+    width: 100%;
 }
+
+.caption {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 
 .inlineButton {
     font-size: 24px;

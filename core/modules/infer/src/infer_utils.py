@@ -6,19 +6,26 @@ import importlib
 import inspect
 import logging
 import math
+import os
 import pkgutil
 import random
 import traceback
 from io import BytesIO
 
+import cv2
+import imageio
 import numpy as np
 import torch
+import torchvision
 from PIL import Image, ImageFilter, ImageDraw
 from compel import Compel
+from diffusers.utils import export_to_video
+from diffusers.utils.import_utils import is_opencv_available
 
 import core.helpers.upscalers
 from core.dataclasses.infer_settings import InferSettings
 from core.handlers.config import ConfigHandler
+from core.handlers.file import FileHandler
 from core.handlers.images import ImageHandler, scale_image
 from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data, preprocess_image
 from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
@@ -28,11 +35,31 @@ from core.handlers.websocket import SocketHandler
 from core.helpers.upscalers.base_upscaler import BaseUpscaler
 from core.helpers.upscalers.img2img_upscaler import Img2ImgUpscaler
 from core.modules.dreambooth.helpers.mytqdm import mytqdm
+from dreambooth.utils.image_utils import get_scheduler_class
 
 socket_handler = SocketHandler()
 logger = logging.getLogger(__name__)
 preview_steps = 5
 pipeline = None
+
+
+def create_video(frames, fps, path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    # Count the number of files in the directory
+    file_count = 0
+    for d, _, files in os.walk(path):
+        file_count += len(files)
+    path = os.path.join(path, f"video_{file_count}.mp4")
+    frames = [(r * 255).astype("uint8") for r in frames]
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    h, w, c = frames[0].shape
+    video_writer = cv2.VideoWriter(path, fourcc, fps=fps, frameSize=(w, h))
+    for i in range(len(frames)):
+        img = cv2.cvtColor(frames[i], cv2.COLOR_RGB2BGR)
+        video_writer.write(img)
+    return path
+
 
 
 async def start_inference(inference_settings: InferSettings, user, target: str = None):
@@ -41,6 +68,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     status_handler = StatusHandler(user_name=user, target=target)
     image_handler = ImageHandler(user_name=user)
     ch = ConfigHandler()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     max_res = int(ch.get_item_protected("max_resolution", "infer", 512))
 
     logger.debug(f"Starting inference with settings: {inference_settings}")
@@ -78,7 +106,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     # If we're using controlnet, set up images and preprocessing
     if "ControlNet" in pipeline_type and inference_settings.controlnet_type:
         for key, cd in controlnet_data.items():
-            if cd["name"] == inference_settings.controlnet_type:
+            if cd["name"].lower() == inference_settings.controlnet_type:
                 preprocess_src = cd["image_type"][0]
                 logger.debug(f"Using controlnet: {cd} and {preprocess_src}")
                 break
@@ -196,25 +224,33 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     logger.debug("Sent")
 
     pipeline = model_handler.load_model("diffusers", model_data)
+    pipe_scheduler = inference_settings.scheduler
+
+    # pipe_scheduler is a string, we need to load the class that corresponds to it
+    scheduler_cls = get_scheduler_class(pipe_scheduler)
+
+    pipeline.scheduler = scheduler_cls.from_config(pipeline.scheduler.config)
+    if pipe_scheduler == "UniPCMultistepScheduler":
+        logger.debug("Setting scheduler to UniPCMultistepScheduler")
+        pipeline.scheduler.config["solver_type"] = "bh2"
 
     if not pipeline:
         logger.warning("No model selected.")
         status_handler.update("status", "Unable to load inference pipeline.")
         return [], []
 
-    if ui_height > 768 or ui_width > 768:
-        try:
-            pipeline.vae.enable_tiling()
-        except Exception as e:
-            logger.warning(f"Unable to enable VAE tiling: {e}")
-            pass
+    # if ui_height > 768 or ui_width > 768:
+    #     try:
+    #         pipeline.vae.enable_tiling()
+    #     except Exception as e:
+    #         logger.warning(f"Unable to enable VAE tiling: {e}")
+    #         pass
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
     input_prompts = [val for val in input_prompts for _ in range(inference_settings.num_images)]
     negative_prompts = [val for val in negative_prompts for _ in range(inference_settings.num_images)]
 
     if len(control_images) and "ControlNet" in inference_settings.pipeline:
-        ui_height = 0
-        ui_width = 0
+        logger.debug("Definitely have control images.")
         control_images = [val for val in control_images for _ in range(inference_settings.num_images)]
 
     total_images = len(input_prompts)
@@ -317,6 +353,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 use_embeds = False
 
             if control_images and len(control_images) > 0:
+                logger.debug("Using control images.")
                 batch_control = control_images[:batch_size]
                 control_images = control_images[batch_size:]
                 used_controls.extend(batch_control)
@@ -330,7 +367,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 infer_seed = 21474836147 - infer_seed
             logger.debug("Using seed: %s", infer_seed)
             inference_settings.seed = infer_seed
-            generator = torch.Generator(device='cuda')
+            generator = torch.Generator(device=device)
             generator.manual_seed(infer_seed)
             # Set the generator to the same device as inference pipe
 
@@ -346,8 +383,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                           "negative_prompt": batch_negative,
                           "generator": generator}
                 if use_embeds:
-                    conditioning = compel_proc(embed_prompts)
-                    negative_conditioning = compel_proc(embed_negative_prompts)
+                    conditioning = compel_proc(embed_prompts).to(device)
+                    negative_conditioning = compel_proc(embed_negative_prompts).to(device)
                     [conditioning, negative_conditioning] = compel_proc.pad_conditioning_tensors_to_same_length(
                         [conditioning, negative_conditioning])
                     kwargs["prompt_embeds"] = conditioning
@@ -367,21 +404,20 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
                 if len(batch_control) and "ControlNet" in inference_settings.pipeline:
                     control_keys = ["controlnet_conditioning_image", "control_image", "image"]
-                    img_key = "image"
                     for key in control_keys:
                         if key in pipe_params:
                             logger.debug(f"Using {key} for control image")
-                            kwargs[img_key] = batch_control
+                            kwargs[key] = batch_control if isinstance(batch_control, list) else [batch_control]
                             if inference_settings.use_control_resolution and not inference_settings.use_input_resolution:
                                 ui_width, ui_height = batch_control[0].size
                             break
 
                 logger.debug(f"Mode: {inference_settings.pipeline}")
 
-                if "mask_image" in pipe_params and inference_settings.mask != "":
+                if "mask_image" in pipe_params and inference_settings.mask != "" and inference_settings.mask is not None:
                     mask_data = base64.b64decode(inference_settings.mask.split(",")[1])
                     mask_data = Image.open(BytesIO(mask_data))
-                    mask = process_mask(mask_data, inference_settings.invert_mask)
+                    mask = process_mask(mask_data, inference_settings.inpaint_masked)
                     mask = scale_image(mask, inference_settings.width, inference_settings.height,
                                        resize_mode=inference_settings.scale_mode)
                     for check in ["control_image", "controlnet_conditioning_image", "image"]:
@@ -396,13 +432,16 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     image_data = base64.b64decode(inference_settings.image.split(",")[1])
                     image = Image.open(BytesIO(image_data))
                     mask = None
-                    # if "mask_image" in kwargs:
-                    #     mask = kwargs["mask_image"]
-                    #     if isinstance(mask, list):
-                    #         mask = mask[0]
-                    # image, new_mask = fill_image(image, mask=mask, fill_mode="noise")
-                    # if mask is not None:
-                    #     kwargs["mask_image"] = new_mask if not isinstance(new_mask, list) else [new_mask]
+                    new_mask = None
+                    if "mask_image" in kwargs:
+                        mask = kwargs["mask_image"]
+                        if isinstance(mask, list):
+                            mask = mask[0]
+                    if "Inpaint" in inference_settings.pipeline or "Img2Img" in inference_settings.pipeline or "Image2Image" in inference_settings.pipeline:
+                        image, new_mask = fill_image(image, mask=mask, mask_padding=inference_settings.inpaint_mask_radius,
+                                                     fill_mode=inference_settings.inpaint_fill_mode)
+                    if mask is not None and new_mask is not None:
+                        kwargs["mask_image"] = new_mask if not isinstance(new_mask, list) else [new_mask]
                     if inference_settings.use_input_resolution and image is not None:
                         ui_width, ui_height = image.size
 
@@ -465,60 +504,70 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 logger.debug(f"KWARGS: {kwargs}")
 
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
+            if "Video" in inference_settings.pipeline:
+                output = create_video(s_image, 8, os.path.join(image_handler.user_dir, "outputs", "video"))
+                out_images.append(output)
+                out_prompts.append(batch_prompts[0])
+            else:
+                pbar.update(len(s_image))
+                paths = []
+                prompts = []
+                images = []
+                for i in range(len(s_image)):
+                    img = s_image[i]
+                    prompt = batch_prompts[i]
+                    infer_settings = inference_settings
+                    infer_settings.prompt = prompt
+                    if inference_settings.postprocess and processor is not None:
+                        with concurrent.futures.ThreadPoolExecutor() as pool:
+                            status_items = {
+                                "status": f"Postprocessing image {i + 1} of {len(s_image)}",
+                                "progress_2_current": inference_settings.steps
+                            }
+                            if not return_latents:
+                                status_items["latents"] = img
 
-            pbar.update(len(s_image))
-            paths = []
-            prompts = []
-            images = []
-            processed = []
-            for i in range(len(s_image)):
-                img = s_image[i]
-                prompt = batch_prompts[i]
-                infer_settings = inference_settings
-                infer_settings.prompt = prompt
-                if inference_settings.postprocess and processor is not None:
-                    with concurrent.futures.ThreadPoolExecutor() as pool:
-                        status_items = {
-                            "status": f"Postprocessing image {i + 1} of {len(s_image)}",
-                            "progress_2_current": inference_settings.steps
-                        }
-                        if not return_latents:
-                            status_items["latents"] = img
+                            status_handler.update(items=status_items, send=False)
+                            logger.debug("Upscaling")
+                            img = await loop.run_in_executor(pool,
+                                                             lambda: processor.upscale(img, infer_settings, update_progress,
+                                                                                       preview_steps))
+                            logger.debug(f"Image {i} type is: " + str(type(img)))
+                    logger.debug(f"Appending image {i}.")
+                    images.append(img)
+                    img_path = image_handler.save_image(img, "inference", inference_settings, False)
+                    paths.extend(img_path)
+                    prompts.append(prompt)
+                out_images.extend(images)
+                out_prompts.extend(prompts)
+                for name in ["image", "mask_image", "control_image"]:
+                    if name in kwargs:
+                        if isinstance(kwargs[name], list):
+                            out_images.extend(kwargs[name])
+                            out_prompts.extend([name] * len(kwargs[name]))
+                        else:
+                            out_images.append(kwargs[name])
+                            out_prompts.append(name)
 
-                        status_handler.update(items=status_items, send=False)
-                        logger.debug("Upscaling")
-                        img = await loop.run_in_executor(pool,
-                                                         lambda: processor.upscale(img, infer_settings, update_progress,
-                                                                                   preview_steps))
-                        logger.debug(f"Image {i} type is: " + str(type(img)))
-                logger.debug(f"Appending image {i}.")
-                images.append(img)
-                img_path = image_handler.save_image(img, "inference", inference_settings, False)
-                paths.extend(img_path)
-                prompts.append(prompt)
-            out_images.extend(images)
-            out_prompts.extend(prompts)
-            if "mask_image" in kwargs:
-                out_images.extend(kwargs["mask_image"])
-            current_total = len(out_images) + (1 * inference_settings.batch_size)
-            if current_total > total_images:
-                current_total = total_images
-            if status_handler.status.canceled:
-                logger.debug("Canceled!")
-                break
+                current_total = len(out_images) + (1 * inference_settings.batch_size)
+                if current_total > total_images:
+                    current_total = total_images
+                if status_handler.status.canceled:
+                    logger.debug("Canceled!")
+                    break
 
-            status_handler.update(items=
-            {
-                "status": f"Generating {current_total}/{total_images} images.",
-                "images": images,
-                "prompts": prompts,
-                "progress_1_total": total_images,
-                "progress_1_current": current_total,
-                "latents": s_image,
-                "progress_2_total": total_steps,
-                "progress_2_current": total_steps,
-            },
-                send=True)
+                status_handler.update(items=
+                {
+                    "status": f"Generating {current_total}/{total_images} images.",
+                    "images": images,
+                    "prompts": prompts,
+                    "progress_1_total": total_images,
+                    "progress_1_current": current_total,
+                    "latents": s_image,
+                    "progress_2_total": total_steps,
+                    "progress_2_current": total_steps,
+                },
+                    send=True)
 
     except Exception as e:
         logger.error(f"Exception inferring: {e}")
@@ -554,52 +603,72 @@ def list_postprocessors():
     return postprocessors
 
 
-def fill_image(image: Image, mask: Image = None, fill_mode: str = "noise"):
+def fill_image(image: Image, mask: Image = None, mask_padding: int = 10, fill_mode="original"):
     # Convert the image into an array
     image_array = np.array(image)
 
-    # Check if the image has an alpha channel
+    # Create an empty mask if one isn't provided
+    if mask is None:
+        mask_array = np.zeros_like(image_array[..., :3], dtype=np.uint8)
+    else:
+        mask_array = np.array(mask)
+
+    # If the image has an alpha channel, find the transparent pixels
     if image_array.shape[-1] == 4:
-        mask_array = image_array[..., 3] == 0
+        transparent_pixels = image_array[..., 3] == 0
+        # Save the transparent area to the mask_array and fill it with white pixels
+        mask_array[transparent_pixels] = 255
     else:
-        if mask is not None:
-            # Convert the mask into an array
-            mask_array = np.array(mask)
-        else:
-            logger.warning("Image does not have an alpha channel, fill mode will be ignored.")
-            return image.convert("RGB"), None
+        # Create empty transparent_pixels array
+        transparent_pixels = np.zeros_like(image_array[..., :3], dtype=np.uint8)
 
-    # Generate a new random mask
-    new_mask = random_mask(image_array.shape[0])  # Assuming image is square
+    # Pad the mask
+    kernel = np.ones((mask_padding, mask_padding), np.uint8)
+    mask_array = cv2.dilate(mask_array, kernel, iterations=2)
 
-    # Combine the new mask with the existing mask if provided
-    if mask is not None:
-        # If the existing mask is not binary, adjust this part accordingly
-        combined_mask = np.logical_or(mask_array, new_mask)
+    # Get blur radius by taking mask padding, ensuring it's an odd number, and if not, adding 1
+    blur_radius = mask_padding + (1 - mask_padding % 2)
+
+    # Apply a Gaussian blur to the mask
+    mask_array = cv2.GaussianBlur(mask_array, (blur_radius, blur_radius), 0)
+
+    # Define the mask as the white area of the mask_array
+    mask = mask_array == 255
+
+    if fill_mode == "original":
+        fill_array = np.zeros_like(image_array[..., :3], dtype=np.uint8)
+        fill_array[transparent_pixels] = 255
+        fill_mask = fill_array == 255
     else:
-        combined_mask = new_mask
+        fill_mask = mask
 
-    if fill_mode == "black":
-        # Set RGB values to 0 for masked pixels
-        image_array[combined_mask] = 0
-        image_array[..., 3][combined_mask] = 255
-    elif fill_mode == "random":
-        # Generate random RGB values for masked pixels
-        for i in range(3):
-            image_array[..., i][combined_mask] = np.random.randint(0, 256, np.sum(combined_mask))
-        image_array[..., 3][combined_mask] = 255
-    elif fill_mode == "noise":
-        # Generate Gaussian noise for masked pixels
-        for i in range(3):
-            image_array[..., i][combined_mask] = np.clip(np.random.normal(128, 50, np.sum(combined_mask)), 0,
-                                                         255).astype(np.uint8)
-        image_array[..., 3][combined_mask] = 255
-    else:
-        raise ValueError(f"Invalid fill_mode: {fill_mode}")
+    # Identify the rectangular area of the image that contains the mask
+    rows = np.any(fill_mask, axis=1).reshape(-1)
+    cols = np.any(fill_mask, axis=0).reshape(-1)
+    image_cropped = image_array[np.ix_(rows, cols)]
+
+    # Scale down the cropped image
+    image_cropped_scaled = cv2.resize(image_cropped, (image_cropped.shape[1] // 4, image_cropped.shape[0] // 4))
+
+    # Generate Gaussian noise
+    for i in range(3):
+        image_cropped_scaled[..., i] = np.clip(np.random.normal(128, 50, image_cropped_scaled.shape[:2]), 0,
+                                               255).astype(np.uint8)
+
+    # Scale up the noisy image
+    image_noisy = cv2.resize(image_cropped_scaled, (image_cropped.shape[1], image_cropped.shape[0]))
+
+    # Create a mask for the cropped image area
+    mask_cropped = fill_mask[np.ix_(rows, cols)]
+
+    # Apply the mask to the noisy image before merging it back into the original image
+    image_noisy = np.where(mask_cropped[..., np.newaxis], image_noisy, image_cropped)
+
+    # Merge the noisy image with the original image
+    image_array[np.ix_(rows, cols)] = image_noisy
 
     # Convert the arrays back to images and return them
-    return Image.fromarray(image_array).convert("RGB"), Image.fromarray(combined_mask * 255).convert(
-        "RGB") if mask is not None else None
+    return Image.fromarray(image_array).convert("RGB"), Image.fromarray(mask_array).convert("L")
 
 
 def random_brush(

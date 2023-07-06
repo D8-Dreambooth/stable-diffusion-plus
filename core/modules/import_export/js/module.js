@@ -80,8 +80,7 @@ function initImportExport() {
         modelInfo["save_as_half"] = document.getElementById("merge_save_half").checked;
         modelInfo["merge_type"] = document.getElementById("merge_type").value;
         modelInfo["merge_new_name"] = document.getElementById("merge_new_name").value;
-        let multiplier = parseFloat(document.getElementById("merge_multiplier").getAttribute("data-value"));
-        modelInfo["merge_multiplier"] = multiplier;
+        modelInfo["merge_multiplier"] = $("#merge_multiplier").BootstrapSlider().value;
         console.log("Merge message: ", modelInfo);
         sendMessage("merge_checkpoints", modelInfo, true, "io").then((res) => {
             console.log("All done!", res);

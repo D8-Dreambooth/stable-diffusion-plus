@@ -45,12 +45,12 @@
             <div class="header_toggle" id="header_toggle">
                 <i class='bx bx-chevron-right' id="header-toggle"></i>
             </div>
-            <div class="nav_logo">
-                <i class='bx bx-layer nav_logo-icon'></i>
-                <span class="nav_logo-name" id="menuTitle">{{title}}</span>
-            </div>
-            <div class="nav_list" id="navList">
-                <div class="extensions" id="extensionList"></div>
+            <div class="nav_list dropdown" id="navList">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                   aria-expanded="false">
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdown" id="moduleDropdown">
+                </ul>
             </div>
         </div>
         <a href="#" class="nav_link" id="signOutButton">
@@ -79,7 +79,10 @@
 </div>
 <!--Container Main end-->
 <div id="footer">
-    <div id="sectionTitle"></div>
+    <div class="nav_logo">
+        <i class='bx bx-layer nav_logo-icon'></i>
+        <span class="nav_logo-name" id="menuTitle">{{title}}</span>
+    </div>
 </div>
 
 <!--Modals-->
@@ -144,7 +147,11 @@
 {% for js in js_files %}
 <script src="{{ js }}?v={{ timestamp }}"></script>
 {% endfor %}
-<script type="application/json" id="locale-data">{{ locales | safe }}</script>
+<script type="application/json" id="locale-data">{{
+    locales
+    |
+    safe
+}}</script>
 {% endblock %}
 
 </body>

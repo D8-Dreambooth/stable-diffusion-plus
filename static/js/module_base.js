@@ -23,7 +23,7 @@ class Module {
         let module_icon = this.icon;
         let is_default = this.is_default;
         let index = this.index;
-        let navList = document.getElementById("navList");
+        let navList = document.getElementById("moduleDropdown");
         let existingModule = document.getElementById(module_id + "_link");
         let newModule;
 
@@ -47,7 +47,9 @@ class Module {
 
         newModule.appendChild(icon);
         newModule.appendChild(name);
-        navList.appendChild(newModule);
+        let newLi = document.createElement("li");
+        newLi.appendChild(newModule);
+        navList.appendChild(newLi);
         this.moduleLink = newModule;
         newModule.addEventListener("click", function () {
             showPane(module_id);

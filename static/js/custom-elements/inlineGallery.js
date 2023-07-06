@@ -69,7 +69,7 @@ class InlineGallery {
         if (this.options.showCaptions) {
             this.captionContainer = document.createElement('div');
             this.captionContainer.classList.add('caption-container');
-            this.parent.appendChild(this.captionContainer);
+            this.galleryContainer.appendChild(this.captionContainer);
         }
 
         if (this.options.showThumbnails) {
@@ -86,12 +86,13 @@ class InlineGallery {
         this.primaryContainer = document.createElement('div');
         this.primaryContainer.classList.add('primary-container');
         this.primaryContainer.setAttribute('id', `primary-container-${randomId}`);
-        this.galleryContainer.appendChild(this.primaryContainer);
+
 
         this.previewContainer = document.createElement('div');
         this.previewContainer.classList.add('preview-container');
         this.previewContainer.setAttribute('id', `preview-container-${randomId}`);
-        this.galleryContainer.appendChild(this.previewContainer);
+        this.primaryContainer.appendChild(this.previewContainer);
+        this.galleryContainer.appendChild(this.primaryContainer);
 
         // Click the fullscreen button on double-click of this.galleryContainer
         this.galleryContainer.addEventListener('dblclick', (event) => {
@@ -131,7 +132,6 @@ class InlineGallery {
 
 
         // Populate primary container, thumbnail container, and caption container
-
         data.forEach((imageData, index) => {
             // Primary image
             const primaryImage = document.createElement('img');
@@ -254,13 +254,13 @@ class InlineGallery {
 
 
         if (newIndex < primaryImages.length) primaryImages[newIndex].style.display = 'block';
-        if (this.options.showCaptions && newIndex < captions.length) captions[newIndex].style.display = 'block';
-        if (this.options.showThumbnails && newIndex < thumbnails.length) this._scrollToThumbnail(newIndex);
-        const downloadButton = this.primaryContainer.querySelector('.download-button');
-
-        if (this.options.allowDownload) {
-            //downloadButton.href = this.options.data[newIndex].src;
+        if (this.options.showCaptions && newIndex < captions.length) {
+            this.captionContainer.style.display = 'block';
+            captions[newIndex].style.display = 'block';
+        } else {
+            this.captionContainer.style.display = 'none';
         }
+        if (this.options.showThumbnails && newIndex < thumbnails.length) this._scrollToThumbnail(newIndex);
     };
 
     _scrollToThumbnail(index) {
@@ -376,7 +376,7 @@ class InlineGallery {
             primaryImage.style.display = 'none';
             this.primaryContainer.appendChild(primaryImage);
             let doSelect = false;
-            // If primary container has has no selected image and we have no latents, select this image
+            // If primary container has no selected image and we have no latents, select this image
             if (this.primaryContainer.querySelector('.primary-image.selected') === null && latent === null) {
                 primaryImage.classList.add('selected');
                 primaryImage.style.display = 'block';
@@ -392,6 +392,9 @@ class InlineGallery {
                 this.captionContainer.appendChild(caption);
                 if (doSelect) {
                     caption.style.display = 'block';
+                    this.captionContainer.style.display = 'block';
+                } else {
+                    this.captionContainer.style.display = 'none';
                 }
             }
 
@@ -406,7 +409,7 @@ class InlineGallery {
                     thumbnail.classList.add('selected');
                 }
                 // If more than one image, show thumbnails
-                if (this.thumbnailContainer.children.length > 1 || (this.thumbnailContainer.length > 0 && latentImage !== null)) {
+                if (this.thumbnailContainer.children.length > 1 || (this.thumbnailContainer.children.length > 0 && latentImage !== null)) {
                     this.thumbnailContainer.style.display = 'flex';
                 } else {
                     this.thumbnailContainer.style.display = 'none';

@@ -11,7 +11,7 @@ class ImageEditor {
     ) {
         // If container is a string, assume it is an id
         let containerId = container;
-        console.log("Setting origin to " + origin + " and scale mode to " + scaleMode + " for image editor.")
+        console.log("Setting origin to " + origin + " and scale mode to " + scaleMode + " for image editor.");
         this.imageOrigin = origin;
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
@@ -79,7 +79,9 @@ class ImageEditor {
         this.displayCanvas.addEventListener('mouseup', this.handleInputEnd.bind(this));
         this.displayCanvas.addEventListener('dragover', this.handleDragOver.bind(this));
         this.displayCanvas.addEventListener('drop', this.handleDrop.bind(this));
-
+        this.getDropped.bind(this);
+        this.getMask.bind(this);
+        this.addButton("upload", this.uploadImage.bind(this))
         this.addButton('share-alt', this.showShareMenu.bind(this));
         this.addButton('x', this.clear.bind(this));
         this.addButton('undo', this.undo.bind(this));
@@ -92,8 +94,27 @@ class ImageEditor {
         this.lastHeight = 0;
     }
 
+    uploadImage() {
+        console.log("Uploading image");
+        // Open a file picker filtered to images
+        let filePicker = document.createElement('input');
+        filePicker.type = 'file';
+        filePicker.accept = 'image/*';
+        filePicker.onchange = (e) => {
+            let file = e.target.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = (e) => {
+                    this.importImage(e.target.result);
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+        filePicker.click();
+
+    }
+
     redrawCanvases(targetCanvasWidth, targetCanvasHeight) {
-        console.log("Redrawing canvases", targetCanvasWidth, targetCanvasHeight);
         let showBounds = false;
         if (this.lastHeight !== targetCanvasHeight || this.lastWidth !== targetCanvasWidth) {
             showBounds = true;
@@ -209,8 +230,9 @@ class ImageEditor {
         this.isDrawing = false;
         const ctx = this.drawCanvas.getContext('2d');
         const state = ctx.getImageData(0, 0, this.drawCanvas.width, this.drawCanvas.height);
-        console.log("Drawing ended, pushing state.");
         this.undoStack.push({type: 'draw', imageData: state});
+        console.log("Drawing ended, pushing state.", this.undoStack);
+
         ctx.beginPath(); // Start a new path
     }
 
@@ -269,6 +291,7 @@ class ImageEditor {
             if (updateHistory) {
                 for (let i = this.undoStack.length - 1; i >= 0; i--) {
                     if (this.undoStack[i].type === 'draw') {
+                        console.log("Replacing draw element in undo stack");
                         this.undoStack[i].imageData = targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
                         break;
                     }
@@ -326,12 +349,14 @@ class ImageEditor {
                 let updated = false;
                 for (let i = this.undoStack.length - 1; i >= 0; i--) {
                     if (this.undoStack[i].type === 'drop') {
+                        console.log("Replacing drop element in undo stack");
                         this.undoStack[i].imageData = targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
                         updated = true;
                         break;
                     }
                 }
                 if (!updated) {
+                    console.log("Pushing new drop element to undo stack");
                     this.undoStack.push({
                         type: 'drop',
                         imageData: targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height)
@@ -437,6 +462,10 @@ class ImageEditor {
         }
     }
 
+    importImage(image) {
+        this.updateCanvases(image, false);
+    }
+
     showShareMenu(event) {
         event.preventDefault();
         const dropdownMenu = document.getElementById(this.containerId + "_dropdownMenu");
@@ -472,24 +501,43 @@ class ImageEditor {
         console.log("Possible targets: ", imageReceivers);
     }
 
-    importImage(image) {
-        this.updateCanvases(image, false);
-    }
-
 
     getDropped(pop = false) {
-        let dataUrl = this.dropCanvas.toDataURL('image/png');
-        if (pop) {
-            let win = window.open("", "_blank");
-            win.document.write("<img src='" + dataUrl + "'/>");
+        // get the number of "drop" items in this.undoStack
+        let dropCount = 0;
+        for (let i = 0; i < this.undoStack.length; i++) {
+            if (this.undoStack[i].type === "drop") {
+                dropCount++;
+            }
+        }
+        if (dropCount > 0) {
+            let dataUrl = this.dropCanvas.toDataURL('image/png');
+            if (pop) {
+                let win = window.open("", "_blank");
+                win.document.write("<img src='" + dataUrl + "'/>");
+            } else {
+                return dataUrl;
+            }
         } else {
-            return dataUrl;
+            console.log("No image to get", dropCount, this.undoStack);
+            return null;
         }
     }
 
 
     getMask() {
-        return this.drawCanvas.toDataURL('image/png');
+        let drawCount = 0;
+        for (let i = 0; i < this.undoStack.length; i++) {
+            if (this.undoStack[i].type === "draw") {
+                drawCount++;
+            }
+        }
+        if (drawCount > 1) {
+            return this.drawCanvas.toDataURL('image/png');
+        } else {
+            console.log("No mask to get", drawCount);
+            return null;
+        }
     }
 
     setDropped(dropped) {
@@ -515,6 +563,7 @@ class ImageEditor {
 
     // Clear the canvas
     clear() {
+        console.log("Clearing pushed...");
         this.undoStack = [];
         let drawCtx = this.drawCanvas.getContext('2d');
         let dropCtx = this.dropCanvas.getContext('2d');
@@ -646,7 +695,6 @@ class ImageEditor {
         const scaleFactor = this.displayCanvas.clientHeight / this.displayCanvas.height;
         this.scaleFactor = scaleFactor;
         const scaledBrushSize = brushSize * scaleFactor;
-        console.log("Scale factor is " + scaleFactor, this.containerId);
 
         const circleSize = scaledBrushSize;
         const viewBoxSize = scaledBrushSize * 2;

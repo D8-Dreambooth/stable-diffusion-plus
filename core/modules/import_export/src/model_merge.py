@@ -51,6 +51,7 @@ class ModelMerge:
         self.status_handler.start("Beginning model merge.")
 
         def fail(message):
+            logger.error(message)
             self.status_handler.update("status", message)
             self.status_handler.end(message)
             return {"name": "status", "message": message, }
@@ -209,13 +210,19 @@ class ModelMerge:
             src_dir = os.path.join(src_path, src_dir)
             if os.path.isdir(src_dir):
                 dest_dir = os.path.join(out_file, os.path.basename(src_dir))
-
+                if not os.path.exists(dest_dir):
+                    os.makedirs(dest_dir)
                 if "unet" in src_dir or "text_encoder" in src_dir:
                     tgt_file = os.path.join(src_dir, "config.json")
                     dest_file = os.path.join(dest_dir, "config.json")
-                    shutil.copy(tgt_file, dest_file)
+                    if not os.path.exists(dest_file):
+                        shutil.copy(tgt_file, dest_file)
                 else:
-                    shutil.copytree(src_dir, dest_dir)
+                    for filename in os.listdir(src_dir):
+                        file = os.path.join(src_dir, filename)
+                        dest_file = os.path.join(dest_dir, filename)
+                        if os.path.isfile(file) and not os.path.exists(dest_file):
+                            shutil.copy(file, dest_file)
         index = os.path.join(src_path, "model_index.json")
         if os.path.exists(index):
             shutil.copy(index, os.path.join(out_file, "model_index.json"))

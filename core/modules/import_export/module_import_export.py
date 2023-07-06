@@ -183,10 +183,13 @@ async def _import_model(data):
     model_dir = os.path.dirname(model_path)
     config_file = None
     # Check if a yaml exists in the model_dir
-    for file in os.listdir(model_dir):
-        if file.endswith(".yaml"):
-            config_file = os.path.join(model_dir, file)
-            break
+    config_check = None
+    if ".safetensors" in model_path:
+        config_check = model_path.replace(".safetensors", ".yaml")
+    elif ".ckpt" in model_path:
+        config_check = model_path.replace(".ckpt", ".yaml")
+    if config_check and os.path.exists(config_check):
+        config_file = config_check
     model_dest = mh.shared_path if save_shared else mh.user_path
     model_name = model_name.replace(".safetensors", "") if ".safetensors" in model_name else model_name.replace(".ckpt",
                                                                                                                 "")

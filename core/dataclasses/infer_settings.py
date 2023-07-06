@@ -8,6 +8,7 @@ import pkgutil
 import re
 
 import upscalers
+from diffusers.schedulers import KarrasDiffusionSchedulers
 
 import core.helpers.upscalers
 from io import BytesIO
@@ -44,6 +45,11 @@ def list_postprocessors():
     return postprocessors
 
 
+def list_schedulers():
+    scheduler_names = [scheduler.name for scheduler in KarrasDiffusionSchedulers]
+    return scheduler_names
+
+
 class InferSettings(BaseModel):
     pipelines = get_pipeline_parameters()
     processors = list_postprocessors()
@@ -59,30 +65,40 @@ class InferSettings(BaseModel):
     pipeline: str = Field("auto", description="Pipeline.", title="Pipeline", group="General", choices=pipe_keys,
                           advanced=True)
     num_images: int = Field(1, description="Number of images.", title="Num Images", ge=1, le=10000, group="General")
+    prompt: str = Field("", description="Prompt.", title="Prompt", group="General")
+    negative_prompt: str = Field("", description="Negative prompt.", title="Negative Prompt", group="General")
+
     width: int = Field(512, description="Width.", title="Width", ge=8, multiple_of=8, le=4096, group="General")
     height: int = Field(512, description="Height for inference.", title="Infer Height", ge=8, multiple_of=8, le=4096,
                         group="General")
-    prompt: str = Field("", description="Prompt.", title="Prompt", group="General")
-    negative_prompt: str = Field("", description="Negative prompt.", title="Negative Prompt", group="General")
-    batch_size: int = Field(1, description="Batch size.", title="Batch Size", gt=0, le=1000, group="General",
+    scheduler: str = Field("UniPCMultistepScheduler", description="Scheduler.", title="Scheduler", group="Advanced",
+                           choices=list_schedulers(), advanced=True)
+    batch_size: int = Field(1, description="Batch size.", title="Batch Size", gt=0, le=1000, group="Advanced",
                             advanced=True)
 
-    pipeline_settings: Dict = Field({}, description="Pipeline settings.", title="Pipeline Settings", group="General",
+    pipeline_settings: Dict = Field({}, description="Pipeline settings.", title="Pipeline Settings", group="Advanced",
                                     custom_type=None)
-    scale: float = Field(7.5, description="Scale.", title="Scale", ge=0.0, le=100.0, group="General", advanced=True)
-    seed: int = Field(-1, description="Seed.", title="Seed", ge=-1, group="General", advanced=True)
-    steps: int = Field(30, description="Steps.", title="Steps", ge=1, le=10000, group="General", advanced=True)
+    scale: float = Field(7.5, description="Scale.", title="Scale", ge=0.0, le=100.0, group="Advanced", advanced=True)
+    seed: int = Field(-1, description="Seed.", title="Seed", ge=-1, group="Advanced", advanced=True)
+    steps: int = Field(30, description="Steps.", title="Steps", ge=1, le=10000, group="Advanced", advanced=True)
 
-    image: Optional[str] = Field(None, description="Image for inference.", title="Infer Image", group="General",
+    image: Optional[str] = Field(None, description="Image for inference.", title="Infer Image", group="Inpaint",
                                  advanced=True)
-    mask: Optional[str] = Field(None, description="Mask for inference.", title="Infer Mask", group="General",
+    mask: Optional[str] = Field(None, description="Mask for inference.", title="Infer Mask", group="Inpaint",
                                 custom_type="none")
-    invert_mask: bool = Field(False, description="Invert mask for inference.", title="Invert Mask", group="General",
-                              advanced=True)
+    inpaint_masked: bool = Field(True,
+                                 description="Enable to inpaint the masked area. Disable to inpaint non-masked areas.",
+                                 title="Invert Mask", group="Inpaint",
+                                 advanced=True)
+    inpaint_mask_radius: int = Field(10, description="Radius of inpainting mask in pixels.",
+                                     title="Inpaint Mask Radius", ge=0,
+                                     le=100, group="Inpaint", advanced=True)
+    inpaint_fill_mode: str = Field("noise", description="Inpaint fill mode.", title="Inpaint Fill Mode",
+                                   group="Inpaint", choices=["noise", "original"], advanced=True)
     use_input_resolution: bool = Field(True, description="Use input resolution.", title="Use Input Resolution",
-                                       group="Model", advanced=True)
+                                       group="Inpaint", advanced=True)
     scale_mode: str = Field("scale", description="Scale mode for inference.", title="Infer Scale Mode",
-                            group="General", choices=["scale", "stretch", "contain"], advanced=True)
+                            group="Inpaint", choices=["scale", "stretch", "contain"], advanced=True)
 
     # Postprocessing
     postprocess: bool = Field(False, description="Postprocess.", title="Postprocess", group="Postprocessing",
@@ -109,7 +125,7 @@ class InferSettings(BaseModel):
     controlnet_image: Optional[str] = Field(None, description="ControlNet image.", title="ControlNet Image",
                                             group="ControlNet", custom_type="imageEditor")
     use_control_resolution: bool = Field(True, description="Use control resolution.", title="Use Control Resolution",
-                                         group="Model")
+                                         group="ControlNet")
     controlnet_scale_mode: str = Field("scale", description="ControlNet scale mode.", title="ControlNet Scale Mode",
                                        group="ControlNet", choices=["scale", "other_choice1", "other_choice2"])
 

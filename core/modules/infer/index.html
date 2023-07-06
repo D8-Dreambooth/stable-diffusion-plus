@@ -2,183 +2,270 @@
 <div class="module" id="moduleInfer">
     <!-- The rest of this can be whatever you want. Note that bootstrap grid is used, along with card shadow -->
     <div class="container-fluid">
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow">
-                    <div class="card-body row pb-1">
-                        <div class="col-12 col-lg-6">
-                            <div class="form-group">
-                                <!-- Auto-populated "model-select" element. See JS -->
-                                <div class="inferModelSelect inferDrop" id="infer_model" data-label="Model"
-                                     data-model_type="diffusers_dreambooth"></div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6">
-                            <div class="form-group">
-                                <!-- Auto-populated "model-select" element. See JS -->
-                                <div class="inferVaeSelect infer_advanced inferDrop" id="infer_vae"
-                                     data-label="VAE"
-                                     data-model_type="vae"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         <div class="row ioRow">
-            <div class="col-sm-12 col-md-6">
-                <div class="card shadow">
-                    <div class="card-header">
-                        Output
-                    </div>
-                    <div class="card-body" id="inferModelGroup">
-                        <!-- Gallery and progressGroup elements. -->
-                        <div class="progressGroup inferDrop" id="inferProgress"></div>
-                        <div class="image-container inline-gallery-container inferDrop" id="inferGallery"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-12 col-md-6">
+            <div class="order-last order-md-first col-sm-12 col-md-6 col-lg-5 col-xl-4">
                 <div class="card shadow" id="inferSettings">
                     <div class="card-header">
-                        Generation Parameters
+                        Settings
                     </div>
-                    <div class="card-body">
-                        <div class="form-group inferDrop col-12">
+                    <div class="card-body settingPanel">
+                        <div class="inferDrop col-12">
                             <div class="btn-group form-control">
                                 <button class="btn btn-primary" id="startInfer">Generate</button>
                                 <button class="btn btn-secondary btn-disabled cancelButton" id="stopInfer">Cancel
                                 </button>
                             </div>
                         </div>
-                        <div id="inferGeneralGroup" class="row">
-                            <div class="form-group infer_advanced col-12" id="inpaintContainer">
-                                <div class="form-group">
-                                    <label for="infer_image">Input Image:</label>
-                                    <div class="imageEditor" id="infer_image"></div>
-                                </div>
-                                <div class="form-group">
-                                    <div class="form-check form-switch">
-                                        <input type="checkbox" class="form-check-input"
-                                               id="infer_use_input_resolution" name="infer_use_input_resolution"
-                                               checked>
-                                        <label for="infer_use_input_resolution">Use Input resolution</label>
-                                    </div>
-                                </div>
-                                <div class="form-group" id="scale_mode_container">
-                                    <label for="infer_scale_mode">Scale Mode</label>
-                                    <select id="infer_scale_mode" name="infer_scale_mode" class="form-select">
-                                        <option value="scale" selected>Scale</option>
-                                        <option value="stretch">Stretch</option>
-                                        <option value="contain">Contain</option>
-                                    </select>
-                                    <label for="inpaint_origin">Origin</label>
-                                    <select id="inpaint_origin" name="inpaint_origin" class="form-select">
-                                        <option value="center" selected>Center</option>
-                                        <option value="top-left">Top Left</option>
-                                        <option value="top">Top</option>
-                                        <option value="top-right">Top Right</option>
-                                        <option value="left">Left</option>
-                                        <option value="right">Right</option>
-                                        <option value="bottom-left">Bottom Left</option>
-                                        <option value="bottom">Bottom</option>
-                                        <option value="bottom-right">Bottom Right</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group inferDrop col-12" id="infer_ratios"></div>
-                            <div class="form-group inferDrop col-12 col-lg-6" id="infer_width"></div>
-                            <div class="form-group inferDrop col-12 col-lg-6" id="infer_height"></div>
-                            <div class="form-group inferDrop col-12">
-                                <label for="infer_prompt">Prompt</label>
-                                <textarea class="form-control prompt-text" id="infer_prompt" rows="4"></textarea>
-                            </div>
-                            <div class="form-group inferDrop col-12">
-                                <label for="infer_negative_prompt">Negative Prompt</label>
-                                <textarea class="form-control prompt-text" id="infer_negative_prompt"
-                                          rows="4"></textarea>
-                            </div>
-                        </div>
-                        <div id="inferPostprocessingGroup" class="row"></div>
-                        <div class="form-group row" id="pipelineParams"></div>
 
-                        <div class="accordion mt-3 shadow infer_advanced" id="controlnetSettings">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="cnHeading">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                            data-bs-target="#cnCollapse" aria-expanded="true"
-                                            aria-controls="cnCollapse">
-                                        ControlNet
+                        <div class="inferDrop infer-advanced order-2">
+                            <div class="form-group">
+                                <h2 class="accordion-header" id="modelContainerHeading">
+                                    <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#inferModelContainer" aria-expanded="false"
+                                            aria-controls="inferModelContainer">
+                                        Model
                                     </button>
                                 </h2>
-                                <div id="cnCollapse" class="accordion-collapse collapse" aria-labelledby="cnHeading"
-                                     data-bs-parent="#controlnetSettings">
-                                    <div class="accordion-body" id="inferControlNetGroup">
-                                        <div class="form-group">
-                                            <label for="infer_controlnet_type">Controlnet Type:</label>
-                                            <select class="form-control" id="infer_controlnet_type"></select>
+                                <div id="inferModelContainer" class="accordion-collapse collapse"
+                                     aria-labelledby="inferModelContainerHeading">
+
+                                    <div id="inferModelGroup" class="row">
+                                        <div class="form-group inferDrop col-sm-12 col-md-6">
+                                            <!-- Auto-populated "model-select" element. See JS -->
+                                            <div class="inferModelSelect inferDrop" id="infer_model" data-label="Model"
+                                                 data-model_type="diffusers_dreambooth"></div>
                                         </div>
-                                        <div class="form-group">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox"
-                                                       id="infer_controlnet_preprocess"
-                                                       checked>
-                                                <label class="form-check-label" for="infer_controlnet_preprocess">Preprocess
-                                                    Input</label>
-                                            </div>
+                                        <div class="form-group inferDrop col-sm-12 col-md-6">
+                                            <!-- Auto-populated "model-select" element. See JS -->
+                                            <div class="inferVaeSelect infer_advanced inferDrop" id="infer_vae"
+                                                 data-label="VAE"
+                                                 data-model_type="vae"></div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="inferGeneralGroup" class="row">
+                                <div class="form-group inferDrop col-12">
+                                    <label for="infer_prompt">Prompt</label>
+                                    <textarea class="form-control prompt-text" id="infer_prompt" rows="4"></textarea>
+                                </div>
+                                <div class="form-group inferDrop col-12">
+                                    <label for="infer_negative_prompt">Negative Prompt</label>
+                                    <textarea class="form-control prompt-text" id="infer_negative_prompt"
+                                              rows="4"></textarea>
+                                </div>
+                                <div class="form-group inferDrop col-12" id="infer_ratios"></div>
+                                <div class="form-group inferDrop col-sm-12 col-md-6" id="infer_width"></div>
+                                <div class="form-group inferDrop col-sm-12 col-md-6" id="infer_height"></div>
+                            </div>
+                            <div class="infer_advanced" id="inferInpaintCollapse">
+                                <h2 class="accordion-header" id="inpaintContainerHeading">
+                                    <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#inpaintContainer" aria-expanded="false"
+                                            aria-controls="inpaintContainer">
+                                        Input Image
+                                    </button>
+                                </h2>
+                                <div id="inpaintContainer" class="accordion-collapse collapse"
+                                     aria-labelledby="inpaintContainerHeading">
+                                    <div class="accordion-body row">
                                         <div class="form-group">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox"
-                                                       id="infer_controlnet_batch">
-                                                <label class="form-check-label" for="infer_controlnet_batch">Batch
-                                                    Input</label>
-                                            </div>
+                                            <div class="imageEditor" id="infer_image"></div>
                                         </div>
-                                        <div class="form-group controlnetSingle">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" class="form-check-input"
-                                                       id="infer_use_control_resolution"
-                                                       name="infer_use_control_resolution"
-                                                       checked>
-                                                <label for="infer_use_control_resolution">Use Control resolution</label>
+                                        <div id="inferInpaintGroup" class="row">
+                                            <div class="form-group infer_advanced col-sm-12 col-md-6">
+                                                <div class="form-check form-switch">
+                                                    <input type="checkbox" class="form-check-input"
+                                                           id="infer_use_input_resolution"
+                                                           name="infer_use_input_resolution"
+                                                           checked>
+                                                    <label for="infer_use_input_resolution">Use Input
+                                                        resolution</label>
+                                                </div>
                                             </div>
-                                            <div class="form-group">
-                                                <label for="infer_controlnet_scale_mode">Scale Mode</label>
-                                                <select id="infer_controlnet_scale_mode" name="controlnet_scale_mode"
+                                            <div class="form-group col-sm-12 col-md-6 scale_mode_container">
+                                                <label for="infer_scale_mode">Scale Mode</label>
+                                                <select id="infer_scale_mode" name="infer_scale_mode"
                                                         class="form-select">
                                                     <option value="scale" selected>Scale</option>
                                                     <option value="stretch">Stretch</option>
                                                     <option value="contain">Contain</option>
                                                 </select>
                                             </div>
-
-                                        </div>
-                                        <div class="form-group controlnetSingle">
-                                            <label for="infer_controlnet_image">Input Image:</label>
-                                            <div class="imageEditor" id="infer_controlnet_image"></div>
-                                        </div>
-                                        <div class="form-group controlnetBatch" style="display: none">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" class="form-check-input"
-                                                       id="infer_controlnet_batch_use_prompt"
-                                                       checked>
-                                                <label for="infer_controlnet_batch_use_prompt">Use prompt from input
-                                                    images</label>
+                                            <div class="form-group col-sm-12 col-md-6 scale_mode_container">
+                                                <label for="inpaint_origin">Origin</label>
+                                                <select id="inpaint_origin" name="inpaint_origin"
+                                                        class="form-select">
+                                                    <option value="center" selected>Center</option>
+                                                    <option value="top-left">Top Left</option>
+                                                    <option value="top">Top</option>
+                                                    <option value="top-right">Top Right</option>
+                                                    <option value="left">Left</option>
+                                                    <option value="right">Right</option>
+                                                    <option value="bottom-left">Bottom Left</option>
+                                                    <option value="bottom">Bottom</option>
+                                                    <option value="bottom-right">Bottom Right</option>
+                                                </select>
                                             </div>
                                         </div>
-                                        <div class="form-group controlnetBatch" style="display: none">
-                                            <div class="col-12" id="infer_controlnet_batch_dir"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="infer_advanced" id="inferPostCollapse">
+                                <h2 class="accordion-header" id="inferPostHeading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#inferPostContainer" aria-expanded="false"
+                                            aria-controls="inferPostContainer">
+                                        Post-Processing
+                                    </button>
+                                </h2>
+                                <div id="inferPostContainer" class="accordion-collapse collapse"
+                                     aria-labelledby="inferPostHeading">
+                                    <div id="inferPostprocessingGroup" class="row infer_advanced"></div>
+                                </div>
+                            </div>
+                            <div class="infer_advanced" id="inferAdvancedCollapse">
+                                <h2 class="accordion-header" id="inferAdvancedContainerHeading">
+                                    <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#inferAdvancedContainer" aria-expanded="false"
+                                            aria-controls="inferAdvancedContainer">
+                                        Advanced
+                                    </button>
+                                </h2>
+                                <div id="inferAdvancedContainer" class="accordion-collapse collapse">
+                                    <div id="inferAdvancedGroup" class="row infer_advanced"></div>
+                                    <div id="pipelineParams"></div>
+
+                                </div>
+                            </div>
+                            <div class="infer_advanced" id="controlnetSettings">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="cnHeading">
+                                        <button class="accordion-button collapsed" type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#cnCollapse" aria-expanded="true"
+                                                aria-controls="cnCollapse">
+                                            ControlNet
+                                        </button>
+                                    </h2>
+                                    <div id="cnCollapse" class="accordion-collapse collapse" aria-labelledby="cnHeading"
+                                         data-bs-parent="#controlnetSettings">
+                                        <div class="accordion-body row" id="inferControlNetGroup">
+                                            <div class="form-group">
+                                                <label for="infer_controlnet_type">Controlnet Type:</label>
+                                                <select class="form-control" id="infer_controlnet_type"></select>
+                                            </div>
+                                            <div class="form-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           id="infer_controlnet_preprocess"
+                                                           checked>
+                                                    <label class="form-check-label" for="infer_controlnet_preprocess">Preprocess
+                                                        Input</label>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           id="infer_controlnet_batch">
+                                                    <label class="form-check-label" for="infer_controlnet_batch">Batch
+                                                        Input</label>
+                                                </div>
+                                            </div>
+                                            <div class="form-group controlnetSingle">
+                                                <div class="form-check form-switch">
+                                                    <input type="checkbox" class="form-check-input"
+                                                           id="infer_use_control_resolution"
+                                                           name="infer_use_control_resolution"
+                                                           checked>
+                                                    <label for="infer_use_control_resolution">Use Control
+                                                        resolution</label>
+                                                </div>
+                                                <div class="form-group col-sm-12 col-md-6 controlnet_scale_mode_container">
+                                                    <label for="controlnet_scale_mode">Scale Mode</label>
+                                                    <select id="controlnet_scale_mode" name="infer_scale_mode"
+                                                            class="form-select">
+                                                        <option value="scale" selected>Scale</option>
+                                                        <option value="stretch">Stretch</option>
+                                                        <option value="contain">Contain</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group col-sm-12 col-md-6 controlnet_scale_mode_container">
+                                                    <label for="controlnet_origin">Origin</label>
+                                                    <select id="controlnet_origin" name="controlnet_origin"
+                                                            class="form-select">
+                                                        <option value="center" selected>Center</option>
+                                                        <option value="top-left">Top Left</option>
+                                                        <option value="top">Top</option>
+                                                        <option value="top-right">Top Right</option>
+                                                        <option value="left">Left</option>
+                                                        <option value="right">Right</option>
+                                                        <option value="bottom-left">Bottom Left</option>
+                                                        <option value="bottom">Bottom</option>
+                                                        <option value="bottom-right">Bottom Right</option>
+                                                    </select>
+                                                </div>
+
+                                            </div>
+                                            <div class="form-group controlnetSingle">
+                                                <label for="infer_controlnet_image">Input Image:</label>
+                                                <div class="imageEditor" id="infer_controlnet_image"></div>
+                                            </div>
+                                            <div class="form-group controlnetBatch" style="display: none">
+                                                <div class="form-check form-switch">
+                                                    <input type="checkbox" class="form-check-input"
+                                                           id="infer_controlnet_batch_use_prompt"
+                                                           checked>
+                                                    <label for="infer_controlnet_batch_use_prompt">Use prompt from input
+                                                        images</label>
+                                                </div>
+                                            </div>
+                                            <div class="form-group controlnetBatch" style="display: none">
+                                                <div class="col-12" id="infer_controlnet_batch_dir"></div>
+                                            </div>
+                                            <div class="form-group controlnetBatch" style="display: none">
+                                                <label for="infer_controlnet_batch_find">Find:</label>
+                                                <input type="text" class="form-control" id="infer_controlnet_batch_find"
+                                                       placeholder="Find">
+                                            </div>
+                                            <div class="form-group controlnetBatch" style="display: none">
+                                                <label for="infer_controlnet_batch_replace">Replace:</label>
+                                                <input type="text" class="form-control"
+                                                       id="infer_controlnet_batch_replace"
+                                                       placeholder="Replace">
+                                            </div>
                                         </div>
-                                        <div class="form-group controlnetBatch" style="display: none">
-                                            <label for="infer_controlnet_batch_find">Find:</label>
-                                            <input type="text" class="form-control" id="infer_controlnet_batch_find"
-                                                   placeholder="Find">
-                                        </div>
-                                        <div class="form-group controlnetBatch" style="display: none">
-                                            <label for="infer_controlnet_batch_replace">Replace:</label>
-                                            <input type="text" class="form-control" id="infer_controlnet_batch_replace"
-                                                   placeholder="Replace">
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="infer_advanced" id="inferLoraCollapse">
+                                <h2 class="accordion-header" id="loraHeading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#loraCollapse" aria-expanded="false"
+                                            aria-controls="loraCollapse">
+                                        Loras
+                                    </button>
+                                </h2>
+                                <div id="loraCollapse" class="accordion-collapse collapse" aria-labelledby="loraHeading"
+                                     data-bs-parent="#loraSettings">
+                                    <div class="accordion-body row" id="inferLoraGroup">
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <!-- Auto-populated "model-select" element. See JS -->
+                                                <div class="inferLoraModels" id="infer_loras"
+                                                     data-label="Lora Model Selection"
+                                                     data-model_type="loras" data-multiple="true"></div>
+                                            </div>
+                                            <div class="form-group">
+                                                <div class="bootstrapSlider" id="infer_lora_weight" data-min="0.1"
+                                                     data-max="1.0" data-step="0.01" data-value="0.75"
+                                                     data-label="Lora Weight"></div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -187,33 +274,16 @@
                         </div>
                     </div>
                 </div>
-                <div class="accordion mt-3 shadow infer_advanced" id="loraSettings">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="loraHeading">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#loraCollapse" aria-expanded="false" aria-controls="loraCollapse">
-                                Loras
-                            </button>
-                        </h2>
-                        <div id="loraCollapse" class="accordion-collapse collapse" aria-labelledby="loraHeading"
-                             data-bs-parent="#loraSettings">
-                            <div class="accordion-body" id="inferLoraGroup">
-                                <div class="col-12">
-                                    <div class="form-group">
-                                        <!-- Auto-populated "model-select" element. See JS -->
-                                        <div class="inferLoraModels" id="infer_loras"
-                                             data-label="Lora Model Selection"
-                                             data-model_type="loras" data-multiple="true"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <div class="bootstrapSlider" id="infer_lora_weight" data-min="0.1"
-                                             data-max="1.0" data-step="0.01" data-value="0.75"
-                                             data-label="Lora Weight"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
+            </div>
+            <div class="order-first order-md-last col-sm-12 col-md-6 col-lg-7 col-xl-8">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Output
+                    </div>
+                    <div class="card-body fullPanel">
+                        <!-- Gallery and progressGroup elements. -->
+                        <div class="progressGroup inferDrop" id="inferProgress"></div>
+                        <div class="image-container inline-gallery-container inferDrop" id="inferGallery"></div>
                     </div>
                 </div>
             </div>

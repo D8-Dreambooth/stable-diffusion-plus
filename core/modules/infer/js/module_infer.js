@@ -16,7 +16,7 @@ const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
 const advancedElements = $(".infer_advanced");
-const inpaintContainer = $("#inpaintContainer");
+const inpaintContainer = $("#inferInpaintCollapse");
 
 let inpaintImageEditor;
 
@@ -26,7 +26,7 @@ inferWidth.hide();
 inferHeight.hide();
 
 const inferModule = new Module(
-    "Inference",
+    "Generate",
     "moduleInfer",
     "images",
     true,
@@ -189,6 +189,7 @@ function inferInit() {
         let autoContainer = $("#inferSettingsContainer");
         let groupElements = {};
         for (let key in data) {
+            if (key === "mask" || key === "controlnet_mask") continue;
             let elemData = data[key];
             elemData["key"] = key;
 
@@ -216,13 +217,13 @@ function inferInit() {
                 // Get the form-group surrounding the element
                 let formGroup = elem.closest(".form-group");
                 groupElements[group] = formGroup[0];
-                console.log("Existing element for: ", uiKey, group);
             } else {
                 let element = createElement(elemData, "infer", ["inferParam", "inferDrop"]);
                 if (element !== null) {
-                    element.classList.add("col-12", "col-lg-6");
+                    element.classList.add("col-12", "col-md-6");
                     // If last element is null, append to auto container, otherwise insert after last element
                     if (lastElement === null) {
+                        console.log("Inserting "+uiKey+ " into: ", groupTarget);
                         groupTarget.prepend(element);
                     } else {
                         console.log("Inserting "+uiKey+ " after: ", lastElement);
@@ -247,6 +248,10 @@ function setListeners() {
         inpaintImageEditor.updateImageOrigin(this.value);
     });
 
+    $("#controlnet_origin").change(function () {
+        controlnetImageEditor.updateImageOrigin(this.value);
+    });
+
     $("#controlnetSettings").hide();
     $("#infer_pipeline").change(function () {
         console.log("Pipeline changed: ", this.value);
@@ -254,29 +259,36 @@ function setListeners() {
     });
 
     const inferUseControlResolution = $("#infer_use_control_resolution");
+    const controlnetScaleModeContainer = $(".controlnet_scale_mode_container");
     const controlnetScaleMode = $("#controlnet_scale_mode");
 
     inferUseControlResolution.change(function () {
         const isChecked = inferUseControlResolution.is(":checked");
         controlnetImageEditor.updateUseImageScale(isChecked);
         if (!isChecked) {
-            inpaintImageEditor.updateScaleMode(controlnetScaleMode.val());
-            controlnetScaleMode.show();
+            controlnetScaleModeContainer.show();
         } else {
-            controlnetScaleMode.hide();
+            controlnetScaleModeContainer.hide();
         }
     });
 
+    controlnetScaleMode.change(function () {
+        if (!inferUseControlResolution.is(":checked")) {
+            controlnetImageEditor.updateScaleMode(controlnetScaleMode.val());
+        }
+    });
+
+
+
     const inferUseInputResolution = $("#infer_use_input_resolution");
     const inferScaleMode = $("#infer_scale_mode");
-    const scaleModeContainer = $("#scale_mode_container");
+    const scaleModeContainer = $(".scale_mode_container");
 
     inferUseInputResolution.change(function () {
         const isChecked = inferUseInputResolution.is(":checked");
         inpaintImageEditor.updateUseImageScale(isChecked);
         if (!isChecked) {
             scaleModeContainer.show();
-            inpaintImageEditor.updateScaleMode(inferScaleMode.val());
         } else {
             scaleModeContainer.hide();
         }
@@ -288,11 +300,6 @@ function setListeners() {
         }
     });
 
-    controlnetScaleMode.change(function () {
-        if (!inferUseControlResolution.is(":checked")) {
-            controlnetImageEditor.updateScaleMode(controlnetScaleMode.val());
-        }
-    });
 
     $("#controlnet_type").change(function () {
         console.log("Controlnet type changed: ", this.value);
@@ -330,14 +337,19 @@ function refreshControlNets() {
 function updatePipelineSettings(pipelineName) {
     let pipelineParams = $("#pipelineParams");
     pipelineParams.empty();
+    if (pipelineName === "auto") pipelineName = "Default";
+    if (!pipelineData.hasOwnProperty(pipelineName)) {
+        console.log("Pipeline not found: ", pipelineName);
+        return;
+    }
     let pipeline = pipelineData[pipelineName];
 
     let keysToIgnore = ["height", "width", "image", "latents", "source_enbeds", "target_embeds", "DOCSTRING",
-            "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds"];
+            "cross_attention_kwargs", "prompt", "negative_prompt", "prompt_embeds", "negative_prompt_embeds", "mask_image", "controlnet_mask"];
         let keys = Object.keys(pipeline).filter(key => !keysToIgnore.includes(key));
 
     if (pipelineName !== "Default") {
-        console.log("Pipeline: ", pipeline, pipelineData);
+        console.log("Pipeline: ", pipeline, pipelineData, keys);
         // Enumerate keyvalues in pipeline
         if (pipeline.hasOwnProperty("control_image")) {
             $("#controlnetSettings").show();
@@ -548,6 +560,7 @@ function applyInferSettingsNew(decodedSettings) {
     console.log("Applying infer settings: ", decodedSettings);
     if ("pipeline" in decodedSettings && "pipeline_settings" in decodedSettings) {
         let pipeLine = decodedSettings["pipeline"];
+        if (pipeLine === "auto") pipeLine = "Default";
         let pipeSettings = decodedSettings["pipeline_settings"];
         delete decodedSettings["pipeline"];
         delete decodedSettings["pipeline_settings"];
@@ -691,23 +704,32 @@ function updateRatioButtons() {
 
 function getInferSettings() {
     let params = {};
+    console.log("Getting infer params: ", inferParams);
     for (let key in inferParams) {
         if (key === "pipelines" || key === "controlnets") continue;
-        let element = $("#infer_" + key);
+        let lookKey = key;
+
+        if (key === "mask" || key === "controlnet_mask") {
+            console.log("Replacing mask with image", key);
+            lookKey = key.replace("mask", "image");
+        }
+        let element = $("#infer_" + lookKey);
         if (element.length === 0) {
-            console.log("Could not find element(0) with id: ", key);
+            console.log("Could not find element(0) with id: ", "infer_" + lookKey);
         } else {
-            let lookKey = key;
-            if (key.indexOf("mask") !== -1 && key.indexOf("invert") === -1) {
-                lookKey = key.replace("mask", "image");
+            let elementValue;
+            if (key === "mask" || key === "controlnet_mask" || key === "image" || key === "controlnet_image") {
+                if (key === "mask") elementValue = inpaintImageEditor.getMask();
+                if (key === "controlnet_mask") elementValue = controlnetImageEditor.getMask();
+                if (key === "image") elementValue = inpaintImageEditor.getDropped();
+                if (key === "controlnet_image") elementValue = controlnetImageEditor.getDropped();
+                console.log("Setting image value: ", elementValue);
+            } else {
+                elementValue = getElementValue("infer_" + lookKey);
             }
-            let elementValue = getElementValue("infer_" + lookKey);
             if (elementValue !== null) {
                 params[key] = elementValue;
-            } else {
-                console.log("Could not find element with id: ", key);
             }
-
         }
     }
     // Find all elements who's IDs start with inferPipe_

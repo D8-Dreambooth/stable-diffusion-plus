@@ -966,6 +966,7 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
 
     @torch.no_grad()
     @replace_example_docstring(EXAMPLE_DOC_STRING)
+
     def __call__(
         self,
         prompt: Union[str, List[str]] = None,
@@ -1108,7 +1109,7 @@ class StableDiffusionControlNetInpaintPipeline(DiffusionPipeline, TextualInversi
             guess_mode (`bool`, *optional*, defaults to `False`):
                 In this mode, the ControlNet encoder will try best to recognize the content of the input image even if
                 you remove all prompts. The `guidance_scale` between 3.0 and 5.0 is recommended.
-
+        Examples:
         Returns:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] or `tuple`:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] if `return_dict` is True, otherwise a `tuple.

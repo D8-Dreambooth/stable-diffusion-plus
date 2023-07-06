@@ -16,6 +16,7 @@ function initTagger() {
         "showInfo": false,
         "multiselect": false,
         "dropdown": true,
+        "placeholder": "Input Directory",
         "label": "Select Directory"
     });
     tagProgress = new ProgressGroup(document.getElementById("tagProgressGroup"), {"id": "tagProgressGroup"});

@@ -14,8 +14,6 @@ class Img2ImgUpscaler(BaseUpscaler):
         self.requires_latents = False
         model_data.data["pipeline"] = "Img2Img"
         self.pipeline = load_diffusers(model_data)
-        self.pipeline.enable_xformers_memory_efficient_attention()
-        self.pipeline.enable_attention_slicing()
         self.pipeline.vae.enable_tiling()
         self.pipeline.to("cpu")
 
