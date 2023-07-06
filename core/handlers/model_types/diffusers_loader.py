@@ -16,7 +16,6 @@ from safetensors.torch import load_file
 
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data
-from core.pipelines import StableDiffusionTxt2VideoPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,8 @@ def initialize_pipeline(pipeline, loras, weight: float = 0.9):
     except AttributeError:
         logger.debug("Unable to enable memory efficient attention.")
 
-    if issubclass(pipeline.__class__, StableDiffusionPipeline) and not isinstance(pipeline, StableDiffusionTxt2VideoPipeline):
+    if issubclass(pipeline.__class__, StableDiffusionPipeline):
+        #and not isinstance(pipeline, StableDiffusionTxt2VideoPipeline):
         try:
             logger.debug("Applying tomesd")
             tomesd.apply_patch(pipeline, ratio=0.5)
