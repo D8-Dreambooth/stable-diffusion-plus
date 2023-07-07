@@ -154,7 +154,7 @@ def check_dreambooth(git_path, dreambooth_path):
     if not os.path.exists(dreambooth_path):
         logger.info("Cloning dreambooth repository...")
         # Clone dreambooth repository
-        branch = launch_settings.get("dreambooth_branch", "dev")
+        branch = launch_settings.get("dreambooth_branch", "TrainingOverhaul")
         clone_command = [git_path, "clone", "-b", branch,
                          "https://github.com/d8ahazard/sd_dreambooth_extension.git",
                          dreambooth_path]
