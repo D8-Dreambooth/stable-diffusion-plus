@@ -20,6 +20,7 @@ from pydantic import Field, BaseModel
 from core.dataclasses.model_data import ModelData
 from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
 from core.helpers.upscalers.base_upscaler import BaseUpscaler
+from core.modules.infer.src.prompt_magic import PromptHelper
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,19 @@ def list_upscalers():
         available.remove("SwinIR 4x")
         available.append("SwinIR_4x")
     return available
+
+
+def list_characters():
+    results = [""]
+    ph = PromptHelper()
+    if ph.llm is not None:
+        chars = ph.llm.list_characters()
+        logger.debug(f"Chars: {chars}")
+        print(f"Chars: {chars}")
+        results.extend(chars)
+    else:
+        logger.warning("Unable to load LLM.")
+    return results
 
 
 def list_postprocessors():
@@ -53,7 +67,6 @@ def list_schedulers():
 class InferSettings(BaseModel):
     pipelines = get_pipeline_parameters()
     processors = list_postprocessors()
-    pipe_keys = get_pipeline_parameters(None, True)
 
     # Models
     model: Dict = Field("None", description="Model data.", title="Model", group="Model",
@@ -62,7 +75,8 @@ class InferSettings(BaseModel):
                                 advanced=True)
 
     # Inference
-    pipeline: str = Field("auto", description="Pipeline.", title="Pipeline", group="General", choices=pipe_keys,
+    pipeline: str = Field("auto", description="Pipeline.", title="Pipeline", group="General",
+                          choices=get_pipeline_parameters(None, True),
                           advanced=True)
     num_images: int = Field(1, description="Number of images.", title="Num Images", ge=1, le=10000, group="General")
     prompt: str = Field("", description="Prompt.", title="Prompt", group="General")
@@ -78,12 +92,17 @@ class InferSettings(BaseModel):
 
     pipeline_settings: Dict = Field({}, description="Pipeline settings.", title="Pipeline Settings", group="Advanced",
                                     custom_type=None)
-    scale: float = Field(7.5, description="Scale.", title="Scale", ge=0.0, le=100.0, group="Advanced", advanced=True)
+    scale: float = Field(7.5, description="Scale.", title="Scale", ge=0.0, le=100.0, multiple_of=0.1, group="Advanced",
+                         advanced=True)
     seed: int = Field(-1, description="Seed.", title="Seed", ge=-1, group="Advanced", advanced=True)
     steps: int = Field(30, description="Steps.", title="Steps", ge=1, le=10000, group="Advanced", advanced=True)
 
     image: Optional[str] = Field(None, description="Image for inference.", title="Infer Image", group="Inpaint",
                                  advanced=True)
+    use_batch_image: Optional[bool] = Field(False, description="Use batch image.", title="Use Batch Image",
+                                             group="Inpaint", advanced=True)
+    batch_image_path: Optional[str] = Field(None, description="Batch image path.", title="Batch Image Path",
+                                            group="Inpaint", advanced=True, custom_type="fileBrowser")
     mask: Optional[str] = Field(None, description="Mask for inference.", title="Infer Mask", group="Inpaint",
                                 custom_type="none")
     inpaint_masked: bool = Field(True,
@@ -99,7 +118,25 @@ class InferSettings(BaseModel):
                                        group="Inpaint", advanced=True)
     scale_mode: str = Field("scale", description="Scale mode for inference.", title="Infer Scale Mode",
                             group="Inpaint", choices=["scale", "stretch", "contain"], advanced=True)
-
+    # Preprocessing
+    # def improve_prompt(self, add: str = "", filter: str = "", prompt_per_image: int = 1,
+    # character: str = "default", max_tokens: int = 150):
+    preprocess: bool = Field(False, description="Preprocess.", title="Preprocess", group="Preprocessing",
+                             advanced=True,
+                             toggle_fields=["preprocess_add", "preprocess_filter", "preprocess_character"
+                                                                                   "preprocess_max_tokens",
+                                            "preprocess_prompts_per_image"])
+    preprocess_add: str = Field("", title="Add to Prompt", description="A string or comma-separated list of strings to add to the prompt.", group="Preprocessing",
+                                advanced=True)
+    preprocess_filter: str = Field("", title="Filter", description="A string or comma-separated list of strings to remove from the prompt.",
+                                   group="Preprocessing", advanced=True)
+    preprocess_character: str = Field("default", title="Character", description="The character/persona to use for prompt generation.",
+                                      group="Preprocessing", choices=list_characters(), advanced=True)
+    preprocess_max_tokens: int = Field(150, title="Max Tokens", description="The maximum number of tokens to add to the prompt.",
+                                       ge=10, le=1000, group="Preprocessing", advanced=True)
+    preprocess_prompts_per_image: int = Field(1, title="Prompts Per Image",
+                                              description="Number of 'modified' prompts to generate per image.", ge=1, le=100,
+                                              group="Preprocessing", advanced=True)
     # Postprocessing
     postprocess: bool = Field(False, description="Postprocess.", title="Postprocess", group="Postprocessing",
                               advanced=True,
@@ -133,7 +170,7 @@ class InferSettings(BaseModel):
                                            group="ControlNet", custom_type="none")
     controlnet_batch_dir: Optional[str] = Field(None, description="ControlNet batch directory.",
                                                 title="ControlNet Batch Directory", group="ControlNet",
-                                                custom_type="fileBrowser'")
+                                                custom_type="fileBrowser")
     controlnet_batch_find: str = Field("", description="ControlNet batch find.", title="ControlNet Batch Find",
                                        group="ControlNet")
     controlnet_batch_replace: str = Field("", description="ControlNet batch replace.", title="ControlNet Batch Replace",
@@ -312,3 +349,18 @@ class InferSettings(BaseModel):
             tc_fields[f] = field_dict
         tc_fields['keys'] = keys
         return tc_fields
+
+    def as_dict(self):
+        ignore_keys = ["pipelines", "processors", "pipe_keys"]
+        out_dict = {}
+        for k, v in self.__dict__.items():
+            try:
+                if "image" in k or k in ignore_keys:
+                    continue
+                if k == "model":
+                    v = v.__dict__
+                val = json.dumps(v)
+                out_dict[k] = val
+            except TypeError:
+                pass
+        return out_dict

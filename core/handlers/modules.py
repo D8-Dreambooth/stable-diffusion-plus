@@ -86,7 +86,7 @@ class ModuleHandler:
                                 self.active_modules[module_name] = module_obj
 
                         except Exception as e:
-                            logger.debug(f"Failed to initialize module '{module_name}': {e}")
+                            logger.debug(f"Failed to initialize module '{module_name}': {e} ({module_file})")
                             traceback.print_exc()
                 if added:
                     self.loaded_modules.append(mod_dir)

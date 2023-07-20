@@ -10,11 +10,13 @@ let loraModelSelect;
 let pipelineData = {};
 let controlnetData, preprocessorData;
 let inferParams;
+let historyIndex;
 
 
 const ratioContainer = $("#infer_ratios");
 const inferWidth = $("#infer_width");
 const inferHeight = $("#infer_height");
+const inferSwap = $("#inferSwapDimensions");
 const advancedElements = $(".infer_advanced");
 const inpaintContainer = $("#inferInpaintCollapse");
 
@@ -137,6 +139,34 @@ function inferInit() {
         })
     });
 
+    inferSwap.click(function () {
+        let w = widthSlider.getValue();
+        let h = heightSlider.getValue();
+        widthSlider.setValue(h);
+        heightSlider.setValue(w);
+    });
+
+    $("#infer_history_previous").click(function () {
+        if (historyIndex === undefined) {
+            historyIndex = 0;
+        } else {
+            historyIndex--;
+        }
+        if (historyIndex < 0) {
+            historyIndex = 0;
+        }
+        fetchHistory();
+    });
+
+    $("#infer_history_next").click(function () {
+        if (historyIndex === undefined) {
+            historyIndex = 0;
+        } else {
+            historyIndex++;
+        }
+        fetchHistory();
+    });
+
     $(".inferDrop").each(function () {
         this.addEventListener("dragover", function (event) {
             event.preventDefault();
@@ -223,15 +253,13 @@ function inferInit() {
                     element.classList.add("col-12", "col-md-6");
                     // If last element is null, append to auto container, otherwise insert after last element
                     if (lastElement === null) {
-                        console.log("Inserting "+uiKey+ " into: ", groupTarget);
                         groupTarget.prepend(element);
                     } else {
-                        console.log("Inserting "+uiKey+ " after: ", lastElement);
                         lastElement.after(element);
                     }
                     groupElements[group] = element;
                 } else {
-                    console.error("Failed to create element for: ", uiKey);
+                    console.error("Failed to create element for parameter: ", uiKey);
                 }
             }
         }
@@ -241,6 +269,15 @@ function inferInit() {
     });
 
 
+}
+
+function fetchHistory() {
+    sendMessage("get_history", {"index": historyIndex, "module": "infer"}).then((data) => {
+        console.log("History: ", data);
+        if (data.hasOwnProperty("history")) {
+            applyInferSettingsNew(data["history"]);
+        }
+    });
 }
 
 function setListeners() {
@@ -548,7 +585,9 @@ async function startInference() {
         let promptEl = document.getElementById("infer_prompt");
         let negEl = document.getElementById("infer_negative_prompt");
         let inferSettings = getInferSettings();
-
+        if (inferSettings["model"] === null || inferSettings["model"] === undefined) {
+            return alert("Please select a model.");
+        }
         historyTracker.storeHistory(promptEl);
         historyTracker.storeHistory(negEl);
 
@@ -598,7 +637,6 @@ function applyInferSettingsNew(decodedSettings) {
 
     for (let key in decodedSettings) {
         let value = decodedSettings[key];
-        console.log("Checking key: ", key, " Value: ", value);
 
         if (key === "prompts" && value.length > 0) {
             key = "prompt";
@@ -612,7 +650,6 @@ function applyInferSettingsNew(decodedSettings) {
             value = false;
         }
         if (modelKeys.includes(key)) {
-            console.log("Key: ", key, " Value: ", value);
             if (key === "model") {
                 inferModelSelect.setValue(value);
             } else if (key === "loras") {
@@ -633,11 +670,14 @@ function applyInferSettingsNew(decodedSettings) {
 function setElementValue(id, value) {
     let inputElement = document.getElementById(id);
     if (inputElement === null) {
-        console.log("Could not find element with id: ", id);
         return;
     }
 
-    console.log("Setting element value: ", id, " to ", value);
+    if (value === null) {
+        return;
+    }
+
+    //console.log("Setting element value: ", id, " to ", value);
     if (inputElement.classList.contains("bootstrapSlider")) {
         let bs = $(inputElement).BootstrapSlider();
         bs.setValue(value);

@@ -3,13 +3,17 @@ class InlineGallery {
         this.parent = typeof parentSelector === "string" ? document.querySelector(parentSelector) : parentSelector;
         this.options = this._readOptions(options);
         this.currentIndex = 0;
-        this._initGallery();
+
         let selector = "";
         if (this.parent.hasAttribute("id")) {
             selector = "#" + this.parent.getAttribute("id");
+            this.containerId = this.parent.getAttribute("id");
+            console.log("Setting container id: ", this.containerId);
         } else {
             selector = "." + this.parent.getAttribute("class").split(" ").join(".");
+            this.containerId = this.parent.getAttribute("class").split(" ").join(".");
         }
+        this._initGallery();
         keyListener.register("ArrowLeft", selector, function () {
             this.updateIndex(-1);
         }.bind(this));
@@ -22,7 +26,7 @@ class InlineGallery {
     _initGallery() {
         this._createContainers();
         this._populateGallery();
-        this._addEventListeners();
+        this._toggleUiButtons();
     }
 
     updateIndex(index) {
@@ -76,6 +80,11 @@ class InlineGallery {
             this.thumbnailContainer = document.createElement('div');
             this.thumbnailContainer.classList.add('thumbnail-container');
             this.parent.appendChild(this.thumbnailContainer);
+        }
+        if (this.thumbnailContainer.children.length > 1) {
+            this.thumbnailContainer.style.display = 'flex';
+        } else {
+            this.thumbnailContainer.style.display = 'none';
         }
     }
 
@@ -145,6 +154,7 @@ class InlineGallery {
                 const caption = document.createElement('div');
                 caption.classList.add('caption');
                 caption.innerHTML = imageData.caption || '';
+                caption.title = caption.innerHTML;
                 caption.style.display = index === 0 ? 'block' : 'none';
                 this.captionContainer.appendChild(caption);
             }
@@ -162,14 +172,18 @@ class InlineGallery {
         // Add fullscreen button
         if (allowFullscreen) {
             const fullscreenButton = document.createElement('button');
-            fullscreenButton.classList.add('fullscreen-button', 'inlineButton');
+            fullscreenButton.classList.add('fullscreen-button', 'inlineButton', 'controlButton');
+            // Set button title
+            fullscreenButton.title = "Fullscreen";
             this.primaryContainer.appendChild(fullscreenButton);
         }
 
         // Add download button
         if (allowDownload) {
-            const downloadButton = document.createElement('div');
-            downloadButton.classList.add('download-button', 'inlineButton');
+            const downloadButton = document.createElement('button');
+            downloadButton.classList.add('download-button', 'inlineButton', 'controlButton');
+            // Set button title
+            downloadButton.title = "Download Image";
             this.primaryContainer.appendChild(downloadButton);
             downloadButton.addEventListener('click', () => {
                 const link = document.createElement('a');
@@ -179,6 +193,80 @@ class InlineGallery {
                 link.click();
             });
         }
+
+        // Share button
+        const galleryShareButton = document.createElement('button');
+        galleryShareButton.classList.add('gallery-share-button', 'inlineButton', 'controlButton');
+        const gDropdown = document.createElement('div');
+        // Set button title
+        galleryShareButton.title = "Send to...";
+        gDropdown.classList.add('dropdown-menu');
+        let gdId = this.containerId + "_dropdownMenu";
+        console.log("gdId: ", gdId);
+        gDropdown.id = gdId;
+        this.primaryContainer.appendChild(galleryShareButton);
+        this.primaryContainer.appendChild(gDropdown);
+        galleryShareButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            console.log("Clicked: ", this, this.containerId);
+            const dropdownMenu = document.getElementById(this.containerId + "_dropdownMenu");
+            if (dropdownMenu.classList.contains('show')) {
+                dropdownMenu.classList.remove('show');
+                return;
+            }
+            dropdownMenu.classList.add('show');
+            dropdownMenu.innerHTML = '';
+
+            const selectedDataUrl = this.primaryContainer.querySelector('.primary-image.selected').src;
+            console.log("Image receivers: ", imageReceivers);
+
+            for (let key in imageReceivers) {
+                if (key.indexOf(this.containerId) !== -1) continue;
+                const dropdownItem = document.createElement('a');
+                dropdownItem.classList.add('dropdown-item');
+                dropdownItem.href = '#';
+                dropdownItem.textContent = key;
+
+                dropdownItem.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    dropdownMenu.classList.toggle('show');
+                    imageReceivers[key](selectedDataUrl);
+                });
+                dropdownMenu.appendChild(dropdownItem);
+            }
+        });
+
+        // Re-use params button
+        const galleryReuseButton = document.createElement('button');
+        // Set button title
+        galleryReuseButton.title = "Re-use parameters";
+        galleryReuseButton.classList.add('gallery-reuse-button', 'inlineButton', 'controlButton');
+        this.primaryContainer.appendChild(galleryReuseButton);
+        galleryReuseButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            // Get currently active image
+            const selectedImage = this.primaryContainer.querySelector('.primary-image.selected');
+            // Create new image object
+            const img = new Image();
+            // Set the source of the image object
+            img.src = selectedImage.src;
+            img.onload = () => {
+                // Get the image data as base64
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                context.drawImage(img, 0, 0);
+                const dataURL = canvas.toDataURL();
+                let base64Data = dataURL.split(",")[1];
+                sendMessage("read_image_info", {"image": base64Data}).then((data) => {
+                    if (data.hasOwnProperty("image_data")) {
+                        console.log("Image info: ", data);
+                        applyInferSettingsNew(data["image_data"]);
+                    }
+                });
+            };
+        });
 
         // Add navigation arrows
         const leftArrow = document.createElement('button');
@@ -220,10 +308,10 @@ class InlineGallery {
                     } else {
                         requestFullscreenMethod.call(this.primaryContainer).then(r => r);
                     }
-                } catch {}
+                } catch {
+                }
             });
         }
-
     }
 
     updateGallery(newIndex) {
@@ -236,10 +324,9 @@ class InlineGallery {
         if (latentImage) {
             this.previewContainer.classList.add("thumb-container");
             latentImage.classList.add('thumb-btn');
-            latentImage.addEventListener('click', () => {
-                latentImage.classList.remove('thumb-btn');
-                this.previewContainer.classList.remove("thumb-container");
-            });
+            this.thumbnailContainer.classList.add("generating");
+        } else {
+            this.thumbnailContainer.classList.remove("generating");
         }
         // Hide all elements in primaryImages and captions
         primaryImages.forEach((primaryImage) => {
@@ -264,78 +351,70 @@ class InlineGallery {
     };
 
     _scrollToThumbnail(index) {
-            if (!this.options.showThumbnails || !this.thumbnailContainer) return;
+        if (!this.options.showThumbnails || !this.thumbnailContainer) return;
 
-            const thumbnail = this.thumbnailContainer.querySelectorAll('.thumbnail')[index];
-            if (!thumbnail) return;
+        const thumbnail = this.thumbnailContainer.querySelectorAll('.thumbnail')[index];
+        if (!thumbnail) return;
 
-            thumbnail.classList.add('active');
-            const containerWidth = this.thumbnailContainer.clientWidth;
-            const thumbnailLeft = thumbnail.offsetLeft;
-            const thumbnailWidth = thumbnail.clientWidth;
+        thumbnail.classList.add('active');
+        const containerWidth = this.thumbnailContainer.clientWidth;
+        const thumbnailLeft = thumbnail.offsetLeft;
+        const thumbnailWidth = thumbnail.clientWidth;
 
-            const scrollPosition = thumbnailLeft - (containerWidth / 2) + (thumbnailWidth / 2);
-            this.thumbnailContainer.scrollTo({
-                left: scrollPosition,
-                behavior: 'smooth'
-            });
-        };
+        const scrollPosition = thumbnailLeft - (containerWidth / 2) + (thumbnailWidth / 2);
+        this.thumbnailContainer.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+        });
+    };
 
 
-    _addEventListeners() {
-        const primaryImages = this.primaryContainer.querySelectorAll('.primary-image');
-        const thumbnails = this.thumbnailContainer ? this.thumbnailContainer.querySelectorAll('.thumbnail') : [];
+    _toggleUiButtons() {
         const totalImages = this.galleryContainer.querySelectorAll('.primary-image').length;
         const downloadButton = this.primaryContainer.querySelector('.download-button');
         const fullscreenButton = this.primaryContainer.querySelector('.fullscreen-button');
-
-        // Disable clicks on primaryImages
-        primaryImages.forEach((primaryImage) => {
-            primaryImage.addEventListener('click', (event) => {
-                event.preventDefault();
-            });
-        });
-
+        const shareButton = this.primaryContainer.querySelector('.gallery-share-button');
 
         if (totalImages === 0) {
             $(".inlineButton").hide();
         } else if (totalImages === 1) {
             downloadButton.style.display = 'block';
             fullscreenButton.style.display = 'block';
+            shareButton.style.display = 'block';
         } else {
             $(".inlineButton").show();
-        }
-
-        if (this.options.showThumbnails) {
-            thumbnails.forEach((thumbnail, index) => {
-                thumbnail.addEventListener('click', () => {
-                    this.updateGallery(index);
-                    this._scrollToThumbnail(index);
-                });
-            });
         }
     }
 
     async socketUpdate(data) {
         if (data.hasOwnProperty("target") && data.target !== this.options.id) return;
-
+        console.log("SOCKET UPDATE: ", data);
         let [imageList, latent, append] = this.extractImageData(data);
         this.update(imageList, latent, append);
 
     }
 
     extractImageData(data) {
-    const { status: { active: append, latents: latent = null, images = [], descriptions = [], prompts = [] } } = data;
+        const {
+            status: {
+                active: append,
+                latents: latent = null,
+                images = [],
+                descriptions = [],
+                prompts = [],
+                params = []
+            }
+        } = data;
+        console.log("Params: ", params);
+        const imageList = images.map((imagePath, i) => {
+            const caption = typeof prompts[i] === 'string' ? prompts[i] : '';
+            const description = typeof descriptions[i] === 'string' ? descriptions[i] : '';
 
-    const imageList = images.map((imagePath, i) => {
-        const caption = typeof prompts[i] === 'string' ? prompts[i] : '';
-        const description = typeof descriptions[i] === 'string' ? descriptions[i] : '';
+            return {src: imagePath, caption, description};
+        });
 
-        return { src: imagePath, caption, description };
-    });
-
-    return [imageList, latent, append];
-}
+        return [imageList, latent, append];
+    }
 
     update(imageList, latent, append = false) {
         if (!append) {
@@ -354,13 +433,20 @@ class InlineGallery {
                 const latentImage = document.createElement('img');
                 latentImage.src = latent;
                 latentImage.classList.add('latent-image');
+                latentImage.addEventListener('click', () => {
+                    latentImage.classList.remove('thumb-btn');
+                    this.previewContainer.classList.remove("thumb-container");
+                });
+
                 this.previewContainer.appendChild(latentImage);
                 this.previewContainer.classList.remove("hidden");
+                this.thumbnailContainer.classList.add("generating");
             }
         } else {
             this.previewContainer.classList.add("hidden");
+            this.thumbnailContainer.classList.remove("generating");
         }
-
+        let iIdx = 0;
         imageList.forEach(imageData => {
             const existingImage = this.primaryContainer.querySelector(`img[src="${imageData.src}"]`);
             const existingThumbnail = this.thumbnailContainer ? this.thumbnailContainer.querySelector(`img[src="${imageData.thumbnail || imageData.src}"]`) : null;
@@ -383,18 +469,22 @@ class InlineGallery {
                 doSelect = true;
             }
 
+            primaryImage.addEventListener('click', (event) => {
+                event.preventDefault();
+            });
+
             // Caption
             if (this.options.showCaptions) {
                 const caption = document.createElement('div');
                 caption.classList.add('caption');
                 caption.innerHTML = imageData.caption || '';
                 caption.style.display = 'none';
+                caption.title = caption.innerHTML;
                 this.captionContainer.appendChild(caption);
                 if (doSelect) {
+                    console.log("Selecting caption with index: " + iIdx);
                     caption.style.display = 'block';
                     this.captionContainer.style.display = 'block';
-                } else {
-                    this.captionContainer.style.display = 'none';
                 }
             }
 
@@ -406,14 +496,15 @@ class InlineGallery {
                 thumbnail.dataset.index = this.options.data.length;
                 this.thumbnailContainer.appendChild(thumbnail);
                 if (doSelect) {
+                    console.log("Selecting thumbnail with index: " + iIdx);
                     thumbnail.classList.add('selected');
                 }
-                // If more than one image, show thumbnails
-                if (this.thumbnailContainer.children.length > 1 || (this.thumbnailContainer.children.length > 0 && latentImage !== null)) {
-                    this.thumbnailContainer.style.display = 'flex';
-                } else {
-                    this.thumbnailContainer.style.display = 'none';
-                }
+                thumbnail.addEventListener('click', () => {
+                    // get the index from the thumbnail
+                    const index = parseInt(thumbnail.dataset.index, 10);
+                    this.updateGallery(index);
+                    this._scrollToThumbnail(index);
+                });
             }
 
             // Update options data
@@ -422,10 +513,16 @@ class InlineGallery {
                 caption: imageData.caption || '',
                 description: imageData.description || ''
             });
+            iIdx++;
         });
 
-        this._addEventListeners();
-
+        // If more than one image, show thumbnails
+        if (this.thumbnailContainer.children.length > 1 || (this.thumbnailContainer.children.length > 0 && latentImage !== null)) {
+            this.thumbnailContainer.style.display = 'flex';
+        } else {
+            this.thumbnailContainer.style.display = 'none';
+        }
+        this._toggleUiButtons();
     }
 
     _clearGallery() {

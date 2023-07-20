@@ -22,6 +22,7 @@ from core.handlers.config import ConfigHandler
 from core.handlers.directories import DirectoryHandler
 from core.handlers.extensions import ExtensionHandler
 from core.handlers.file import FileHandler
+from core.handlers.history import HistoryHandler
 from core.handlers.images import ImageHandler
 from core.handlers.models import ModelHandler
 from core.handlers.modules import ModuleHandler
@@ -121,7 +122,7 @@ def initialize_app():
     global config_handler, active_modules, active_extensions
     # Create master config handler
     config_handler = ConfigHandler()
-    queue_handler = QueueHandler(4)
+    _ = QueueHandler(4)
     user_handler = UserHandler(config_handler)
     socket_handler = SocketHandler(app, user_handler)
 
@@ -139,6 +140,7 @@ def initialize_app():
     ModelHandler(watcher=model_watcher)
     ImageHandler()
     CacheHandler()
+    HistoryHandler()
     user_handler.initialize(app, socket_handler)
     # Now that all the other handlers are alive, initialize modules and extensions
     module_handler = ModuleHandler(os.path.join(app_path, "core", "modules"), socket_handler)

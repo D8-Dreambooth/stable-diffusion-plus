@@ -12,10 +12,10 @@ from typing import Tuple, List, Dict
 import PIL
 import numpy as np
 from PIL import Image, PngImagePlugin
-from PIL.Image import Resampling
 
 from core.handlers.directories import DirectoryHandler
 from core.handlers.file import FileHandler, is_image
+from core.handlers.models import ModelHandler
 from core.handlers.websocket import SocketHandler
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,9 @@ async def _read_image_info(request):
 
 def decode_dict(input_dict):
     decoded_dict = {}
+    if "parameters" in input_dict:
+        params = input_dict["parameters"]
+        input_dict = parse_stupid_auto_params(params)
     for key, value in input_dict.items():
         decoded_value = None
         try:
@@ -221,6 +224,52 @@ def scale_image(img: Image.Image, width: int, height: int, resize_mode: str = "s
     return img
 
 
+def parse_stupid_auto_params(s, user=None):
+    logger.debug(f"Parsing auto params: {s}")
+    parts = s.split("Negative prompt:")
+    prompt = parts[0].strip()
+
+    # The remaining part after "Negative prompt:"
+    remainder = parts[1].strip()
+
+    remainder_parts = [part.strip() for part in remainder.split(',')]
+
+    data = {
+        'prompt': prompt,
+    }
+
+    # Parsing negative prompt and parameters
+    negative_prompt = ''
+    for part in remainder_parts:
+        if ':' in part:
+            key, value = part.split(':', 1)
+            key = key.lower().strip().replace(' ', '_')
+            logger.debug("Checking key: %s", key)
+            if key == "cfg_scale":
+                key = "scale"
+                data["scale"] = float(value.strip())
+            elif key == "size":
+                width, height = value.strip().split('x')
+                data["width"] = int(width.strip())
+                data["height"] = int(height.strip())
+            elif key == "model_hash":
+                continue
+            elif key == "model":
+                mh = ModelHandler(user_name=user)
+                model = mh.find_model("diffusers", value.strip())
+                if model is not None:
+                    data["model"] = model
+            else:
+                data[key.lower().strip().replace(' ', '_')] = value.strip()
+        else:
+            # Everything before the first ':' belongs to negative prompt
+            negative_prompt += part + ', '
+
+    # Removing trailing comma and space from negative prompt
+    data['negative_prompt'] = negative_prompt.rstrip(', ')
+    return data
+
+
 class ImageHandler:
     _instance = None
     _instances = {}
@@ -307,14 +356,9 @@ class ImageHandler:
         image_filename = os.path.join(dest_dir, f"{file_name}.tmp")
         pnginfo_data = PngImagePlugin.PngInfo()
         if prompt_data is not None:
-            for k, v in prompt_data.__dict__.items():
+            for k, v in prompt_data.items():
                 try:
-                    if "image" in k:
-                        continue
-                    if k == "model":
-                        v = v.__dict__
-                    val = json.dumps(v)
-                    pnginfo_data.add_text(k, val)
+                    pnginfo_data.add_text(k, v)
                 except TypeError:
                     pass
         image_format = Image.registered_extensions()[".png"]
@@ -410,6 +454,9 @@ class ImageHandler:
             with Image.open(image_file) as img:
                 extension = os.path.splitext(image_file)[1]
                 png_info = img.info
+                if "parameters" in png_info:
+                    params = png_info["parameters"]
+                    png_info = parse_stupid_auto_params(params)
                 for k in self.infer_keys:
                     if png_info.get(k):
                         try:

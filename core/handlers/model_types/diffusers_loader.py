@@ -9,7 +9,7 @@ import traceback
 
 import tomesd
 import torch
-from diffusers import DiffusionPipeline, UniPCMultistepScheduler, ControlNetModel, \
+from diffusers import DiffusionPipeline, ControlNetModel, \
     AutoencoderKL, StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline
 from diffusers.models.attention_processor import AttnProcessor2_0
 from safetensors.torch import load_file

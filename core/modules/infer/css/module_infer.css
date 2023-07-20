@@ -15,6 +15,28 @@
     color: var(--primary-text-color);
 }
 
+#inferHistoryButtons {
+    position: absolute;
+    right: 20px;
+    top: -1px;
+}
+
+@media (max-width: 768px) {
+#inferSwapDimensions {
+    position: absolute;
+    right: 50%!important;
+    bottom: -37px!important;
+    height: 37px;
+}
+}
+
+#inferSwapDimensions {
+    position: absolute;
+    right: -20.5px;
+    bottom: 0;
+    height: 37px;
+}
+
 .btn-selected:focus {
     background: var(--bs-primary);
 }

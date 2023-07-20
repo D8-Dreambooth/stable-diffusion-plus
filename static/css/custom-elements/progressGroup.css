@@ -1,5 +1,6 @@
 .progressGroup {
-
+    min-height: 24px;
+    max-height: 80px;
 }
 
 .progress-bar {

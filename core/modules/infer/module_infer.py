@@ -116,7 +116,6 @@ async def _get_controlnets(msg):
     Returns:
         dict: A dictionary containing the controlnets.
     """
-    logger.debug("Listing controlnets!")
     detectors = get_detectors_and_params(controlnet_aux)
 
     return {"nets": controlnet_models, "detectors": detectors}

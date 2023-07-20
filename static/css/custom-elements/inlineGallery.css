@@ -10,21 +10,16 @@
 
 @media (max-width: 767.98px) {
     .gallery-container {
-        max-height: 58vh;
-        height: 58vh;
+        height: calc(var(--full-panel-height) * .75);
     }
 }
-@media screen and (min-width: 768px) {
-    .gallery-container {
-        max-height: 59vh;
-        height: 59vh;
-    }
-}
+
 .gallery-container {
     overflow: hidden;
     position: relative;
     border: 1px solid var(--secondary-accent-color);
     border-radius: 5px;
+    height: calc(var(--full-panel-height) * .75);
 }
 
 .primary-container,
@@ -45,7 +40,6 @@
     flex-shrink: 0;
     object-fit: contain;
     transition: transform 400ms;
-    pointer-events: none;
     user-select: none;
 }
 
@@ -57,7 +51,7 @@
     opacity: 0.5;
     z-index: 22;
     position: absolute;
-    bottom: var(--inline-button-distance);
+    top: var(--inline-button-distance);
     right: var(--inline-button-distance);
     border: 1px solid var(--secondary-accent-color);
     border-radius: 5px;
@@ -87,13 +81,19 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: 10px;
-    padding: 0 10px;
+    padding: 5px 10px;
     justify-content: center;
+    border: 1px solid var(--secondary-accent-color);
+    height: calc(var(--full-panel-height) * .2);
+}
+
+.thumbnail-container.generating {
+    height: calc(var(--full-panel-height) * .2 - 40px);
 }
 
 .thumbnail {
     cursor: pointer;
-    max-height: 80px;
+    height: 100%;
 }
 
 .thumbnail.active {
@@ -130,9 +130,9 @@
     cursor: pointer;
     position: absolute;
     z-index: 10;
-    color: var(--secondary-text-color);
-    background: var(--secondary-color);
-    text-shadow: var(--secondary-color);
+    color: white;
+    background: transparent;
+    text-shadow: 3px 3px 2px black;
     opacity: 50%;
 }
 
@@ -158,17 +158,37 @@
     font-family: 'boxicons';
 }
 
-.left-arrow, .fullscreen-button {
+.left-arrow {
     left: var(--inline-button-distance);
 }
 
-.right-arrow, .download-button {
+.right-arrow {
     right: var(--inline-button-distance);
 }
 
-.fullscreen-button,
-.download-button {
+.fullscreen-button {
     top: var(--inline-button-distance);
+    left: var(--inline-button-distance);
+}
+
+.download-button {
+    top: calc(var(--inline-button-distance) + 35px);
+    left: calc(var(--inline-button-distance));
+}
+
+.gallery-share-button {
+    top: calc(var(--inline-button-distance) + (35px * 2));
+    left: calc(var(--inline-button-distance));
+}
+
+.gallery-reuse-button {
+    top: calc(var(--inline-button-distance) + (35px * 3));
+    left: calc(var(--inline-button-distance));
+}
+
+.gallery-share-button::before {
+    content: "\ec02";
+    font-family: 'boxicons';
 }
 
 .fullscreen-button::before {
@@ -178,6 +198,11 @@
 
 .download-button::before {
     content: '\ed95';
+    font-family: 'boxicons';
+}
+
+.gallery-reuse-button::before {
+    content: "\ebd7";
     font-family: 'boxicons';
 }
 

@@ -1368,6 +1368,7 @@ $.fn.fileBrowser = function (options) {
         const $this = $(this);
         let fileBrowser = $this.data('FileBrowser');
         if (!fileBrowser) {
+            console.log("Creating file browser: ", $this);
             fileBrowser = new FileBrowser(this, options);
             $this.data("FileBrowser", fileBrowser);
         } else {

@@ -16,6 +16,7 @@ from app.auth.basic_auth import BasicAuth
 from app.auth.oauth2_password_bearer import OAuth2PasswordBearerCookie
 from core.handlers.config import ConfigHandler
 from core.handlers.directories import DirectoryHandler
+from core.handlers.history import HistoryHandler
 
 logger = logging.getLogger(__name__)
 
@@ -224,6 +225,7 @@ class UserHandler:
                 FileHandler(user_name=user_name)
                 ModelHandler(user_name=user_name)
                 ImageHandler(user_name=user_name)
+                HistoryHandler(user_name=user_name)
                 self.users.append(User(**user))
 
     def register_user(self, user):

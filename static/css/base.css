@@ -8,6 +8,7 @@
 :root {
     --header-height: 2rem;
     --footer-height: 1rem;
+    --full-panel-height: calc(100vh - 75px - var(--header-height) - var(--footer-height));
     --nav-width: 66px;
     --bs-gutter-x: 1rem;
     --body-font: 'Nunito', sans-serif;
@@ -30,7 +31,6 @@
     --bs-body-color: var(--secondary-color);
     --bs-body-bg-rgb: rgb(var(--secondary-accent-color));
     --first-color: var(--primary-color);
-    --full-panel-height: 80vh;
 }
 
 

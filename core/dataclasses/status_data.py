@@ -78,9 +78,9 @@ class StatusData:
                         if img:
                             with io.BytesIO() as output:
                                 img = img.convert('RGB')
-                                img.save(output, format='JPEG')
+                                img.save(output, format='PNG')
                                 image_data = base64.b64encode(output.getvalue()).decode('utf-8')
-                                value = f"data:image/jpeg;base64,{image_data}"
+                                value = f"data:image/png;base64,{image_data}"
                             obj[attr] = value
                         else:
                             obj[attr] = None
@@ -93,16 +93,19 @@ class StatusData:
                                     if os.path.exists(img):
                                         with open(img, 'rb') as image_file:
                                             image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                                        images.append(f"data:image/jpeg;base64,{image_data}")
+                                        images.append(f"data:image/png;base64,{image_data}")
                                 except:
                                     pass
                             elif isinstance(img, Image.Image):
                                 # If the item is a PIL image, convert it to bytes and encode as base64
                                 with io.BytesIO() as output:
+                                    pnginfo = None
+                                    if img.format == 'PNG':
+                                        pnginfo = img.info
                                     img = img.convert('RGB')
-                                    img.save(output, format='JPEG')
+                                    img.save(output, format='PNG', pnginfo=pnginfo)
                                     image_data = base64.b64encode(output.getvalue()).decode('utf-8')
-                                images.append(f"data:image/jpeg;base64,{image_data}")
+                                images.append(f"data:image/png;base64,{image_data}")
 
                         obj[attr] = images
 

@@ -26,6 +26,7 @@ import core.helpers.upscalers
 from core.dataclasses.infer_settings import InferSettings
 from core.handlers.config import ConfigHandler
 from core.handlers.file import FileHandler
+from core.handlers.history import HistoryHandler
 from core.handlers.images import ImageHandler, scale_image
 from core.handlers.model_types.controlnet_processors import controlnet_models as controlnet_data, preprocess_image
 from core.handlers.model_types.diffusers_loader import get_pipeline_parameters
@@ -35,6 +36,7 @@ from core.handlers.websocket import SocketHandler
 from core.helpers.upscalers.base_upscaler import BaseUpscaler
 from core.helpers.upscalers.img2img_upscaler import Img2ImgUpscaler
 from core.modules.dreambooth.helpers.mytqdm import mytqdm
+from core.modules.infer.src.prompt_magic import PromptHelper
 from dreambooth.utils.image_utils import get_scheduler_class
 
 socket_handler = SocketHandler()
@@ -61,17 +63,17 @@ def create_video(frames, fps, path):
     return path
 
 
-
 async def start_inference(inference_settings: InferSettings, user, target: str = None):
     global pipeline, preview_steps
     model_handler = ModelHandler(user_name=user)
     status_handler = StatusHandler(user_name=user, target=target)
     image_handler = ImageHandler(user_name=user)
+    history_handler = HistoryHandler(user_name=user)
     ch = ConfigHandler()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     max_res = int(ch.get_item_protected("max_resolution", "infer", 512))
 
-    logger.debug(f"Starting inference with settings: {inference_settings}")
+    logger.debug(f"Starting inference: {inference_settings}")
     status_handler.start(inference_settings.num_images * inference_settings.steps, "Starting inference.")
     await status_handler.send_async()
     # Check if our selected model is loaded, if not, loaded it.
@@ -85,30 +87,29 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     # Height and width to use if not overridden by controlnet
     ui_height = inference_settings.height
     ui_width = inference_settings.width
-    logger.debug(f"UI height: {ui_height}, width: {ui_width}")
     # Model data, duh
     model_data = inference_settings.model
     pipeline_type = inference_settings.pipeline
     pipe_settings = inference_settings.pipeline_settings
+
+    required_images = inference_settings.num_images
 
     processor = None
     return_latents = False
     if inference_settings.postprocess:
         processor = Img2ImgUpscaler(inference_settings.postprocess_scale, model_data, pipeline)
 
-    logger.debug(f"Pipeline settings: {pipe_settings}")
     pipe_params = {}
     if pipeline_type != "auto":
         pipe_data = get_pipeline_parameters()
         pipe_params = pipe_data.get(pipeline_type, {})
     model_data.data["pipeline"] = pipeline_type
-    logger.debug(f"Pipe params: {pipe_params}")
     # If we're using controlnet, set up images and preprocessing
+    prompt_count = 1
     if "ControlNet" in pipeline_type and inference_settings.controlnet_type:
         for key, cd in controlnet_data.items():
             if cd["name"].lower() == inference_settings.controlnet_type:
                 preprocess_src = cd["image_type"][0]
-                logger.debug(f"Using controlnet: {cd} and {preprocess_src}")
                 break
         if inference_settings.controlnet_batch:
             # List files in the batch directory
@@ -148,7 +149,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     logger.warning("No image to preprocess.")
                     return
                 else:
-                    logger.debug("Appending source image")
                     control_images.append(src_image)
             elif preprocess_src == "mask":
                 if not src_mask:
@@ -160,9 +160,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 control_images.append(src_image if src_image else src_mask)
         status_handler.update("status", "Preprocessing control images.")
         await status_handler.send_async()
-        logger.debug("Sending status(1)")
         status_handler.send()
-        logger.debug(f"Control images-pre-preprocess: {len(control_images)}")
         control_images, input_prompts = preprocess_image(control_images,
                                                          prompt=input_prompts,
                                                          model_name=inference_settings.controlnet_type,
@@ -172,29 +170,58 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                                          resize_mode=inference_settings.controlnet_scale_mode,
                                                          handler=status_handler)
         prompt_count = len(input_prompts)
-        logger.debug("Control images post-preprocess: %s", len(control_images))
         negative_prompts = [inference_settings.negative_prompt] * len(control_images)
     else:
         # If newlines are in the prompt, split it up
         if "\n" in inference_settings.prompt:
             prompts = inference_settings.prompt.split("\n")
+            prompt_count = 0
+
             for p in prompts:
                 if p.strip() != "":
-                    input_prompts.append(p.strip())
-            prompt_count = len(prompts)
+                    prompt_count += 1
+
+                    for i in range(required_images):
+                        input_prompts.append(p.strip())
         else:
-            input_prompts = [inference_settings.prompt]
             prompt_count = 1
+            for i in range(required_images):
+                input_prompts.append(inference_settings.prompt)
+
+        logger.debug(f"Prompt count: {prompt_count}")
         # If newlines are in the negative prompt, split it up
         if "\n" in inference_settings.negative_prompt:
             prompts = inference_settings.negative_prompt.split("\n")
             for p in prompts:
                 if p.strip() != "":
-                    negative_prompts.append(p.strip())
+                    for i in range(required_images):
+                        negative_prompts.append(p.strip())
         else:
-            negative_prompts = [inference_settings.negative_prompt]
+            for i in range(required_images):
+                negative_prompts.append(inference_settings.negative_prompt)
+        required_images = len(input_prompts)
 
-    logger.debug(f"We have {len(control_images)} control images.")
+    batch_images = []
+    if inference_settings.use_batch_image and inference_settings.batch_image_path is not None:
+        batch_dir = inference_settings.batch_image_path
+        for f in os.listdir(batch_dir):
+            if image_handler.is_image(f):
+                batch_images.append(os.path.join(batch_dir, f))
+        if len(batch_images) > 0:
+            required_images *= len(batch_images)
+
+    prompt_helper = None
+    if inference_settings.preprocess and len(input_prompts) > 0:
+        try:
+            prompt_helper = PromptHelper()
+            out_prompts = []
+            if prompt_helper.llm is not None:
+                for p in input_prompts:
+                    out_prompts.extend([p] * inference_settings.preprocess_prompts_per_image)
+            else:
+                prompt_helper = None
+        except:
+            logger.warning("PromptHelper not found, skipping preprocessing.")
 
     # Make sure we have the same number of prompts as negative prompts
     if len(input_prompts) > len(negative_prompts):
@@ -205,7 +232,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             input_prompts.append(inference_settings.prompt)
 
     status_handler.update("status", "Loading model.")
-    logger.debug("Sending status(2)")
 
     await status_handler.send_async()
     if len(inference_settings.loras):
@@ -218,10 +244,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     if inference_settings.vae is not None:
         try:
             model_data.data["vae"] = inference_settings.vae["path"]
-            logger.debug(f"Set custom VAE: {inference_settings.vae['path']}")
         except Exception as e:
-            logger.debug(f"Unable to parse VAE JSON: {e}")
-    logger.debug("Sent")
+            logger.warning(f"Unable to parse VAE JSON: {e}")
 
     pipeline = model_handler.load_model("diffusers", model_data)
     pipe_scheduler = inference_settings.scheduler
@@ -231,7 +255,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
     pipeline.scheduler = scheduler_cls.from_config(pipeline.scheduler.config)
     if pipe_scheduler == "UniPCMultistepScheduler":
-        logger.debug("Setting scheduler to UniPCMultistepScheduler")
         pipeline.scheduler.config["solver_type"] = "bh2"
 
     if not pipeline:
@@ -246,17 +269,17 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     #         logger.warning(f"Unable to enable VAE tiling: {e}")
     #         pass
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
-    input_prompts = [val for val in input_prompts for _ in range(inference_settings.num_images)]
-    negative_prompts = [val for val in negative_prompts for _ in range(inference_settings.num_images)]
+    if len(input_prompts) != required_images:
+        input_prompts = [val for val in input_prompts for _ in range(required_images)]
+    if len(negative_prompts) != required_images:
+        negative_prompts = [val for val in negative_prompts for _ in range(required_images)]
 
     if len(control_images) and "ControlNet" in inference_settings.pipeline:
-        logger.debug("Definitely have control images.")
-        control_images = [val for val in control_images for _ in range(inference_settings.num_images)]
+        control_images = [val for val in control_images for _ in range(required_images)]
 
-    total_images = len(input_prompts)
-    logger.debug(f"Input prompts: {input_prompts}")
     out_images = []
     out_prompts = []
+    out_params = []
     used_controls = []
     try:
         if inference_settings.postprocess and processor is not None:
@@ -266,7 +289,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
         status_handler.update(
             items={
-                "status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{total_images} images.",
+                "status": f"Generating {len(out_images) + (1 * inference_settings.batch_size)}/{required_images} images.",
                 "progress_2_total": total_steps
             })
         initial_seed = inference_settings.seed
@@ -278,11 +301,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             initial_seed = -1
         if initial_seed == -1:
             initial_seed = int(random.randrange(21474836147))
-        logger.debug("Initial seed: %s", initial_seed)
 
         pbar = mytqdm(
             desc="Making images.",
-            total=total_images,
+            total=required_images,
             user=user,
             target="infer",
             index=1,
@@ -303,7 +325,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 if not hasattr(pipeline, "decode_latents)"):
                     decoded = pipeline.vae.decode(latents / pipeline.vae.config.scaling_factor, return_dict=False)[0]
                     do_denormalize = [True] * decoded.shape[0]
-                    converted = pipeline.image_processor.postprocess(decoded, output_type="pil", do_denormalize=do_denormalize)
+                    converted = pipeline.image_processor.postprocess(decoded, output_type="pil",
+                                                                     do_denormalize=do_denormalize)
                 else:
                     latent = pipeline.decode_latents(latents)
                     if torch.is_tensor(latent):  # Check if it's a PyTorch tensor
@@ -312,7 +335,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         latent = latent.round().clip(0, 255).astype("uint8")
                     converted = pipeline.numpy_to_pil(latent)
             except Exception as e:
-                logger.debug(f"Unable to convert latents to image: {e}")
+                logger.warn(f"Unable to convert latents to image: {e}")
                 traceback.print_exc()
             # Update the progress status handler with the new items
             status_handler.step(preview_steps, True)
@@ -320,20 +343,25 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 "latents": converted
             }, send=True)
 
-        total_images = len(input_prompts)
-        used_controls = []
-        use_embeds = "prompt_embeds" in pipe_params
+        del inference_settings.pipelines
+        del inference_settings.processors
 
-        while len(out_images) < total_images:
+        used_controls = []
+
+        use_embeds = "prompt_embeds" in pipe_params
+        seed_increment = 0
+        while len(out_images) < required_images:
             batch_size = inference_settings.batch_size
-            required_images = total_images - len(out_images)
             if inference_settings.batch_size > 1 and required_images < inference_settings.batch_size:
                 batch_size = required_images
 
             if status_handler.status.canceled:
-                logger.debug("Canceled!")
+                logger.info("Inference Canceled!")
                 break
-
+            if inference_settings.use_batch_image:
+                infer_image = batch_images[:batch_size]
+            else:
+                infer_image = inference_settings.get_infer_image()
             batch_prompts = input_prompts[:batch_size]
             input_prompts = input_prompts[batch_size:]
 
@@ -342,6 +370,23 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
             embed_prompts = []
             embed_negative_prompts = []
+
+            if prompt_helper is not None:
+                tmp_prompts = []
+                for bp in batch_prompts:
+                    processed = prompt_helper.improve_prompt(
+                        bp,
+                        inference_settings.preprocess_add,
+                        inference_settings.preprocess_filter,
+                        1,
+                        inference_settings.preprocess_character,
+                        inference_settings.preprocess_max_tokens,
+                        True
+                    )
+                    tmp_prompts.append(processed[0])
+                batch_prompts = tmp_prompts
+            if "LPW" in inference_settings.pipeline:
+                use_embeds = False
 
             if use_embeds:
                 for bp in batch_prompts:
@@ -358,19 +403,24 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 use_embeds = False
 
             if control_images and len(control_images) > 0:
-                logger.debug("Using control images.")
                 batch_control = control_images[:batch_size]
                 control_images = control_images[batch_size:]
                 used_controls.extend(batch_control)
             else:
                 batch_control = []
 
-            infer_seed = initial_seed
-            if len(out_images) % prompt_count == 0 and len(out_images) > 0:
-                infer_seed = infer_seed + int(len(out_images) / prompt_count)
+            if len(out_images) > 0:
+                modulo = len(out_images) % (required_images / prompt_count) == 0
+                logger.debug(f"\n modulo {modulo} prompt_count {prompt_count} prompt_index {len(out_images)}")
+                if modulo and prompt_count > 1:
+                    logger.debug(f"\nMultiple prompts, resetting seed: {len(out_images)}.")
+                    seed_increment = 0
+
+            infer_seed = initial_seed + seed_increment
+            seed_increment += batch_size
+
             if infer_seed > 21474836147:
                 infer_seed = 21474836147 - infer_seed
-            logger.debug("Using seed: %s", infer_seed)
             inference_settings.seed = infer_seed
             generator = torch.Generator(device=device)
             generator.manual_seed(infer_seed)
@@ -401,7 +451,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
 
                 for key, value in pipe_settings.items():
                     if key == "controlnet_conditioning_scale":
-                        logger.debug("Converting conditioning scale to float")
                         value = [float(value)]
                         kwargs[key] = value
 
@@ -411,13 +460,10 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     control_keys = ["controlnet_conditioning_image", "control_image", "image"]
                     for key in control_keys:
                         if key in pipe_params:
-                            logger.debug(f"Using {key} for control image")
                             kwargs[key] = batch_control if isinstance(batch_control, list) else [batch_control]
                             if inference_settings.use_control_resolution and not inference_settings.use_input_resolution:
                                 ui_width, ui_height = batch_control[0].size
                             break
-
-                logger.debug(f"Mode: {inference_settings.pipeline}")
 
                 if "mask_image" in pipe_params and inference_settings.mask != "" and inference_settings.mask is not None:
                     mask_data = base64.b64decode(inference_settings.mask.split(",")[1])
@@ -432,10 +478,17 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                 break
                     kwargs["mask_image"] = mask
 
-                if "image" in pipe_params and inference_settings.image != "" and "image" not in kwargs:
-                    logger.debug("Using infer_image from input params for image, dimensions.")
-                    image_data = base64.b64decode(inference_settings.image.split(",")[1])
-                    image = Image.open(BytesIO(image_data))
+                if "image" in pipe_params and infer_image != "" and "image" not in kwargs:
+                    if isinstance(infer_image, list):
+                        image_data = base64.b64decode(infer_image[0].split(",")[1])
+                        image = Image.open(BytesIO(image_data))
+                    elif isinstance(infer_image, str):
+                        image_data = base64.b64decode(infer_image.split(",")[1])
+                        image = Image.open(BytesIO(image_data))
+                    elif isinstance(infer_image, Image.Image):
+                        image = infer_image
+                    else:
+                        image = None
                     mask = None
                     new_mask = None
                     if "mask_image" in kwargs:
@@ -443,7 +496,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         if isinstance(mask, list):
                             mask = mask[0]
                     if "Inpaint" in inference_settings.pipeline or "Img2Img" in inference_settings.pipeline or "Image2Image" in inference_settings.pipeline:
-                        image, new_mask = fill_image(image, mask=mask, mask_padding=inference_settings.inpaint_mask_radius,
+                        image, new_mask = fill_image(image, mask=mask,
+                                                     mask_padding=inference_settings.inpaint_mask_radius,
                                                      fill_mode=inference_settings.inpaint_fill_mode)
                     if mask is not None and new_mask is not None:
                         kwargs["mask_image"] = new_mask if not isinstance(new_mask, list) else [new_mask]
@@ -472,7 +526,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                             real_value = value.get("value", None)
                         else:
                             real_value = value
-                        logger.debug(f"Adding missing param: {key} with value: {real_value}")
                         kwargs[key] = real_value
 
                 keys_to_remove = ["cls"]
@@ -483,7 +536,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         if (
                                 key == "height" or key == "width" or key == "negative_prompt") and inference_settings.pipeline == "auto":
                             continue
-                        logger.debug("Deleting extra key: " + key)
                         keys_to_remove.append(key)
 
                 for key in keys_to_remove:
@@ -497,7 +549,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     del kwargs["prompt"]
 
                 if "Inpaint" in inference_settings.pipeline and "Legacy" not in inference_settings.pipeline:
-                    logger.debug("Inpainting mode, Fixng lists.")
                     if not isinstance(kwargs["image"], list):
                         kwargs["image"] = [kwargs["image"]]
                     if not isinstance(kwargs["mask_image"], list):
@@ -506,7 +557,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 if inference_settings.postprocess and processor is not None and return_latents:
                     kwargs["output_type"] = "latent"
 
-                logger.debug(f"KWARGS: {kwargs}")
+                logger.debug(f"Inference kwargs: {kwargs}{infer_seed}")
 
                 s_image = await loop.run_in_executor(pool, lambda: pipeline(**kwargs).images)
             if "Video" in inference_settings.pipeline:
@@ -517,6 +568,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 pbar.update(len(s_image))
                 paths = []
                 prompts = []
+                params = []
                 images = []
                 for i in range(len(s_image)):
                     img = s_image[i]
@@ -533,40 +585,44 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                                 status_items["latents"] = img
 
                             status_handler.update(items=status_items, send=False)
-                            logger.debug("Upscaling")
                             img = await loop.run_in_executor(pool,
-                                                             lambda: processor.upscale(img, infer_settings, update_progress,
+                                                             lambda: processor.upscale(img, infer_settings,
+                                                                                       update_progress,
                                                                                        preview_steps))
-                            logger.debug(f"Image {i} type is: " + str(type(img)))
-                    logger.debug(f"Appending image {i}.")
                     images.append(img)
-                    img_path = image_handler.save_image(img, "inference", inference_settings, False)
+                    img_path = image_handler.save_image(img, "inference", inference_settings.as_dict(), False)
+                    history_handler.set_history(inference_settings.as_dict(), "infer")
                     paths.extend(img_path)
                     prompts.append(prompt)
+                    params.append(inference_settings)
                 out_images.extend(images)
                 out_prompts.extend(prompts)
+                out_params.extend(params)
                 for name in ["image", "mask_image", "control_image"]:
                     if name in kwargs:
                         if isinstance(kwargs[name], list):
                             out_images.extend(kwargs[name])
                             out_prompts.extend([name] * len(kwargs[name]))
+                            out_params.extend([inference_settings] * len(kwargs[name]))
                         else:
                             out_images.append(kwargs[name])
                             out_prompts.append(name)
+                            out_params.append(inference_settings)
 
                 current_total = len(out_images) + (1 * inference_settings.batch_size)
-                if current_total > total_images:
-                    current_total = total_images
+                if current_total > required_images:
+                    current_total = required_images
                 if status_handler.status.canceled:
-                    logger.debug("Canceled!")
+                    logger.info("Inference Canceled!")
                     break
 
                 status_handler.update(items=
                 {
-                    "status": f"Generating {current_total}/{total_images} images.",
+                    "status": f"Generating {current_total}/{required_images} images.",
                     "images": images,
                     "prompts": prompts,
-                    "progress_1_total": total_images,
+                    "params": params,
+                    "progress_1_total": required_images,
                     "progress_1_current": current_total,
                     "latents": s_image,
                     "progress_2_total": total_steps,
@@ -587,6 +643,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
             "status": f"Generation complete.",
             "images": out_images,
             "prompts": out_prompts,
+            "params": out_params,
             "progress_2_total": 0,
             "progress_2_current": 0
         }, send=False)
@@ -601,7 +658,6 @@ def list_postprocessors():
     for importer, modname, ispkg in pkgutil.iter_modules(package.__path__):
         module = importlib.import_module(f'{package.__name__}.{modname}')
         for name, obj in inspect.getmembers(module):
-            logger.debug(f"Checking {name}")
             if inspect.isclass(obj) and issubclass(obj, BaseUpscaler) and obj != BaseUpscaler:
                 postprocessors[name] = obj
 

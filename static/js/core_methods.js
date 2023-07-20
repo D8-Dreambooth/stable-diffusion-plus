@@ -259,8 +259,11 @@ function createElement(elementData, id_prefix = "", additional_classes = []) {
         case "file":
         case "fileBrowser":
             createLabel = false;
-            newElement = createFileBrowserInput(key, elementData["title"], elementData["description"], elementData["value"], id_prefix);
+            newElement = createFileBrowserInput(key, elementData["title"], elementData["description"], elementData["value"], id_prefix, false);
             break;
+        case "directory":
+            createLabel = false;
+            newElement = createFileBrowserInput(key, elementData["title"], elementData["description"], elementData["value"], id_prefix, true);
         default:
             console.log("Unknown element type: ", type, key, elementData);
             break;
@@ -447,13 +450,13 @@ function createCheckboxInput(key, title, description, value, id_prefix = "", add
     return div;
 }
 
-function createFileBrowserInput(key, title, description, value, id_prefix = "") {
+function createFileBrowserInput(key, title, description, value, id_prefix = "", dir_only = false) {
     let container = document.createElement("div");
     container.id = id_prefix + key;
     $(container).fileBrowser({
         "file_type": "image",
         "showSelectButton": true,
-        "listFiles": false,
+        "listFiles": !dir_only,
         "showTitle": false,
         "showInfo": false,
         "multiselect": false,
@@ -498,7 +501,7 @@ function showPane(module_id) {
         activeLink.classList.add("activeLink");
         let activeSpan = activeLink.querySelector("i");
         console.log("Active span: ", activeSpan);
-        sectionTitle.innerHTML =  moduleIds[module_id];
+        sectionTitle.innerHTML = moduleIds[module_id];
         if (activeSpan) {
             // make a copy of activespan and prepend it to sectionTitle
             let newSpan = activeSpan.cloneNode(true);
@@ -550,6 +553,8 @@ function sendMessage(name, data, await = true, target = null) {
         if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
             connectSocket();
             globalSocket.onopen = function () {
+                clearError();
+                console.log("SOCKET OPEN");
                 send();
             };
         } else {
@@ -584,11 +589,48 @@ function generateMessageId() {
     return Math.floor(Math.random() * 1000000);
 }
 
+let pongReceived = false;  // This variable will track whether a "pong" response was received
+let pingInterval = null;  // This will hold the setInterval function for sending "ping" messages
+
+// Add a new function for checking the "ping" and "pong" functionality
+function pingPongCheck() {
+    console.log("PPC");
+    pongReceived = false;  // Reset the flag before sending a "ping"
+    sendMessage('ping', {}, true).then(() => {  // Send the "ping" message
+        pongReceived = true;  // If we got a response, set the flag to true
+    }).catch((err) => {  // If there was an error, log it
+        console.log('Error sending ping message:', err);
+    });
+
+    // After 2 seconds, check whether we received a "pong"
+    setTimeout(() => {
+        if (!pongReceived) {  // If we didn't receive a "pong", close the socket
+            console.log('No pong received, closing socket');
+            clearInterval(pingInterval);
+            if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
+                globalSocket.close();
+                // Optionally you can call `connectSocket()` here to reconnect after a disconnection
+                // But be careful to not create infinite loop in case of constant failures
+                connectSocket();
+            }
+        }
+    }, 5000);
+}
+
 // Set up socket and it's event listeners
+let reconnectAttempts = 0;
+
 function connectSocket() {
     const authCookie = document.cookie.split(';')
         .map(cookie => cookie.trim())
-        .find(cookie => cookie.startsWith('auth='));
+        .find(cookie => cookie.startsWith('Authorization='));
+
+    if (!authCookie) {
+        console.error("No auth cookie found. Unable to connect.");
+        location.reload();
+        return;
+    }
+
     const isAuthExpired = authCookie && (new Date(authCookie.split('=')[1]) < new Date());
 
     // Reload the page if the auth cookie has expired
@@ -597,26 +639,50 @@ function connectSocket() {
         return;
     }
 
-    if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED) {
+    if (globalSocket === null || globalSocket.readyState === WebSocket.CLOSED || globalSocket.readyState === WebSocket.CLOSING) {
         let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let host = window.location.hostname;
         let port = window.location.port;
         let SOCKET_URL = `${protocol}//${host}:${port}/ws`;
         globalSocket = new WebSocket(SOCKET_URL);
+
         globalSocket.onopen = function () {
             clearError();
+            console.log("SOCKET OPEN");
         };
+
+         globalSocket.onerror = function (event) {
+            if (event instanceof CloseEvent) {
+                if (event.code === 403) {
+                    console.log("WebSocket error: 403 Forbidden");
+                    location.reload();
+                } else {
+                    console.log("WebSocket error: ", event);
+                }
+            } else {
+                console.log("WebSocket error: ", event);
+            }
+        };
+
         globalSocket.onmessage = function (event) {
             let message;
-            if (typeof event.data === 'string') {
-                message = JSON.parse(event.data); // parse the message string to an object
-            } else {
-                message = event.data; // use the received object as-is
+            try {
+                message = (typeof event.data === 'string') ? JSON.parse(event.data) : event.data;
+            } catch (e) {
+                console.error("Failed to parse incoming message:", e);
+                return;
             }
             if (!message.hasOwnProperty("name")) {
                 console.log("Event has no name property, cannot process: ", event);
                 return;
             }
+
+            // Validate message
+            if (!message || !message.hasOwnProperty("name")) {
+                console.log("Invalid message or has no 'name' property, cannot process: ", event);
+                return;
+            }
+
             const name = message.name;
             const index = messages.indexOf(message.id);
             // If it's not in the message queue or has a broadcast flag, then it's not a response to a request
@@ -739,6 +805,6 @@ const generateRandomString = (length) => {
         result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     return result;
-};
+}
 
 // endregion

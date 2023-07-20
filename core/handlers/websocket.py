@@ -52,13 +52,16 @@ class ConnectionManager:
             logger.debug(f"Broadcasting: {message}")
         for connection in message_targets:
             try:
-                await connection.send_json(message)
+                await asyncio.wait_for(connection.send_json(message), timeout=0.01)  # timeout of 10 milliseconds
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout error when sending message to client {connection}")
+                disconnected.append(connection)
             except Exception as e:
                 # client is not connected, disconnect them
                 logger.warning(f"Error broadcasting message to client {connection}: {e}")
                 disconnected.append(connection)
 
-        # disconnect inactive connections
+            # disconnect inactive connections
         for connection in disconnected:
             self.disconnect(connection)
 
@@ -123,6 +126,10 @@ class SocketHandler:
         name = msg["name"]
         response = msg.copy()
         user = msg.get("user", None)
+        if name == "ping":
+            response["data"] = {"message": "pong"}
+            await self.manager.send_personal_message(response)
+            return
         try:
             if await_response:
                 if user and name in self.socket_callbacks.get(user, {}):
@@ -195,6 +202,10 @@ class SocketHandler:
                             await websocket.send_json(message)
                             self.manager.disconnect(websocket)
                             break
+                        if name == "ping":
+                            message["name"] = name
+                            await websocket.send_json(message)
+                            continue
                         if name not in self.socket_callbacks:
                             logger.warning(f"Undefined message: {message}")
                             continue
@@ -221,6 +232,7 @@ class SocketHandler:
                         logger.warning(f"Exception parsing socket message: {e}")
                         traceback.print_exc()
                 except WebSocketDisconnect as d:
+                    logger.debug(f"SOCKET DISCONNECT: {d}")
                     self.manager.disconnect(websocket)
                     break
                 except Exception as f:
@@ -228,6 +240,7 @@ class SocketHandler:
                     traceback.print_exc()
                     self.manager.disconnect(websocket)
                     break
+            logger.debug(f"SOCKET DISCONNECT: {websocket}")
             self.manager.disconnect(websocket)
 
         self.clients = []
