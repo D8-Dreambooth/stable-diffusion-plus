@@ -20,7 +20,7 @@ from core.handlers.model_types.controlnet_processors import controlnet_models as
 logger = logging.getLogger(__name__)
 
 
-def initialize_pipeline(pipeline, loras, weight: float = 0.9):
+def initialize_pipeline(pipeline, pipeline_cls, loras, weight: float = 0.9, apply_tomesd: bool = True, tomesd_scale: float = 0.5):
     try:
         pipeline.unet.set_attn_processor(AttnProcessor2_0())
         if os.name != "nt":
@@ -45,8 +45,14 @@ def initialize_pipeline(pipeline, loras, weight: float = 0.9):
     if len(loras):
         for lora in loras:
             if "path" in lora:
-                pipeline = apply_lora(pipeline, lora['path'], weight)
                 logger.debug(f"Loading lora: {lora['name']}")
+                try:
+                    pipeline._lora_scale = weight
+                    pipeline.load_lora_weights(lora['path'])
+                except:
+                    logger.debug(f"Unable to load lora: {lora['name']}")
+                    pipeline = apply_lora(pipeline, lora['path'], weight)
+
     return pipeline.to("cuda")
 
 
@@ -132,8 +138,20 @@ def load_diffusers(model_data: ModelData, existing_pipeline: DiffusionPipeline =
                 return None
 
             src_pipe = pipe_obj.from_pretrained(model_path, **pipe_args)
-
-            pipeline = initialize_pipeline(src_pipe, loras=model_data.data.get("loras", []), weight=model_data.data.get("lora_weight", 0.9))
+            apply_tomesd = True
+            tomesd_scale = 0.5
+            args = model_data.data.get("args", None)
+            if args is not None:
+                apply_tomesd = args.get("apply_tomesd", True)
+                tomesd_scale = args.get("tomesd_scale", 0.5)
+            pipeline = initialize_pipeline(
+                src_pipe,
+                pipeline_cls,
+                loras=model_data.data.get("loras", []),
+                weight=model_data.data.get("lora_weight", 0.9),
+                apply_tomesd=apply_tomesd,
+                tomesd_scale=tomesd_scale
+            )
         except Exception as e:
             logger.warning(f"Exception loading pipeline: {e}")
             traceback.print_exc()

@@ -1,0 +1,46 @@
+<div class="module" id="moduleScraper">
+    <div class="container-fluid">
+        <div class="row ioRow">
+            <div class="order-last order-md-first col-sm-12 col-md-6 col-lg-5 col-xl-4">
+                <div class="card shadow" id="scraperSettings">
+                    <div class="card-header">
+                        Settings
+                    </div>
+                    <div class="card-body settingPanel">
+                        <div class="inferDrop col-12">
+                            <div class="btn-group form-control">
+                                <button class="btn btn-primary" id="startScraper">Scrape</button>
+                                <button class="btn btn-secondary btn-disabled cancelButton" id="stopScraper">Cancel
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="inferDrop infer-advanced order-2 pt-2" id="scraperParams">
+                            <div class="form-group">
+                                <label title="A comma separated list of keywords">Keywords</label>
+                                <textarea
+                                        id="scraper_keywords"
+                                        name="keywords"
+                                        placeholder="A comma separated list of keywords"
+                                        class="form-control scraperParam"
+                                        title="A comma separated list of keywords"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="order-first order-md-last col-sm-12 col-md-6 col-lg-7 col-xl-8">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Output
+                    </div>
+                    <div class="card-body fullPanel">
+                        <!-- Gallery and progressGroup elements. -->
+                        <div class="progressGroup" id="scraperProgress"></div>
+                        <div class="image-container inline-gallery-container" id="scraperGallery"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

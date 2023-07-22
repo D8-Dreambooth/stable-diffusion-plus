@@ -67,6 +67,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     global pipeline, preview_steps
     model_handler = ModelHandler(user_name=user)
     status_handler = StatusHandler(user_name=user, target=target)
+    status_handler.session_object = inference_settings
     image_handler = ImageHandler(user_name=user)
     history_handler = HistoryHandler(user_name=user)
     ch = ConfigHandler()
@@ -79,16 +80,8 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     # Check if our selected model is loaded, if not, loaded it.
     preprocess_src = None
 
-    # List of prompts and images to pass to the actual pipeline
-    input_prompts = []
-    negative_prompts = []
-    control_images = []
-
-    # Height and width to use if not overridden by controlnet
-    ui_height = inference_settings.height
-    ui_width = inference_settings.width
     # Model data, duh
-    model_data = inference_settings.model
+    model_data = inference_settings.get_model()
     pipeline_type = inference_settings.pipeline
     pipe_settings = inference_settings.pipeline_settings
 
@@ -105,7 +98,16 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         pipe_params = pipe_data.get(pipeline_type, {})
     model_data.data["pipeline"] = pipeline_type
     # If we're using controlnet, set up images and preprocessing
-    prompt_count = 1
+
+    # List of prompts and images to pass to the actual pipeline
+    input_prompts = []
+    negative_prompts = []
+    control_images = []
+
+    # Height and width to use if not overridden by controlnet
+    ui_height = inference_settings.height
+    ui_width = inference_settings.width
+
     if "ControlNet" in pipeline_type and inference_settings.controlnet_type:
         for key, cd in controlnet_data.items():
             if cd["name"].lower() == inference_settings.controlnet_type:
@@ -234,6 +236,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
     status_handler.update("status", "Loading model.")
 
     await status_handler.send_async()
+    model_data.data["args"] = {"apply_tomesd": inference_settings.apply_tomesd, "tomesd_scale": inference_settings.tomesd_scale}
     if len(inference_settings.loras):
         model_data.data["loras"] = inference_settings.loras
         model_data.data["lora_weight"] = inference_settings.lora_weight
@@ -262,12 +265,6 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
         status_handler.update("status", "Unable to load inference pipeline.")
         return [], []
 
-    # if ui_height > 768 or ui_width > 768:
-    #     try:
-    #         pipeline.vae.enable_tiling()
-    #     except Exception as e:
-    #         logger.warning(f"Unable to enable VAE tiling: {e}")
-    #         pass
     compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder, truncate_long_prompts=False)
     if len(input_prompts) != required_images:
         input_prompts = [val for val in input_prompts for _ in range(required_images)]
@@ -578,7 +575,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     if inference_settings.postprocess and processor is not None:
                         with concurrent.futures.ThreadPoolExecutor() as pool:
                             status_items = {
-                                "status": f"Postprocessing image {i + 1} of {len(s_image)}",
+                                "status": f"Postprocessing image {len(out_images) + i + 1} of {required_images}",
                                 "progress_2_current": inference_settings.steps
                             }
                             if not return_latents:
@@ -598,16 +595,16 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                 out_images.extend(images)
                 out_prompts.extend(prompts)
                 out_params.extend(params)
-                for name in ["image", "mask_image", "control_image"]:
-                    if name in kwargs:
-                        if isinstance(kwargs[name], list):
-                            out_images.extend(kwargs[name])
-                            out_prompts.extend([name] * len(kwargs[name]))
-                            out_params.extend([inference_settings] * len(kwargs[name]))
-                        else:
-                            out_images.append(kwargs[name])
-                            out_prompts.append(name)
-                            out_params.append(inference_settings)
+                # for name in ["image", "mask_image", "control_image"]:
+                #     if name in kwargs:
+                #         if isinstance(kwargs[name], list):
+                #             out_images.extend(kwargs[name])
+                #             out_prompts.extend([name] * len(kwargs[name]))
+                #             out_params.extend([inference_settings] * len(kwargs[name]))
+                #         else:
+                #             out_images.append(kwargs[name])
+                #             out_prompts.append(name)
+                #             out_params.append(inference_settings)
 
                 current_total = len(out_images) + (1 * inference_settings.batch_size)
                 if current_total > required_images:
@@ -624,7 +621,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                     "params": params,
                     "progress_1_total": required_images,
                     "progress_1_current": current_total,
-                    "latents": s_image,
+                    "latents": images,
                     "progress_2_total": total_steps,
                     "progress_2_current": total_steps,
                 },

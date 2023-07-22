@@ -401,6 +401,9 @@ function createSelectInput(key, description, choices, value, id_prefix = "", add
             select.classList.add(additional_classes[i]);
         }
     }
+    if (choices[0] !== "") {
+        choices.unshift("");
+    }
     for (let i = 0; i < choices.length; i++) {
         let option = document.createElement("option");
         option.value = choices[i];
@@ -593,32 +596,6 @@ let pongReceived = false;  // This variable will track whether a "pong" response
 let pingInterval = null;  // This will hold the setInterval function for sending "ping" messages
 
 // Add a new function for checking the "ping" and "pong" functionality
-function pingPongCheck() {
-    console.log("PPC");
-    pongReceived = false;  // Reset the flag before sending a "ping"
-    sendMessage('ping', {}, true).then(() => {  // Send the "ping" message
-        pongReceived = true;  // If we got a response, set the flag to true
-    }).catch((err) => {  // If there was an error, log it
-        console.log('Error sending ping message:', err);
-    });
-
-    // After 2 seconds, check whether we received a "pong"
-    setTimeout(() => {
-        if (!pongReceived) {  // If we didn't receive a "pong", close the socket
-            console.log('No pong received, closing socket');
-            clearInterval(pingInterval);
-            if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
-                globalSocket.close();
-                // Optionally you can call `connectSocket()` here to reconnect after a disconnection
-                // But be careful to not create infinite loop in case of constant failures
-                connectSocket();
-            }
-        }
-    }, 5000);
-}
-
-// Set up socket and it's event listeners
-let reconnectAttempts = 0;
 
 function connectSocket() {
     const authCookie = document.cookie.split(';')
@@ -651,29 +628,12 @@ function connectSocket() {
             console.log("SOCKET OPEN");
         };
 
-         globalSocket.onerror = function (event) {
-            if (event instanceof CloseEvent) {
-                if (event.code === 403) {
-                    console.log("WebSocket error: 403 Forbidden");
-                    location.reload();
-                } else {
-                    console.log("WebSocket error: ", event);
-                }
-            } else {
-                console.log("WebSocket error: ", event);
-            }
-        };
-
-        globalSocket.onmessage = function (event) {
+        globalSocket.onmessage = async function (event) {
             let message;
             try {
                 message = (typeof event.data === 'string') ? JSON.parse(event.data) : event.data;
             } catch (e) {
                 console.error("Failed to parse incoming message:", e);
-                return;
-            }
-            if (!message.hasOwnProperty("name")) {
-                console.log("Event has no name property, cannot process: ", event);
                 return;
             }
 
@@ -683,7 +643,6 @@ function connectSocket() {
                 return;
             }
 
-            const name = message.name;
             const index = messages.indexOf(message.id);
             // If it's not in the message queue or has a broadcast flag, then it's not a response to a request
             if (index > -1 && !message.hasOwnProperty("broadcast")) {
@@ -696,14 +655,31 @@ function connectSocket() {
             } else {
                 if (socketMethods.hasOwnProperty(method_name)) {
                     if (method_name !== "status") console.log("Forwarding method: ", method_name, message);
-                    for (let i = 0; i < socketMethods[method_name].length; i++) {
-                        socketMethods[method_name][i](message);
+
+                    let callbackPromises = socketMethods[method_name].map(callback => {
+                        return new Promise((resolve, reject) => {
+                            try {
+                                resolve(callback(message));
+                            } catch (e) {
+                                console.error("Failed to execute callback: ", e);
+                                reject(e);
+                            }
+                        });
+                    });
+
+                    for (let i = 0; i < callbackPromises.length; i++) {
+                        try {
+                            await callbackPromises[i];
+                        } catch (e) {
+                            console.error("Error in callback execution: ", e);
+                        }
                     }
                 } else {
                     console.log("Unknown message name: ", method_name, event);
                 }
             }
         };
+
         globalSocket.onerror = function (event) {
             if (event instanceof CloseEvent) {
                 if (event.code === 403) {
@@ -716,8 +692,9 @@ function connectSocket() {
                 console.log("WebSocket error: ", event);
             }
         };
+
         globalSocket.onclose = function (event) {
-            console.log("WebSocket disconnected with code: ", event.code);
+            console.log("WebSocket disconnected: ", event);
             showError("Websocket Disconnected, attempting reconnect...");
             if (event.code === 1000 || event.code === 403) {
                 location.reload();

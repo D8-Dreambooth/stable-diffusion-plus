@@ -89,7 +89,10 @@ class InferSettings(BaseModel):
                            choices=list_schedulers(), advanced=True)
     batch_size: int = Field(1, description="Batch size.", title="Batch Size", gt=0, le=1000, group="Advanced",
                             advanced=True)
-
+    apply_tomesd: bool = Field(False, description="Apply TomeSD.", title="Apply TomeSD", group="Advanced",
+                               advanced=True)
+    tomesd_scale: float = Field(0.5, description="TomeSD scale.", title="TomeSD Scale", ge=0.0, le=1.0,
+                                multiple_of=0.1, group="Advanced", advanced=True)
     pipeline_settings: Dict = Field({}, description="Pipeline settings.", title="Pipeline Settings", group="Advanced",
                                     custom_type=None)
     scale: float = Field(7.5, description="Scale.", title="Scale", ge=0.0, le=100.0, multiple_of=0.1, group="Advanced",
@@ -100,7 +103,7 @@ class InferSettings(BaseModel):
     image: Optional[str] = Field(None, description="Image for inference.", title="Infer Image", group="Inpaint",
                                  advanced=True)
     use_batch_image: Optional[bool] = Field(False, description="Use batch image.", title="Use Batch Image",
-                                             group="Inpaint", advanced=True)
+                                            group="Inpaint", advanced=True)
     batch_image_path: Optional[str] = Field(None, description="Batch image path.", title="Batch Image Path",
                                             group="Inpaint", advanced=True, custom_type="fileBrowser")
     mask: Optional[str] = Field(None, description="Mask for inference.", title="Infer Mask", group="Inpaint",
@@ -126,16 +129,22 @@ class InferSettings(BaseModel):
                              toggle_fields=["preprocess_add", "preprocess_filter", "preprocess_character"
                                                                                    "preprocess_max_tokens",
                                             "preprocess_prompts_per_image"])
-    preprocess_add: str = Field("", title="Add to Prompt", description="A string or comma-separated list of strings to add to the prompt.", group="Preprocessing",
+    preprocess_add: str = Field("", title="Add to Prompt",
+                                description="A string or comma-separated list of strings to add to the prompt.",
+                                group="Preprocessing",
                                 advanced=True)
-    preprocess_filter: str = Field("", title="Filter", description="A string or comma-separated list of strings to remove from the prompt.",
+    preprocess_filter: str = Field("", title="Filter",
+                                   description="A string or comma-separated list of strings to remove from the prompt.",
                                    group="Preprocessing", advanced=True)
-    preprocess_character: str = Field("default", title="Character", description="The character/persona to use for prompt generation.",
+    preprocess_character: str = Field("default", title="Character",
+                                      description="The character/persona to use for prompt generation.",
                                       group="Preprocessing", choices=list_characters(), advanced=True)
-    preprocess_max_tokens: int = Field(150, title="Max Tokens", description="The maximum number of tokens to add to the prompt.",
+    preprocess_max_tokens: int = Field(150, title="Max Tokens",
+                                       description="The maximum number of tokens to add to the prompt.",
                                        ge=10, le=1000, group="Preprocessing", advanced=True)
     preprocess_prompts_per_image: int = Field(1, title="Prompts Per Image",
-                                              description="Number of 'modified' prompts to generate per image.", ge=1, le=100,
+                                              description="Number of 'modified' prompts to generate per image.", ge=1,
+                                              le=100,
                                               group="Preprocessing", advanced=True)
     # Postprocessing
     postprocess: bool = Field(False, description="Postprocess.", title="Postprocess", group="Postprocessing",
@@ -296,6 +305,11 @@ class InferSettings(BaseModel):
                     print("Empty image data")
                     return None
                 return Image.open(BytesIO(img_bytes))
+
+    def get_model(self):
+        if self.model.get("path") is None:
+            return None
+        return ModelData(self.model["path"])
 
     def get_params(self):
         tc_fields = {}

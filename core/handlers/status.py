@@ -1,4 +1,5 @@
 import logging
+from typing import Dict
 
 from core.dataclasses.status_data import StatusData
 from dreambooth import shared
@@ -14,6 +15,7 @@ class StatusHandler:
     _do_send = False
     status = StatusData()
     _user_name = None
+    session_obj = None
 
     def __new__(cls, socket_handler=None, user_name=None, target=None):
         if cls._instance is None and socket_handler is not None:
@@ -59,6 +61,9 @@ class StatusHandler:
         if self._target is not None:
             status["target"] = self._target
 
+    def set_session_object(self, obj: Dict):
+        self.session_obj = obj
+
     def start(self, total: int = 0, desc: str = ""):
         self.status.start()
         self.status.progress_1_total = total
@@ -67,6 +72,7 @@ class StatusHandler:
 
     def end(self, desc: str):
         self.status.end(desc)
+        self.session_obj = None
         self.send()
 
     def step(self, n: int = 1, secondary_bar: bool = False, description: str = None):
