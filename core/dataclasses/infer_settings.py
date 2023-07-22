@@ -307,9 +307,12 @@ class InferSettings(BaseModel):
                 return Image.open(BytesIO(img_bytes))
 
     def get_model(self):
-        if self.model.get("path") is None:
-            return None
-        return ModelData(self.model["path"])
+        if isinstance(self.model, ModelData):
+            return self.model
+        elif isinstance(self.model, dict):
+            if self.model.get("path") is None:
+                return None
+            return ModelData(self.model["path"])
 
     def get_params(self):
         tc_fields = {}

@@ -474,6 +474,7 @@ class GoogleImagesDownloader:
     def _get_all_items(self, keyword, image_objects, main_directory, dir_name, limit, status_handler, secondary=False):
         items = []
         abs_path = []
+        prompts = []
         error_count = 0
         i = 0
         count = 1
@@ -492,7 +493,7 @@ class GoogleImagesDownloader:
                     formatted = self.format_object(image_objects[i], keyword)
                     print("\nImage Metadata: " + str(formatted))
                     if formatted is None:
-                        print("Invalid object, fucker.")
+                        print("Invalid object.")
                         continue
 
                     # download the images
@@ -530,7 +531,9 @@ class GoogleImagesDownloader:
                     formatted['image_filename'] = return_image_name
                     items.append(formatted)
                     abs_path.append(absolute_path)
-                    status_handler.update("images", [absolute_path], False)
+                    prompts.append(description)
+                    status_items = {"images": [absolute_path], "prompts": prompts}
+                    status_handler.update(items=status_items, send=False)
                     status_handler.step(1, description=f"Downloaded image {i + 1}/{limit}", secondary_bar=secondary)
                     status_handler.send()
                 else:
