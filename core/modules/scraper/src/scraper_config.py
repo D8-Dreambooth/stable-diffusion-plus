@@ -24,7 +24,7 @@ class ScraperConfig(BaseModel):
     aspect_ratio: Optional[str] = Field(None, description="Comma separated additional words added to keywords",
                                         choices=[key for key in ASPECT_RATIO_TABLE.keys()], title="Aspect Ratio")
     browser: str = Field("chrome", description="Specify which browser to use",
-                         choices=['chrome', 'firefox', 'safari', 'ie', 'edge', 'opera'],
+                         choices=['chrome', 'chromium', 'brave', 'firefox', 'safari', 'ie', 'edge', 'opera'],
                          title="Browser")
     related_images: bool = Field(False, description="Downloads images that are similar to the keyword provided", title="Related Images")
 

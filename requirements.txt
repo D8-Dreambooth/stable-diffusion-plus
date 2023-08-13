@@ -41,7 +41,7 @@ transformers==4.30.2
 upscalers>=0.5.3
 uvicorn>=0.22.0
 watchdog>=3.0.0
-webdriver_manager==3.8.6
+webdriver_manager==3.9.1
 websockets>=11.0.3
 wheel
 wordcloud>=1.9.2

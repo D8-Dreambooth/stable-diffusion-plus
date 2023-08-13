@@ -253,8 +253,20 @@ function initTagger() {
         }).then((response) => {
             loadTags(response["src"], response["tags"]);
         });
-
     });
+
+    $("#tagEditHeader").on("dblclick", function () {
+        // If fullImage has src, then we are in full image mode
+        if ($("#fullImage").attr("src") !== "" || $("#tagEditHeader").hasClass("fullCard")) {
+            // Toggle the fullCard class on the tagEditWrapper
+            $("#tagEditWrapper").toggleClass("fullCard");
+        }
+    });
+
+    $("#tag_cloud_toggle").on("click", function () {
+        $("#tag_cloud_container").toggle();
+    });
+    $("#tag_cloud_container").hide();
 }
 
 function loadTags(cloudImage, tags) {

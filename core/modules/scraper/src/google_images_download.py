@@ -1,4 +1,4 @@
-import datetime
+import http.client
 import http.client
 import json
 import logging
@@ -15,10 +15,19 @@ from io import BytesIO
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-import requests
 import selenium.common.exceptions
 from PIL import Image
+from selenium.webdriver.chrome.service import Service as BraveService
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.service import Service as EdgeService
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.ie.service import Service as IEService
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType
+from webdriver_manager.firefox import GeckoDriverManager
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from webdriver_manager.microsoft import IEDriverManager
 
 from core.handlers.file import FileHandler
 from core.handlers.status import StatusHandler
@@ -169,27 +178,28 @@ class GoogleImagesDownloader:
         options = webdriver.ChromeOptions()
         options.add_argument('--no-sandbox')
         options.add_argument("--headless")
-
-        web_browser = None
         try:
             if browser == 'firefox':
-                web_browser = webdriver.Firefox()
+                web_browser = webdriver.Firefox(options=options, service=FirefoxService(GeckoDriverManager().install()))
             elif browser == 'chrome':
-                web_browser = webdriver.Chrome(service=chromedriver, options=options)
+                web_browser = webdriver.Chrome(options=options, service=ChromeService(chromedriver))
+            elif browser == 'chromium':
+                web_browser = webdriver.Chrome(options=options, service=ChromeService(chromedriver))
+            elif browser == 'brave':
+                web_browser = webdriver.Chrome(options=options, service=BraveService(chromedriver))
             elif browser == 'safari':
-                web_browser = webdriver.Safari()
+                web_browser = webdriver.Safari(options=options)
             elif browser == 'edge':
-                web_browser = webdriver.Edge()
+                web_browser = webdriver.Edge(options=options, service=EdgeService(EdgeChromiumDriverManager().install()))
             elif browser == 'ie':
-                web_browser = webdriver.Ie()
+                web_browser = webdriver.Ie(options=options, service=IEService(IEDriverManager().install()))
             else:
                 logger.warning("The requested browser is not supported. Please choose one of the following: Firefox, "
                                "Chrome, Safari, Edge, ie")
                 return None, None
         except Exception as e:
-            logger.warning("Looks like we cannot locate the path the 'chromedriver' (use the '--chromedriver' "
-                           "argument to specify the path to the executable.) or google chrome browser is not "
-                           "installed on your machine (exception: %s)" % e)
+            logger.warning(f"Exception loading web browser: {e}")
+            traceback.print_exc()
             return None, None
 
         web_browser.set_window_size(1024, 768)
@@ -554,7 +564,7 @@ class GoogleImagesDownloader:
         paths = {}
         search_keyword = [str(item) for item in config.keywords.split('\n')]
         limit = config.limit
-        main_directory = os.path.join(user_dir, "downloads", "_".join(search_keyword))
+        main_directory = os.path.join(user_dir, "downloads")
 
         total_errors = 0
         i = 0
@@ -613,6 +623,8 @@ class GoogleImagesDownloader:
                     else:
                         images, _ = self.download_extended_page(value, chromedriver, config.browser)
                     out_dir = os.path.join(main_directory, final_search_term)
+                    if images is None:
+                        continue
                     if not os.path.exists(out_dir):
                         os.makedirs(out_dir)
                     self._get_all_items(keyword, images, main_directory, search_term + " - " + key, limit, sh, True)

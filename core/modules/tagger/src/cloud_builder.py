@@ -24,16 +24,18 @@ def make_image(text: Dict[str, int]) -> Image.Image:
 
 
 def process_file(file_path: str, tags_dict: Dict[str, List[str]]) -> None:
-
-    with open(file_path, 'r') as file:
-        for line in file:
-            tags = [tag.strip() for tag in line.split(',')]
-            for tag in tags:
-                tag = tag.lower()
-                if tag in tags_dict:
-                    tags_dict[tag].append(file_path)
-                else:
-                    tags_dict[tag] = [file_path]
+    try:
+        with open(file_path, 'r') as file:
+            for line in file:
+                tags = [tag.strip() for tag in line.split(',')]
+                for tag in tags:
+                    tag = tag.lower()
+                    if tag in tags_dict:
+                        tags_dict[tag].append(file_path)
+                    else:
+                        tags_dict[tag] = [file_path]
+    except UnicodeDecodeError:
+        logger.warning(f"Failed to process file {file_path}")
 
 
 def process_directory(directory_path: str, tags_dict: Dict[str, int], recurse: bool) -> None:

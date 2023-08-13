@@ -1,3 +1,4 @@
+import gc
 import logging
 from typing import Dict
 
@@ -18,8 +19,10 @@ class Blip2Captioner(BaseCaptioner):
         self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
         self.model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", load_in_8bit=True,
                                                                    device_map="auto")
+        self._to_cpu()
 
     def caption(self, image: Image, params: Dict = None, unload: bool = False) -> str:
+        self._to_gpu()
         question = params["question"] if "question" in params else None
         if question:
             if "?" in question:
@@ -48,4 +51,12 @@ class Blip2Captioner(BaseCaptioner):
                     fixed_res.append(res.strip())
             response = " ".join(fixed_res)
         logging.getLogger(__name__).debug(f"Response: {response}")
+        if unload:
+            self._to_cpu()
         return response
+
+    def unload(self):
+        self._to_cpu()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()

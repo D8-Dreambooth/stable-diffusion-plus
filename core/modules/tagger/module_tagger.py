@@ -14,7 +14,8 @@ from core.handlers.status import StatusHandler
 from core.handlers.websocket import SocketHandler
 from core.helpers.captioners.blip2 import Blip2Captioner
 from core.helpers.captioners.blip_large import BlipLargeCaptioner
-from core.helpers.captioners.wolf import ConvCaptioner, Conv2Captioner, SwinCaptioner, VitCaptioner
+from core.helpers.captioners.llm import LLMCaptioner
+from core.helpers.captioners.wolf import ConvCaptioner, Conv2Captioner, SwinCaptioner, VitCaptioner, MoatCaptioner
 from core.modules.base.module_base import BaseModule
 from core.modules.tagger.src.cloud_builder import make_cloud
 
@@ -28,6 +29,10 @@ class TaggerModule(BaseModule):
         self.name: str = "Tagger"
         self.path = os.path.abspath(os.path.dirname(__file__))
         super().__init__(self.id, self.name, self.path)
+        self.blip_large = None
+        self.blip_2 = None
+        self.llm = None
+
         mm = ModelManager()
 
     def initialize(self, app: FastAPI, handler: SocketHandler):
@@ -194,55 +199,35 @@ class TaggerModule(BaseModule):
 
         outputs = {}
 
-        if captioners["blip2"]:
-            sh.update(items={"status": f"Loading BLIP2 model..."})
-            blip_2 = Blip2Captioner()
+        if captioners["llm"]:
+            logger.debug("LLM TAG!")
+            sh.update(items={"status": f"Loading LLM model..."})
+            if self.llm is None:
+                self.llm = LLMCaptioner()
             s_count = 1
             for image in image_path:
-                sh.step(description=f"Tagging image {s_count}/{len(image_path)} image with Blip2...")
+                sh.step(description=f"Tagging image {s_count}/{len(image_path)} image with LLM...")
                 s_count += 1
                 base = os.path.basename(image)
                 raw_image = Image.open(image).convert("RGB")
                 try:
-                    outputs[f"blip2--{base}"] = blip_2.caption(raw_image, {}, False)
-                    for key, question in start_prompts.items():
-                        # IF the key is the last one in start_prompts
-                        response = blip_2.caption(raw_image, {"question": question}, False)
-                        outputs[f"{key}--{base}"] = response
+                    outputs[f"LLM--{base}"] = self.llm.caption(raw_image, {}, False)
                 except:
                     logger.warning("Exception loading stuff")
                     traceback.print_exc()
-
-                questions = {}
-                if outputs[f"is_person--{base}"] == ["yes"]:
-                    questions = person_prompts
-                elif outputs[f"is_animal--{base}"] == ["yes"]:
-                    questions = animal_prompts
-                elif outputs[f"is_object--{base}"] == ["yes"]:
-                    questions = object_prompts
-
-                del outputs[f"is_person--{base}"]
-                del outputs[f"is_animal--{base}"]
-                del outputs[f"is_object--{base}"]
-
-                for key, generic in general_prompts.items():
-                    questions[key] = generic
-
-                for key, question in questions.items():
-                    # ask a random question.
-                    response = blip_2.caption(raw_image, {"question": question}, False)
-                    if response != "yes":
-                        outputs[f"{key}--{base}"] = response
+            self.llm.unload()
 
         logger.debug(f"Results so far: {outputs}")
         # Construct a comprehensive caption for the image
+        
         captionerz = {
             "blip_large": BlipLargeCaptioner,
-            "conv": ConvCaptioner,
+            "moat": MoatCaptioner,
             "conv2": Conv2Captioner,
             "swin": SwinCaptioner,
             "vit": VitCaptioner
         }
+        
         for key, captioner in captionerz.items():
             if captioners[key] is False:
                 continue

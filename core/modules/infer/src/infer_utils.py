@@ -493,9 +493,7 @@ async def start_inference(inference_settings: InferSettings, user, target: str =
                         if isinstance(mask, list):
                             mask = mask[0]
                     if "Inpaint" in inference_settings.pipeline or "Img2Img" in inference_settings.pipeline or "Image2Image" in inference_settings.pipeline:
-                        image, new_mask = fill_image(image, mask=mask,
-                                                     mask_padding=inference_settings.inpaint_mask_radius,
-                                                     fill_mode=inference_settings.inpaint_fill_mode)
+                        new_mask = mask
                     if mask is not None and new_mask is not None:
                         kwargs["mask_image"] = new_mask if not isinstance(new_mask, list) else [new_mask]
                     if inference_settings.use_input_resolution and image is not None:

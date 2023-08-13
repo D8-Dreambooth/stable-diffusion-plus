@@ -4,7 +4,7 @@
             <div class="order-last order-md-first col-sm-12 col-md-6 col-lg-5 col-xl-4">
                 <div class="card shadow">
                     <div class="card-body">
-                        <div class="col-12">
+                        <div class="col-12 mb-2">
                             <div class="btn-group form-control">
                                 <button id="loadTagImages" class="btn btn-primary">Load</button>
                                 <button class="btn btn-secondary btn-disabled cancelButton" id="clearTag">Clear</button>
@@ -28,13 +28,13 @@
                         </div>
                         <div class="col-12">
                         </div>
-                        <div class="col-12">
+                        <div class="col-12" id="tagEditWrapper">
                             <div class="card shadow" id="imageEditCard">
-                                <div class="card-header">Edit</div>
+                                <div class="card-header" id="tagEditHeader">Edit</div>
 
-                                <div class="card-body">
-                                    <div class="borderSection row mb-2">
-                                        <div class="form-group col-12">
+                                <div class="card-body" id="tagCard">
+                                    <div class="borderSection row mb-2" id="tagRow">
+                                        <div class="form-group col-12" id="tagGroup">
                                             <div class="fullImgWrap">
                                                 <img id="fullImage">
                                             </div>
@@ -47,8 +47,8 @@
                                             </label>
                                             <textarea class="form-control" id="imageCaption" rows="6"></textarea>
                                         </div>
-                                        <div class="form-group col-12">
-                                            <div class="form-check form-switch m-2">
+                                        <div class="form-group col-12" style="display: none">
+                                            <div class="form-switch">
                                                 <input class="form-check-input" type="checkbox" id="autoSave" checked>
                                                 <label class="form-check-label" for="autoSave">Auto-Save</label>
                                             </div>
@@ -57,36 +57,47 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="accordion-item">
-                                <div class="accordion-header">
-                                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                                            data-bs-target="#autotagCollapse"
-                                            aria-expanded="true"
-                                            aria-controls="autotagCollapse">
-                                        Auto-Tag
-                                    </button>
-                                </div>
-                                <div id="autotagCollapse" class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                    <div class="form-group">
-                                        <div class="progressGroup" id="tagProgressGroup"></div>
-                                    </div>
+                    </div>
+                </div>
+            </div>
+            <div class="order-first order-md-last col-sm-12 col-md-6 col-lg-7 col-xl-8">
+                <div class="card shadow" style="overflow-y:auto">
+                    <div class="card-header">Select</div>
+                    <div class="card-body fullPanel">
+                        <div class="form-group">
+                            <div class="progressGroup" id="tagProgressGroup"></div>
+                        </div>
+                        <div class="borderSection">
+                            <div class="form-group">
+                                <div id="imageBrowser"></div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <div class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#autotagCollapse"
+                                        aria-expanded="true"
+                                        aria-controls="autotagCollapse">
+                                    Auto-Tag
+                                </button>
+                            </div>
+                            <div id="autotagCollapse" class="accordion-collapse collapse">
+                                <div class="accordion-body">
                                     <div class="form-group col-12 borderSection">
                                         <div class="form-label ms-1">Natural Language</div>
                                         <div class="ms-1 mb-2">
-                                            <div class="form-check form-check-inline">
-                                                <input class="form-check-input tagCapSelect" type="checkbox"
-                                                       id="tagBlip2"
-                                                       value="blip2">
-                                                <label class="form-check-label" for="tagBlip2">BlipV2</label>
-                                            </div>
                                             <div class="form-check form-check-inline">
                                                 <input class="form-check-input tagCapSelect" type="checkbox"
                                                        id="tagBlipLarge"
                                                        value="blip_large">
                                                 <label class="form-check-label" for="tagBlipLarge">Blip
                                                     Large</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagLLM"
+                                                       value="llm">
+                                                <label class="form-check-label" for="tagLLM">LLM</label>
                                             </div>
                                         </div>
                                     </div>
@@ -95,25 +106,22 @@
                                         <div class="text-center mb-2">
                                             <div class="form-check form-check-inline">
                                                 <input class="form-check-input tagCapSelect" type="checkbox"
+                                                       id="tagMoat"
+                                                       value="moat">
+                                                <label class="form-check-label" for="tagMoat">Moat</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input tagCapSelect" type="checkbox"
                                                        id="tagVit"
                                                        value="vit">
                                                 <label class="form-check-label" for="tagVit">Vit</label>
                                             </div>
-
                                             <div class="form-check form-check-inline">
                                                 <input class="form-check-input tagCapSelect" type="checkbox"
                                                        id="tagSwin"
                                                        value="swin">
                                                 <label class="form-check-label" for="tagSwin">Swin</label>
                                             </div>
-
-                                            <div class="form-check form-check-inline">
-                                                <input class="form-check-input tagCapSelect" type="checkbox"
-                                                       id="tagConv"
-                                                       value="conv">
-                                                <label class="form-check-label" for="tagConv">Conv</label>
-                                            </div>
-
                                             <div class="form-check form-check-inline">
                                                 <input class="form-check-input tagCapSelect" type="checkbox"
                                                        id="tagConv2"
@@ -158,19 +166,6 @@
                                         <button class="btn btn-primary" id="captionAll">Caption All</button>
                                     </div>
                                 </div>
-                                </div>
-                                </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="order-first order-md-last col-sm-12 col-md-6 col-lg-7 col-xl-8">
-                <div class="card shadow">
-                    <div class="card-header">Select</div>
-                    <div class="card-body fullPanel">
-                        <div class="borderSection">
-                            <div class="form-group">
-                                <div id="imageBrowser"></div>
                             </div>
                         </div>
                         <div class="accordion-item">
@@ -183,52 +178,57 @@
                                     <div id="tag_edit_toggle" class="round-btn" title="Enable tag deletion">
                                         <i class='bx bxs-edit'></i>
                                     </div>
-                                    <div id="tag_cloud_toggle" class="round-btn" title="Show word cloud"></div>
+                                    <div id="tag_cloud_toggle" class="round-btn" title="Show word cloud">
+                                        <i class='bx bxs-cloud'></i>
+                                    </div>
                                 </button>
                             </div>
                             <div id="tagSelect" class="accordion-collapse collapse">
-                            <div class="accordion-body"><!-- Make this an accordion-item -->
-                                <div class="row">
-                                    <div class="col-12 col-md-6">
-                                        <div class="form-group">
-                                            <label for="sortType">Sort by:</label>
-                                            <select class="form-select" id="sortType">
-                                                <option value="alphabetical">Alphabetical</option>
-                                                <option value="frequency" selected>Frequency</option>
-                                            </select>
+                                <div class="accordion-body"><!-- Make this an accordion-item -->
+                                    <div class="row">
+                                        <div class="col-12 col-md-6">
+                                            <div class="form-group">
+                                                <label for="sortType">Sort by:</label>
+                                                <select class="form-select" id="sortType">
+                                                    <option value="alphabetical">Alphabetical</option>
+                                                    <option value="frequency" selected>Frequency</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <div class="form-group">
+                                                <label for="sortOrder">Order:</label>
+                                                <select class="form-select" id="sortOrder">
+                                                    <option value="ascending">Ascending</option>
+                                                    <option value="descending" selected>Descending</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-12 col-md-6">
-                                        <div class="form-group">
-                                            <label for="sortOrder">Order:</label>
-                                            <select class="form-select" id="sortOrder">
-                                                <option value="ascending">Ascending</option>
-                                                <option value="descending" selected>Descending</option>
-                                            </select>
+                                    <div class="row">
+                                        <div id="cloudWrap" class="col-12">
+                                            <img id="cloudImage">
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div id="cloudWrap" class="col-12">
-                                        <img id="cloudImage">
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-group borderSection" style="min-height: 190px"
-                                             id="tagContainer"></div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-group text-center">
-                                            <div class="btn-group">
-                                                <button class="btn btn-primary" id="tag_cloud">Analyze Tags</button>
-                                                <button class="btn btn-secondary" id="tag_save">Save Tags</button>
+                                        <div class="col-12">
+                                            <div class="form-group borderSection" style="min-height: 190px"
+                                                 id="tagContainer"></div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-group text-center">
+                                                <div class="btn-group">
+                                                    <button class="btn btn-primary" id="tag_cloud">Analyze Tags</button>
+                                                    <button class="btn btn-secondary" id="tag_save">Save Tags</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+</div>

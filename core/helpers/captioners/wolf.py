@@ -19,6 +19,22 @@ MODEL_FILENAME = "model.onnx"
 LABEL_FILENAME = "selected_tags.csv"
 
 
+class MoatCaptioner(BaseCaptioner):
+    def _setup(self):
+        model_path = "SmilingWolf/wd-v1-4-moat-tagger-v2"
+        model_name = "moat"
+        self.model = load_model(model_name, model_path, self.device)
+
+    def caption(self, image: Image, params=None, unload: bool = False) -> str:
+        if params is None:
+            params = {}
+        a, c, rating, character_res, general_res = predict(image, self.model)
+        threshold = params.get("threshold", 0.5)
+        char_threshold = params.get("char_threshold", 0.5)
+        a, c, rating, character_res, general_res = predict(image, self.model, threshold, char_threshold)
+        return a
+
+
 class SwinCaptioner(BaseCaptioner):
     def _setup(self):
         model_path = "SmilingWolf/wd-v1-4-swinv2-tagger-v2"
@@ -146,7 +162,8 @@ def load_model(model_name, model_path, device):
     if device == "cpu":
         providers.pop(0)
     if not os.path.exists(os.path.join(model_dir, MODEL_FILENAME)):
-        path = huggingface_hub.hf_hub_download(model_path, MODEL_FILENAME, local_dir=model_dir, local_dir_use_symlinks=False)
+        path = huggingface_hub.hf_hub_download(model_path, MODEL_FILENAME, local_dir=model_dir,
+                                               local_dir_use_symlinks=False)
     else:
         path = os.path.join(model_dir, MODEL_FILENAME)
     model = InferenceSession(path, providers=providers)
